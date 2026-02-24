@@ -10,6 +10,21 @@ import { BlockInfoCard } from "@/components/ui/block-info-card"
   color="#1D1E20"
 />
 
+{/* MANUAL-CONTENT-START:intro */}
+[Attio](https://www.attio.com/) is a modern and flexible CRM platform built to help teams manage relationships, data, and workflows more efficiently. Attio enables organizations to create and organize custom objects (like people, companies, deals, and more), manage notes and tasks, collaborate as a team, and automate work across their relationship and data pipelines.
+
+With Attio, you can:
+
+- **Manage records for any object**: Store and organize people, companies, or any custom objects to fit your team's needs.
+- **Track, connect, and update information**: Add and edit notes, comments, tasks, and linked records so your contextual data is always in sync.
+- **Build and customize lists**: Segment records, filter and sort with powerful queries, and build views that fit your workflow.
+- **Collaborate with your team**: Assign tasks, share comments, and see activities in real time.
+- **Automate CRM workflows**: Create, update, and read record data via API to keep your tools and teams in the loop, or trigger actions as relationships evolve.
+
+In Sim, the Attio integration lets your agents programmatically query lists, fetch and manipulate records, manage entries, tasks, comments, and more—making it easy to automate CRM operations, enrich data, synchronize with other systems, or trigger workflow automations based on relationship or record events. Use these tools to ensure your CRM stays up-to-date and powerful directly from within your Sim projects.
+{/* MANUAL-CONTENT-END */}
+
+
 ## Usage Instructions
 
 Connect to Attio to manage CRM records (people, companies, custom objects), notes, tasks, lists, list entries, comments, workspace members, and webhooks.
@@ -38,11 +53,11 @@ Query and list records for a given object type (e.g. people, companies)
 | --------- | ---- | ----------- |
 | `records` | array | Array of Attio records |
 |   ↳ `id` | object | The record identifier |
-|     ↳ `workspaceId` | string | The workspace ID |
-|     ↳ `objectId` | string | The object ID |
-|     ↳ `recordId` | string | The record ID |
-|   ↳ `createdAt` | string | When the record was created |
-|   ↳ `webUrl` | string | URL to view the record in Attio |
+|     ↳ `workspace_id` | string | The workspace ID |
+|     ↳ `object_id` | string | The object ID |
+|     ↳ `record_id` | string | The record ID |
+|   ↳ `created_at` | string | When the record was created |
+|   ↳ `web_url` | string | URL to view the record in Attio |
 |   ↳ `values` | json | The record attribute values |
 | `count` | number | Number of records returned |
 
@@ -63,11 +78,11 @@ Get a single record by ID from Attio
 | --------- | ---- | ----------- |
 | `record` | object | An Attio record |
 |   ↳ `id` | object | The record identifier |
-|     ↳ `workspaceId` | string | The workspace ID |
-|     ↳ `objectId` | string | The object ID |
-|     ↳ `recordId` | string | The record ID |
-|   ↳ `createdAt` | string | When the record was created |
-|   ↳ `webUrl` | string | URL to view the record in Attio |
+|     ↳ `workspace_id` | string | The workspace ID |
+|     ↳ `object_id` | string | The object ID |
+|     ↳ `record_id` | string | The record ID |
+|   ↳ `created_at` | string | When the record was created |
+|   ↳ `web_url` | string | URL to view the record in Attio |
 |   ↳ `values` | json | The record attribute values |
 | `recordId` | string | The record ID |
 | `webUrl` | string | URL to view the record in Attio |
@@ -89,11 +104,11 @@ Create a new record in Attio for a given object type
 | --------- | ---- | ----------- |
 | `record` | object | An Attio record |
 |   ↳ `id` | object | The record identifier |
-|     ↳ `workspaceId` | string | The workspace ID |
-|     ↳ `objectId` | string | The object ID |
-|     ↳ `recordId` | string | The record ID |
-|   ↳ `createdAt` | string | When the record was created |
-|   ↳ `webUrl` | string | URL to view the record in Attio |
+|     ↳ `workspace_id` | string | The workspace ID |
+|     ↳ `object_id` | string | The object ID |
+|     ↳ `record_id` | string | The record ID |
+|   ↳ `created_at` | string | When the record was created |
+|   ↳ `web_url` | string | URL to view the record in Attio |
 |   ↳ `values` | json | The record attribute values |
 | `recordId` | string | The ID of the created record |
 | `webUrl` | string | URL to view the record in Attio |
@@ -116,11 +131,11 @@ Update an existing record in Attio (appends multiselect values)
 | --------- | ---- | ----------- |
 | `record` | object | An Attio record |
 |   ↳ `id` | object | The record identifier |
-|     ↳ `workspaceId` | string | The workspace ID |
-|     ↳ `objectId` | string | The object ID |
-|     ↳ `recordId` | string | The record ID |
-|   ↳ `createdAt` | string | When the record was created |
-|   ↳ `webUrl` | string | URL to view the record in Attio |
+|     ↳ `workspace_id` | string | The workspace ID |
+|     ↳ `object_id` | string | The object ID |
+|     ↳ `record_id` | string | The record ID |
+|   ↳ `created_at` | string | When the record was created |
+|   ↳ `web_url` | string | URL to view the record in Attio |
 |   ↳ `values` | json | The record attribute values |
 | `recordId` | string | The ID of the updated record |
 | `webUrl` | string | URL to view the record in Attio |
@@ -184,11 +199,11 @@ Upsert a record in Attio — creates it if no match is found, updates it if a ma
 | --------- | ---- | ----------- |
 | `record` | object | The upserted record |
 |   ↳ `id` | object | The record identifier |
-|     ↳ `workspaceId` | string | The workspace ID |
-|     ↳ `objectId` | string | The object ID |
-|     ↳ `recordId` | string | The record ID |
-|   ↳ `createdAt` | string | When the record was created |
-|   ↳ `webUrl` | string | URL to view the record in Attio |
+|     ↳ `workspace_id` | string | The workspace ID |
+|     ↳ `object_id` | string | The object ID |
+|     ↳ `record_id` | string | The record ID |
+|   ↳ `created_at` | string | When the record was created |
+|   ↳ `web_url` | string | URL to view the record in Attio |
 |   ↳ `values` | json | The record attribute values |
 | `recordId` | string | The record ID |
 | `webUrl` | string | URL to view the record in Attio |
@@ -531,7 +546,7 @@ List all lists in the Attio workspace
 |   ↳ `name` | string | The list name |
 |   ↳ `parentObject` | string | The parent object slug \(e.g. people, companies\) |
 |   ↳ `workspaceAccess` | string | Workspace-level access \(e.g. full-access, read-only\) |
-|   ↳ `workspaceMemberAccess` | string | Member-level default access |
+|   ↳ `workspaceMemberAccess` | json | Member-level access entries |
 |   ↳ `createdByActor` | object | The actor who created the list |
 |     ↳ `type` | string | The actor type \(e.g. workspace-member, api-token, system\) |
 |     ↳ `id` | string | The actor ID |
@@ -557,7 +572,7 @@ Get a single list by ID or slug
 | `name` | string | The list name |
 | `parentObject` | string | The parent object slug \(e.g. people, companies\) |
 | `workspaceAccess` | string | Workspace-level access \(e.g. full-access, read-only\) |
-| `workspaceMemberAccess` | string | Member-level default access |
+| `workspaceMemberAccess` | json | Member-level access entries |
 | `createdByActor` | object | The actor who created the list |
 |   ↳ `type` | string | The actor type \(e.g. workspace-member, api-token, system\) |
 |   ↳ `id` | string | The actor ID |
@@ -574,8 +589,8 @@ Create a new list in Attio
 | `name` | string | Yes | The list name |
 | `apiSlug` | string | No | The API slug for the list \(auto-generated from name if omitted\) |
 | `parentObject` | string | Yes | The parent object slug \(e.g. people, companies\) |
-| `workspaceAccess` | string | No | Workspace-level access: full-access, read-and-write, read-only, or none |
-| `workspaceMemberAccess` | string | No | Default member access: full-access, read-and-write, read-only, or none |
+| `workspaceAccess` | string | No | Workspace-level access: full-access, read-and-write, or read-only \(omit for private\) |
+| `workspaceMemberAccess` | string | No | JSON array of member access entries, e.g. \[\{"workspace_member_id":"...","level":"read-and-write"\}\] |
 
 #### Output
 
@@ -586,7 +601,7 @@ Create a new list in Attio
 | `name` | string | The list name |
 | `parentObject` | string | The parent object slug \(e.g. people, companies\) |
 | `workspaceAccess` | string | Workspace-level access \(e.g. full-access, read-only\) |
-| `workspaceMemberAccess` | string | Member-level default access |
+| `workspaceMemberAccess` | json | Member-level access entries |
 | `createdByActor` | object | The actor who created the list |
 |   ↳ `type` | string | The actor type \(e.g. workspace-member, api-token, system\) |
 |   ↳ `id` | string | The actor ID |
@@ -603,8 +618,8 @@ Update a list in Attio
 | `list` | string | Yes | The list ID or slug to update |
 | `name` | string | No | New name for the list |
 | `apiSlug` | string | No | New API slug for the list |
-| `workspaceAccess` | string | No | New workspace-level access: full-access, read-and-write, read-only, or none |
-| `workspaceMemberAccess` | string | No | New member access: full-access, read-and-write, read-only, or none |
+| `workspaceAccess` | string | No | New workspace-level access: full-access, read-and-write, or read-only \(omit for private\) |
+| `workspaceMemberAccess` | string | No | JSON array of member access entries, e.g. \[\{"workspace_member_id":"...","level":"read-and-write"\}\] |
 
 #### Output
 
@@ -615,7 +630,7 @@ Update a list in Attio
 | `name` | string | The list name |
 | `parentObject` | string | The parent object slug \(e.g. people, companies\) |
 | `workspaceAccess` | string | Workspace-level access \(e.g. full-access, read-only\) |
-| `workspaceMemberAccess` | string | Member-level default access |
+| `workspaceMemberAccess` | json | Member-level access entries |
 | `createdByActor` | object | The actor who created the list |
 |   ↳ `type` | string | The actor type \(e.g. workspace-member, api-token, system\) |
 |   ↳ `id` | string | The actor ID |
@@ -913,23 +928,8 @@ Get a single comment thread by ID from Attio
 | --------- | ---- | ----------- |
 | `threadId` | string | The thread ID |
 | `comments` | array | Comments in the thread |
-|   ↳ `commentId` | string | The comment ID |
-|   ↳ `threadId` | string | The thread ID |
-|   ↳ `contentPlaintext` | string | The comment content as plaintext |
-|   ↳ `author` | object | The comment author |
-|     ↳ `type` | string | The actor type \(e.g. workspace-member, api-token, system\) |
-|     ↳ `id` | string | The actor ID |
-|   ↳ `entry` | object | The list entry this comment is on |
-|     ↳ `listId` | string | The list ID |
-|     ↳ `entryId` | string | The entry ID |
-|   ↳ `record` | object | The record this comment is on |
-|     ↳ `objectId` | string | The object ID |
-|     ↳ `recordId` | string | The record ID |
-|   ↳ `resolvedAt` | string | When the thread was resolved |
-|   ↳ `resolvedBy` | object | Who resolved the thread |
-|     ↳ `type` | string | The actor type \(e.g. workspace-member, api-token, system\) |
-|     ↳ `id` | string | The actor ID |
-|   ↳ `createdAt` | string | When the comment was created |
+|   ↳ `type` | string | The actor type \(e.g. workspace-member, api-token, system\) |
+|   ↳ `id` | string | The actor ID |
 | `createdAt` | string | When the thread was created |
 
 ### `attio_list_webhooks`
@@ -953,7 +953,7 @@ List all webhooks in the Attio workspace
 |   ↳ `subscriptions` | array | Event subscriptions |
 |     ↳ `eventType` | string | The event type \(e.g. record.created\) |
 |     ↳ `filter` | json | Optional event filter |
-|   ↳ `status` | string | Webhook status \(active, inactive\) |
+|   ↳ `status` | string | Webhook status \(active, degraded, inactive\) |
 |   ↳ `createdAt` | string | When the webhook was created |
 | `count` | number | Number of webhooks returned |
 
@@ -976,7 +976,7 @@ Get a single webhook by ID from Attio
 | `subscriptions` | array | Event subscriptions |
 |   ↳ `eventType` | string | The event type \(e.g. record.created\) |
 |   ↳ `filter` | json | Optional event filter |
-| `status` | string | Webhook status \(active, inactive\) |
+| `status` | string | Webhook status \(active, degraded, inactive\) |
 | `createdAt` | string | When the webhook was created |
 
 ### `attio_create_webhook`
@@ -999,7 +999,7 @@ Create a webhook in Attio to receive event notifications
 | `subscriptions` | array | Event subscriptions |
 |   ↳ `eventType` | string | The event type \(e.g. record.created\) |
 |   ↳ `filter` | json | Optional event filter |
-| `status` | string | Webhook status \(active, inactive\) |
+| `status` | string | Webhook status \(active, degraded, inactive\) |
 | `createdAt` | string | When the webhook was created |
 | `secret` | string | The webhook signing secret \(only returned on creation\) |
 
@@ -1024,7 +1024,7 @@ Update a webhook in Attio (target URL and/or subscriptions)
 | `subscriptions` | array | Event subscriptions |
 |   ↳ `eventType` | string | The event type \(e.g. record.created\) |
 |   ↳ `filter` | json | Optional event filter |
-| `status` | string | Webhook status \(active, inactive\) |
+| `status` | string | Webhook status \(active, degraded, inactive\) |
 | `createdAt` | string | When the webhook was created |
 
 ### `attio_delete_webhook`
