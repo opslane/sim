@@ -208,6 +208,10 @@ export class WorkspaceVFS {
     return ops.list(this.files, path)
   }
 
+  suggestSimilar(missingPath: string, max?: number): string[] {
+    return ops.suggestSimilar(this.files, missingPath, max)
+  }
+
   /**
    * Materialize all workflows in the workspace.
    */

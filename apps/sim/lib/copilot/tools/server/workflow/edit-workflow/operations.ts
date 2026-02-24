@@ -8,7 +8,6 @@ import {
   addConnectionsAsEdges,
   applyTriggerConfigToBlockSubblocks,
   createBlockFromParams,
-  createValidatedEdge,
   filterDisallowedTools,
   normalizeArrayWithIds,
   normalizeResponseFormat,
@@ -78,7 +77,8 @@ export function handleDeleteOperation(op: EditWorkflowOperation, ctx: OperationC
 }
 
 export function handleEditOperation(op: EditWorkflowOperation, ctx: OperationContext): void {
-  const { modifiedState, skippedItems, validationErrors, permissionConfig } = ctx
+  const { modifiedState, skippedItems, validationErrors, permissionConfig, deferredConnections } =
+    ctx
   const { block_id, params } = op
 
   if (!modifiedState.blocks[block_id]) {
@@ -446,47 +446,13 @@ export function handleEditOperation(op: EditWorkflowOperation, ctx: OperationCon
     }
   }
 
-  // Handle connections update (convert to edges)
+  // Defer connections to pass 2 so all blocks exist before edges are created
   if (params?.connections) {
     modifiedState.edges = modifiedState.edges.filter((edge: any) => edge.source !== block_id)
 
-    Object.entries(params.connections).forEach(([connectionType, targets]) => {
-      if (targets === null) return
-
-      const mapConnectionTypeToHandle = (type: string): string => {
-        if (type === 'success') return 'source'
-        if (type === 'error') return 'error'
-        return type
-      }
-
-      const sourceHandle = mapConnectionTypeToHandle(connectionType)
-
-      const addEdgeForTarget = (targetBlock: string, targetHandle?: string) => {
-        createValidatedEdge(
-          modifiedState,
-          block_id,
-          targetBlock,
-          sourceHandle,
-          targetHandle || 'target',
-          'edit',
-          logger,
-          skippedItems
-        )
-      }
-
-      if (typeof targets === 'string') {
-        addEdgeForTarget(targets)
-      } else if (Array.isArray(targets)) {
-        targets.forEach((target: any) => {
-          if (typeof target === 'string') {
-            addEdgeForTarget(target)
-          } else if (target?.block) {
-            addEdgeForTarget(target.block, target.handle)
-          }
-        })
-      } else if (typeof targets === 'object' && (targets as any)?.block) {
-        addEdgeForTarget((targets as any).block, (targets as any).handle)
-      }
+    deferredConnections.push({
+      blockId: block_id,
+      connections: params.connections,
     })
   }
 

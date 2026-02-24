@@ -38,12 +38,33 @@ export async function executeToolAndReport(
   if (wasToolResultSeen(toolCall.id)) return
 
   toolCall.status = 'executing'
+
+  logger.info('Tool execution started', {
+    toolCallId: toolCall.id,
+    toolName: toolCall.name,
+    params: toolCall.params,
+  })
+
   try {
     const result = await executeToolServerSide(toolCall, execContext)
     toolCall.status = result.success ? 'success' : 'error'
     toolCall.result = result
     toolCall.error = result.error
     toolCall.endTime = Date.now()
+
+    if (result.success) {
+      logger.info('Tool execution succeeded', {
+        toolCallId: toolCall.id,
+        toolName: toolCall.name,
+      })
+    } else {
+      logger.warn('Tool execution failed', {
+        toolCallId: toolCall.id,
+        toolName: toolCall.name,
+        error: result.error,
+        params: toolCall.params,
+      })
+    }
 
     // If create_workflow was successful, update the execution context with the new workflowId.
     // This ensures subsequent tools in the same stream have access to the workflowId.
@@ -100,6 +121,13 @@ export async function executeToolAndReport(
     toolCall.status = 'error'
     toolCall.error = error instanceof Error ? error.message : String(error)
     toolCall.endTime = Date.now()
+
+    logger.error('Tool execution threw', {
+      toolCallId: toolCall.id,
+      toolName: toolCall.name,
+      error: toolCall.error,
+      params: toolCall.params,
+    })
 
     markToolResultSeen(toolCall.id)
 

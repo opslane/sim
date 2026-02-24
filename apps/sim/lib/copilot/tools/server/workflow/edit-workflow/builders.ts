@@ -135,6 +135,25 @@ export function createBlockFromParams(
     }
   }
 
+  // Initialize default conditions/routes so edge handle validation works.
+  // The UI does this in the React component; we need to mirror it here.
+  if (params.type === 'condition' && !blockState.subBlocks.conditions?.value) {
+    blockState.subBlocks.conditions = {
+      id: 'conditions',
+      type: 'condition-input',
+      value: [
+        { id: crypto.randomUUID(), title: 'If', value: '' },
+        { id: crypto.randomUUID(), title: 'Else', value: '' },
+      ],
+    }
+  } else if (params.type === 'router_v2' && !blockState.subBlocks.routes?.value) {
+    blockState.subBlocks.routes = {
+      id: 'routes',
+      type: 'router-input',
+      value: [{ id: crypto.randomUUID(), title: 'Route 1', value: '' }],
+    }
+  }
+
   return blockState
 }
 
@@ -228,6 +247,8 @@ const ARRAY_WITH_ID_SUBBLOCK_TYPES = new Set([
   'tagFilters', // knowledge-tag-filters: Filters with id, tagName, etc.
   'documentTags', // document-tag-entry: Tags with id, tagName, etc.
   'metrics', // eval-input: Metrics with id, name, description, range
+  'conditions', // condition-input: Condition branches with id, title, value
+  'routes', // router-input: Router routes with id, title, value
 ])
 
 /**
@@ -236,16 +257,27 @@ const ARRAY_WITH_ID_SUBBLOCK_TYPES = new Set([
  * to be converted to proper UUIDs for consistency with UI-created items.
  */
 export function normalizeArrayWithIds(value: unknown): any[] {
-  if (!Array.isArray(value)) {
+  let arr: any[]
+
+  if (Array.isArray(value)) {
+    arr = value
+  } else if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      if (!Array.isArray(parsed)) return []
+      arr = parsed
+    } catch {
+      return []
+    }
+  } else {
     return []
   }
 
-  return value.map((item: any) => {
+  return arr.map((item: any) => {
     if (!item || typeof item !== 'object') {
       return item
     }
 
-    // Check if id is missing or not a valid UUID
     const hasValidUUID = typeof item.id === 'string' && UUID_REGEX.test(item.id)
     if (!hasValidUUID) {
       return { ...item, id: crypto.randomUUID() }

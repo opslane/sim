@@ -33,9 +33,13 @@ export async function executeVfsGrep(
     )
     const outputMode = (params.output_mode as string) ?? 'content'
     const key = outputMode === 'files_with_matches' ? 'files' : outputMode === 'count' ? 'counts' : 'matches'
+    const matchCount = Array.isArray(result) ? result.length : typeof result === 'object' ? Object.keys(result).length : 0
+    logger.debug('vfs_grep result', { pattern, path: params.path, outputMode, matchCount })
     return { success: true, output: { [key]: result } }
   } catch (err) {
     logger.error('vfs_grep failed', {
+      pattern,
+      path: params.path,
       error: err instanceof Error ? err.message : String(err),
     })
     return { success: false, error: err instanceof Error ? err.message : 'vfs_grep failed' }
@@ -59,9 +63,11 @@ export async function executeVfsGlob(
   try {
     const vfs = await getOrMaterializeVFS(workspaceId, context.userId)
     const files = vfs.glob(pattern)
+    logger.debug('vfs_glob result', { pattern, fileCount: files.length })
     return { success: true, output: { files } }
   } catch (err) {
     logger.error('vfs_glob failed', {
+      pattern,
       error: err instanceof Error ? err.message : String(err),
     })
     return { success: false, error: err instanceof Error ? err.message : 'vfs_glob failed' }
@@ -90,11 +96,18 @@ export async function executeVfsRead(
       params.limit as number | undefined
     )
     if (!result) {
-      return { success: false, error: `File not found: ${path}` }
+      const suggestions = vfs.suggestSimilar(path)
+      logger.warn('vfs_read file not found', { path, suggestions })
+      const hint = suggestions.length > 0
+        ? ` Did you mean: ${suggestions.join(', ')}?`
+        : ' Use glob to discover available paths.'
+      return { success: false, error: `File not found: ${path}.${hint}` }
     }
+    logger.debug('vfs_read result', { path, totalLines: result.totalLines })
     return { success: true, output: result }
   } catch (err) {
     logger.error('vfs_read failed', {
+      path,
       error: err instanceof Error ? err.message : String(err),
     })
     return { success: false, error: err instanceof Error ? err.message : 'vfs_read failed' }
@@ -118,9 +131,11 @@ export async function executeVfsList(
   try {
     const vfs = await getOrMaterializeVFS(workspaceId, context.userId)
     const entries = vfs.list(path)
+    logger.debug('vfs_list result', { path, entryCount: entries.length })
     return { success: true, output: { entries } }
   } catch (err) {
     logger.error('vfs_list failed', {
+      path,
       error: err instanceof Error ? err.message : String(err),
     })
     return { success: false, error: err instanceof Error ? err.message : 'vfs_list failed' }

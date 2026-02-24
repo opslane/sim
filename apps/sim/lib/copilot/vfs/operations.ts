@@ -254,3 +254,65 @@ export function list(files: Map<string, string>, path: string): DirEntry[] {
     return a.name.localeCompare(b.name)
   })
 }
+
+/**
+ * Find VFS paths similar to a missing path.
+ *
+ * Handles two cases:
+ * 1. Wrong filename: `components/blocks/gmail.json` → `gmail_v2.json`
+ *    Matches by filename stem similarity within the same directory.
+ * 2. Wrong directory: `workflows/Untitled/state.json` → `Untitled Workflow`
+ *    Matches by parent directory name similarity with the same filename.
+ */
+export function suggestSimilar(
+  files: Map<string, string>,
+  missingPath: string,
+  max = 5
+): string[] {
+  const segments = missingPath.split('/')
+  const filename = segments[segments.length - 1].toLowerCase()
+  const fileStem = filename.replace(/\.[^.]+$/, '')
+  const parentDir = segments.length >= 2 ? segments[segments.length - 2].toLowerCase() : ''
+  const topDir = segments.length >= 1 ? segments[0] + '/' : ''
+
+  const scored: Array<{ path: string; score: number }> = []
+
+  for (const vfsPath of files.keys()) {
+    const vfsSegments = vfsPath.split('/')
+    const vfsFilename = vfsSegments[vfsSegments.length - 1].toLowerCase()
+    const vfsStem = vfsFilename.replace(/\.[^.]+$/, '')
+    const vfsParentDir = vfsSegments.length >= 2
+      ? vfsSegments[vfsSegments.length - 2].toLowerCase()
+      : ''
+    const sameTopDir = topDir && vfsPath.startsWith(topDir)
+
+    // Same filename, different directory — the directory name is wrong.
+    // e.g. workflows/Untitled/state.json vs workflows/Untitled Workflow/state.json
+    if (vfsFilename === filename && vfsParentDir !== parentDir && sameTopDir) {
+      if (vfsParentDir.includes(parentDir) || parentDir.includes(vfsParentDir)) {
+        scored.push({ path: vfsPath, score: 95 })
+        continue
+      }
+    }
+
+    // Same directory, different filename — the filename is wrong.
+    const sameDir = segments.length === vfsSegments.length &&
+      segments.slice(0, -1).join('/') === vfsSegments.slice(0, -1).join('/')
+
+    if (sameDir) {
+      if (vfsStem === fileStem) {
+        scored.push({ path: vfsPath, score: 100 })
+      } else if (vfsStem.includes(fileStem) || fileStem.includes(vfsStem)) {
+        scored.push({ path: vfsPath, score: 80 })
+      } else if (vfsFilename.includes(fileStem.replace(/[_-]/g, ''))) {
+        scored.push({ path: vfsPath, score: 60 })
+      }
+    } else if (sameTopDir && vfsStem === fileStem) {
+      // Same top-level directory and matching stem but different depth/parent
+      scored.push({ path: vfsPath, score: 50 })
+    }
+  }
+
+  scored.sort((a, b) => b.score - a.score)
+  return scored.slice(0, max).map((s) => s.path)
+}
