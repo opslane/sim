@@ -231,7 +231,11 @@ export const knowledgeBaseServerTool: BaseServerTool<KnowledgeBaseArgs, Knowledg
             }
           }
 
-          const updates: { name?: string; description?: string; chunkingConfig?: { maxSize: number; minSize: number; overlap: number } } = {}
+          const updates: {
+            name?: string
+            description?: string
+            chunkingConfig?: { maxSize: number; minSize: number; overlap: number }
+          } = {}
           if (args.name) updates.name = args.name
           if (args.description !== undefined) updates.description = args.description
           if (args.chunkingConfig) updates.chunkingConfig = args.chunkingConfig
@@ -239,7 +243,8 @@ export const knowledgeBaseServerTool: BaseServerTool<KnowledgeBaseArgs, Knowledg
           if (!updates.name && updates.description === undefined && !updates.chunkingConfig) {
             return {
               success: false,
-              message: 'At least one of name, description, or chunkingConfig is required for update',
+              message:
+                'At least one of name, description, or chunkingConfig is required for update',
             }
           }
 

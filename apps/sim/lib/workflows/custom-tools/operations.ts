@@ -108,10 +108,7 @@ export async function upsertCustomTools(params: {
   })
 }
 
-export async function listCustomTools(params: {
-  userId: string
-  workspaceId?: string
-}) {
+export async function listCustomTools(params: { userId: string; workspaceId?: string }) {
   const { userId, workspaceId } = params
   return workspaceId
     ? db
@@ -151,7 +148,11 @@ export async function getCustomToolById(params: {
     .select()
     .from(customTools)
     .where(
-      and(eq(customTools.id, toolId), isNull(customTools.workspaceId), eq(customTools.userId, userId))
+      and(
+        eq(customTools.id, toolId),
+        isNull(customTools.workspaceId),
+        eq(customTools.userId, userId)
+      )
     )
     .limit(1)
   return legacyTool[0] || null
@@ -175,7 +176,11 @@ export async function deleteCustomTool(params: {
   const legacyDelete = await db
     .delete(customTools)
     .where(
-      and(eq(customTools.id, toolId), isNull(customTools.workspaceId), eq(customTools.userId, userId))
+      and(
+        eq(customTools.id, toolId),
+        isNull(customTools.workspaceId),
+        eq(customTools.userId, userId)
+      )
     )
     .returning({ id: customTools.id })
   return legacyDelete.length > 0

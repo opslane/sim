@@ -20,20 +20,21 @@ export async function executeVfsGrep(
 
   try {
     const vfs = await getOrMaterializeVFS(workspaceId, context.userId)
-    const result = vfs.grep(
-      pattern,
-      params.path as string | undefined,
-      {
-        maxResults: (params.maxResults as number) ?? 50,
-        outputMode: (params.output_mode as 'content' | 'files_with_matches' | 'count') ?? 'content',
-        ignoreCase: (params.ignoreCase as boolean) ?? false,
-        lineNumbers: (params.lineNumbers as boolean) ?? true,
-        context: (params.context as number) ?? 0,
-      }
-    )
+    const result = vfs.grep(pattern, params.path as string | undefined, {
+      maxResults: (params.maxResults as number) ?? 50,
+      outputMode: (params.output_mode as 'content' | 'files_with_matches' | 'count') ?? 'content',
+      ignoreCase: (params.ignoreCase as boolean) ?? false,
+      lineNumbers: (params.lineNumbers as boolean) ?? true,
+      context: (params.context as number) ?? 0,
+    })
     const outputMode = (params.output_mode as string) ?? 'content'
-    const key = outputMode === 'files_with_matches' ? 'files' : outputMode === 'count' ? 'counts' : 'matches'
-    const matchCount = Array.isArray(result) ? result.length : typeof result === 'object' ? Object.keys(result).length : 0
+    const key =
+      outputMode === 'files_with_matches' ? 'files' : outputMode === 'count' ? 'counts' : 'matches'
+    const matchCount = Array.isArray(result)
+      ? result.length
+      : typeof result === 'object'
+        ? Object.keys(result).length
+        : 0
     logger.debug('vfs_grep result', { pattern, path: params.path, outputMode, matchCount })
     return { success: true, output: { [key]: result } }
   } catch (err) {
@@ -98,9 +99,10 @@ export async function executeVfsRead(
     if (!result) {
       const suggestions = vfs.suggestSimilar(path)
       logger.warn('vfs_read file not found', { path, suggestions })
-      const hint = suggestions.length > 0
-        ? ` Did you mean: ${suggestions.join(', ')}?`
-        : ' Use glob to discover available paths.'
+      const hint =
+        suggestions.length > 0
+          ? ` Did you mean: ${suggestions.join(', ')}?`
+          : ' Use glob to discover available paths.'
       return { success: false, error: `File not found: ${path}.${hint}` }
     }
     logger.debug('vfs_read result', { path, totalLines: result.totalLines })

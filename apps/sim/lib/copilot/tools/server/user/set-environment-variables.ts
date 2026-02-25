@@ -1,5 +1,5 @@
 import { db } from '@sim/db'
-import { credential, workflow } from '@sim/db/schema'
+import { credential } from '@sim/db/schema'
 import { createLogger } from '@sim/logger'
 import { and, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'

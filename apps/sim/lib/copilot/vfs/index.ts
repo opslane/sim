@@ -1,11 +1,10 @@
-export { WorkspaceVFS, getOrMaterializeVFS } from '@/lib/copilot/vfs/workspace-vfs'
 export type {
+  DirEntry,
+  GrepCountEntry,
   GrepMatch,
   GrepOptions,
   GrepOutputMode,
-  GrepCountEntry,
   ReadResult,
-  DirEntry,
 } from '@/lib/copilot/vfs/operations'
 export {
   serializeBlockSchema,
@@ -15,3 +14,4 @@ export {
   serializeRecentExecutions,
   serializeWorkflowMeta,
 } from '@/lib/copilot/vfs/serializers'
+export { getOrMaterializeVFS, WorkspaceVFS } from '@/lib/copilot/vfs/workspace-vfs'

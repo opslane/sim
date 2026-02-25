@@ -7,12 +7,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@sim/logger', () => loggerMock)
 
-const { executeToolServerSide, markToolComplete, isToolAvailableOnSimSide } =
-  vi.hoisted(() => ({
-    executeToolServerSide: vi.fn(),
-    markToolComplete: vi.fn(),
-    isToolAvailableOnSimSide: vi.fn().mockReturnValue(true),
-  }))
+const { executeToolServerSide, markToolComplete, isToolAvailableOnSimSide } = vi.hoisted(() => ({
+  executeToolServerSide: vi.fn(),
+  markToolComplete: vi.fn(),
+  isToolAvailableOnSimSide: vi.fn().mockReturnValue(true),
+}))
 
 vi.mock('@/lib/copilot/orchestrator/tool-executor', () => ({
   executeToolServerSide,

@@ -2,28 +2,25 @@ import { createLogger } from '@sim/logger'
 import type { BaseServerTool, ServerToolContext } from '@/lib/copilot/tools/server/base-tool'
 import type { UserTableArgs, UserTableResult } from '@/lib/copilot/tools/shared/schemas'
 import {
-  createTable,
-  deleteTable,
-  getTableById,
-  listTables,
-  insertRow,
   batchInsertRows,
+  createTable,
+  deleteRow,
+  deleteRowsByFilter,
+  deleteTable,
   getRowById,
+  getTableById,
+  insertRow,
+  listTables,
   queryRows,
   updateRow,
-  deleteRow,
   updateRowsByFilter,
-  deleteRowsByFilter,
 } from '@/lib/table/service'
 
 const logger = createLogger('UserTableServerTool')
 
 export const userTableServerTool: BaseServerTool<UserTableArgs, UserTableResult> = {
   name: 'user_table',
-  async execute(
-    params: UserTableArgs,
-    context?: ServerToolContext
-  ): Promise<UserTableResult> {
+  async execute(params: UserTableArgs, context?: ServerToolContext): Promise<UserTableResult> {
     if (!context?.userId) {
       logger.error('Unauthorized attempt to access user table - no authenticated user context')
       throw new Error('Authentication required')
@@ -31,8 +28,7 @@ export const userTableServerTool: BaseServerTool<UserTableArgs, UserTableResult>
 
     const { operation, args = {} } = params
     const workspaceId =
-      context.workspaceId ||
-      ((args as Record<string, unknown>).workspaceId as string | undefined)
+      context.workspaceId || ((args as Record<string, unknown>).workspaceId as string | undefined)
 
     try {
       switch (operation) {

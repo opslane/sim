@@ -451,7 +451,7 @@ export function serializeCustomTool(tool: {
       id: tool.id,
       title: tool.title,
       schema: tool.schema,
-      codePreview: tool.code.length > 500 ? tool.code.slice(0, 500) + '...' : tool.code,
+      codePreview: tool.code.length > 500 ? `${tool.code.slice(0, 500)}...` : tool.code,
     },
     null,
     2
@@ -490,10 +490,7 @@ export function serializeIntegrationSchema(tool: ToolConfig): string {
         ? Object.fromEntries(
             Object.entries(tool.outputs)
               .filter(([, val]) => val != null)
-              .map(([key, val]) => [
-                key,
-                { type: val.type, description: val.description },
-              ])
+              .map(([key, val]) => [key, { type: val.type, description: val.description }])
           )
         : undefined,
     },

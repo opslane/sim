@@ -1,6 +1,5 @@
 import { createLogger } from '@sim/logger'
 import { SIM_AGENT_API_URL } from '@/lib/copilot/constants'
-import { getWorkflowById } from '@/lib/workflows/utils'
 import type {
   ExecutionContext,
   ToolCallResult,
@@ -16,6 +15,7 @@ import {
   listCustomTools,
   upsertCustomTools,
 } from '@/lib/workflows/custom-tools/operations'
+import { getWorkflowById } from '@/lib/workflows/utils'
 import { getTool, resolveToolId } from '@/tools/utils'
 import {
   executeCheckDeploymentStatus,
@@ -29,12 +29,6 @@ import {
   executeUpdateWorkspaceMcpServer,
 } from './deployment-tools'
 import { executeIntegrationToolDirect } from './integration-tools'
-import {
-  executeVfsGlob,
-  executeVfsGrep,
-  executeVfsList,
-  executeVfsRead,
-} from './vfs-tools'
 import type {
   CheckDeploymentStatusParams,
   CreateFolderParams,
@@ -66,6 +60,7 @@ import type {
   UpdateWorkspaceMcpServerParams,
 } from './param-types'
 import { PLATFORM_ACTIONS_CONTENT } from './platform-actions'
+import { executeVfsGlob, executeVfsGrep, executeVfsList, executeVfsRead } from './vfs-tools'
 import {
   executeCreateFolder,
   executeCreateWorkflow,

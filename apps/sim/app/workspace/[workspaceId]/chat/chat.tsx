@@ -80,7 +80,7 @@ function ToolCallItem({ toolCall }: { toolCall: ToolCallInfo }) {
   return (
     <div className='flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-1.5'>
       <Zap className='h-3 w-3 flex-shrink-0 text-[var(--text-tertiary)]' />
-      <span className='min-w-0 flex-1 truncate text-xs text-[var(--text-secondary)]'>{label}</span>
+      <span className='min-w-0 flex-1 truncate text-[var(--text-secondary)] text-xs'>{label}</span>
       <ToolStatusIcon status={toolCall.status} />
     </div>
   )
@@ -116,7 +116,7 @@ function AssistantBlocks({
             return (
               <div key={`sub-${i}`} className='flex items-center gap-2 py-0.5'>
                 <Loader2 className='h-3 w-3 animate-spin text-[var(--text-tertiary)]' />
-                <span className='text-xs text-[var(--text-tertiary)]'>{block.content}</span>
+                <span className='text-[var(--text-tertiary)] text-xs'>{block.content}</span>
               </div>
             )
           }
@@ -226,10 +226,7 @@ export function Chat() {
             if (!line.startsWith('data: ')) continue
             const payload = line.slice(6)
 
-            setEvents((prev) => [
-              ...prev,
-              { timestamp: new Date().toISOString(), raw: payload },
-            ])
+            setEvents((prev) => [...prev, { timestamp: new Date().toISOString(), raw: payload }])
 
             let parsed: any
             try {
@@ -244,10 +241,7 @@ export function Chat() {
                 break
               }
               case 'content': {
-                const chunk =
-                  typeof parsed.data === 'string'
-                    ? parsed.data
-                    : parsed.content || ''
+                const chunk = typeof parsed.data === 'string' ? parsed.data : parsed.content || ''
                 if (chunk) {
                   const tb = ensureTextBlock()
                   tb.content = (tb.content ?? '') + chunk
@@ -358,12 +352,12 @@ export function Chat() {
 
   return (
     <div className='flex h-full flex-col'>
-      <div className='flex flex-shrink-0 items-center justify-between border-b border-[var(--border)] px-6 py-3'>
+      <div className='flex flex-shrink-0 items-center justify-between border-[var(--border)] border-b px-6 py-3'>
         <h1 className='font-medium text-[16px] text-[var(--text-primary)]'>Mothership</h1>
         {(events.length > 0 || messages.length > 0) && (
           <button
             onClick={clear}
-            className='text-xs text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
+            className='text-[var(--text-tertiary)] text-xs hover:text-[var(--text-secondary)]'
           >
             Clear
           </button>
@@ -373,14 +367,14 @@ export function Chat() {
       {/* Split pane: left = rendered chat, right = raw SSE */}
       <div className='flex min-h-0 flex-1'>
         {/* Rendered chat */}
-        <div className='flex w-1/2 flex-col border-r border-[var(--border)]'>
-          <div className='border-b border-[var(--border)] px-4 py-2'>
-            <span className='text-xs font-medium text-[var(--text-tertiary)]'>Chat</span>
+        <div className='flex w-1/2 flex-col border-[var(--border)] border-r'>
+          <div className='border-[var(--border)] border-b px-4 py-2'>
+            <span className='font-medium text-[var(--text-tertiary)] text-xs'>Chat</span>
           </div>
           <div className='flex-1 overflow-y-auto px-4 py-4'>
             {messages.length === 0 ? (
               <div className='flex h-full items-center justify-center'>
-                <p className='text-sm text-[var(--text-tertiary)]'>Send a message to start</p>
+                <p className='text-[var(--text-tertiary)] text-sm'>Send a message to start</p>
               </div>
             ) : (
               <div className='space-y-4'>
@@ -388,7 +382,7 @@ export function Chat() {
                   if (msg.role === 'user') {
                     return (
                       <div key={msg.id} className='flex justify-end'>
-                        <div className='max-w-[85%] rounded-lg bg-[var(--accent)] px-4 py-2 text-sm text-[var(--accent-foreground)]'>
+                        <div className='max-w-[85%] rounded-lg bg-[var(--accent)] px-4 py-2 text-[var(--accent-foreground)] text-sm'>
                           <p className='whitespace-pre-wrap'>{msg.content}</p>
                         </div>
                       </div>
@@ -401,7 +395,7 @@ export function Chat() {
                   if (!hasBlocks && !msg.content && isThisStreaming) {
                     return (
                       <div key={msg.id} className='flex justify-start'>
-                        <div className='flex items-center gap-2 rounded-lg bg-[var(--surface-3)] px-4 py-2 text-sm text-[var(--text-secondary)]'>
+                        <div className='flex items-center gap-2 rounded-lg bg-[var(--surface-3)] px-4 py-2 text-[var(--text-secondary)] text-sm'>
                           <Loader2 className='h-3 w-3 animate-spin' />
                           Thinking...
                         </div>
@@ -413,9 +407,12 @@ export function Chat() {
 
                   return (
                     <div key={msg.id} className='flex justify-start'>
-                      <div className='max-w-[85%] rounded-lg bg-[var(--surface-3)] px-4 py-2 text-sm text-[var(--text-primary)]'>
+                      <div className='max-w-[85%] rounded-lg bg-[var(--surface-3)] px-4 py-2 text-[var(--text-primary)] text-sm'>
                         {hasBlocks ? (
-                          <AssistantBlocks blocks={msg.contentBlocks!} isStreaming={isThisStreaming} />
+                          <AssistantBlocks
+                            blocks={msg.contentBlocks!}
+                            isStreaming={isThisStreaming}
+                          />
                         ) : (
                           <div className='prose-sm prose-invert max-w-none'>
                             <ReactMarkdown remarkPlugins={REMARK_PLUGINS}>
@@ -435,14 +432,14 @@ export function Chat() {
 
         {/* Raw SSE events */}
         <div className='flex w-1/2 flex-col'>
-          <div className='border-b border-[var(--border)] px-4 py-2'>
-            <span className='text-xs font-medium text-[var(--text-tertiary)]'>Raw SSE</span>
+          <div className='border-[var(--border)] border-b px-4 py-2'>
+            <span className='font-medium text-[var(--text-tertiary)] text-xs'>Raw SSE</span>
           </div>
           <div className='flex-1 overflow-y-auto bg-[var(--surface-1)] font-mono text-xs'>
             {events.map((evt, i) => (
               <div
                 key={i}
-                className='border-b border-[var(--border)] px-4 py-2 hover:bg-[var(--surface-2)]'
+                className='border-[var(--border)] border-b px-4 py-2 hover:bg-[var(--surface-2)]'
               >
                 <span className='mr-2 text-[var(--text-tertiary)]'>
                   {new Date(evt.timestamp).toLocaleTimeString()}
@@ -459,11 +456,11 @@ export function Chat() {
 
       {error && (
         <div className='px-6 pb-2'>
-          <p className='text-xs text-red-500'>{error}</p>
+          <p className='text-red-500 text-xs'>{error}</p>
         </div>
       )}
 
-      <div className='flex-shrink-0 border-t border-[var(--border)] px-6 py-4'>
+      <div className='flex-shrink-0 border-[var(--border)] border-t px-6 py-4'>
         <div className='mx-auto flex max-w-3xl items-end gap-2'>
           <textarea
             value={inputValue}
@@ -471,7 +468,7 @@ export function Chat() {
             onKeyDown={handleKeyDown}
             placeholder='Send a message...'
             rows={1}
-            className='flex-1 resize-none rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent)] focus:outline-none'
+            className='flex-1 resize-none rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2.5 text-[var(--text-primary)] text-sm placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent)] focus:outline-none'
             style={{ maxHeight: '120px' }}
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement

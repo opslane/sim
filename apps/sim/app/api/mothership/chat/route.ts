@@ -5,11 +5,7 @@ import { getSession } from '@/lib/auth'
 import { resolveOrCreateChat } from '@/lib/copilot/chat-lifecycle'
 import { buildCopilotRequestPayload } from '@/lib/copilot/chat-payload'
 import { createSSEStream, SSE_RESPONSE_HEADERS } from '@/lib/copilot/chat-streaming'
-import {
-  createBadRequestResponse,
-  createRequestTracker,
-  createUnauthorizedResponse,
-} from '@/lib/copilot/request-helpers'
+import { createRequestTracker, createUnauthorizedResponse } from '@/lib/copilot/request-helpers'
 
 const logger = createLogger('MothershipChatAPI')
 
@@ -86,11 +82,7 @@ export async function POST(req: NextRequest) {
     if (Array.isArray(contexts) && contexts.length > 0) {
       try {
         const { processContextsServer } = await import('@/lib/copilot/process-contents')
-        agentContexts = await processContextsServer(
-          contexts as any,
-          authenticatedUserId,
-          message
-        )
+        agentContexts = await processContextsServer(contexts as any, authenticatedUserId, message)
       } catch (e) {
         logger.error(`[${tracker.requestId}] Failed to process contexts`, e)
       }

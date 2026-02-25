@@ -145,8 +145,8 @@ function globToRegExp(pattern: string): RegExp {
     } else if (ch === '?') {
       regexStr += '[^/]'
       i++
-    } else if ('.+^${}()|[]\\'.includes(ch)) {
-      regexStr += '\\' + ch
+    } else if (/[.+^${}()|[\]\\]/.test(ch)) {
+      regexStr += `\\${ch}`
       i++
     } else {
       regexStr += ch
@@ -224,7 +224,7 @@ export function read(
  * Returns files and subdirectories at the given path level.
  */
 export function list(files: Map<string, string>, path: string): DirEntry[] {
-  const normalizedPath = path.endsWith('/') ? path : path + '/'
+  const normalizedPath = path.endsWith('/') ? path : `${path}/`
   const seen = new Set<string>()
   const entries: DirEntry[] = []
 
@@ -264,16 +264,12 @@ export function list(files: Map<string, string>, path: string): DirEntry[] {
  * 2. Wrong directory: `workflows/Untitled/state.json` → `Untitled Workflow`
  *    Matches by parent directory name similarity with the same filename.
  */
-export function suggestSimilar(
-  files: Map<string, string>,
-  missingPath: string,
-  max = 5
-): string[] {
+export function suggestSimilar(files: Map<string, string>, missingPath: string, max = 5): string[] {
   const segments = missingPath.split('/')
   const filename = segments[segments.length - 1].toLowerCase()
   const fileStem = filename.replace(/\.[^.]+$/, '')
   const parentDir = segments.length >= 2 ? segments[segments.length - 2].toLowerCase() : ''
-  const topDir = segments.length >= 1 ? segments[0] + '/' : ''
+  const topDir = segments.length >= 1 ? `${segments[0]}/` : ''
 
   const scored: Array<{ path: string; score: number }> = []
 
@@ -281,9 +277,8 @@ export function suggestSimilar(
     const vfsSegments = vfsPath.split('/')
     const vfsFilename = vfsSegments[vfsSegments.length - 1].toLowerCase()
     const vfsStem = vfsFilename.replace(/\.[^.]+$/, '')
-    const vfsParentDir = vfsSegments.length >= 2
-      ? vfsSegments[vfsSegments.length - 2].toLowerCase()
-      : ''
+    const vfsParentDir =
+      vfsSegments.length >= 2 ? vfsSegments[vfsSegments.length - 2].toLowerCase() : ''
     const sameTopDir = topDir && vfsPath.startsWith(topDir)
 
     // Same filename, different directory — the directory name is wrong.
@@ -296,7 +291,8 @@ export function suggestSimilar(
     }
 
     // Same directory, different filename — the filename is wrong.
-    const sameDir = segments.length === vfsSegments.length &&
+    const sameDir =
+      segments.length === vfsSegments.length &&
       segments.slice(0, -1).join('/') === vfsSegments.slice(0, -1).join('/')
 
     if (sameDir) {

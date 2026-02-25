@@ -9,11 +9,7 @@ import type { SSEEvent } from '@/lib/copilot/orchestrator/types'
 import { resolveToolDisplay } from '@/lib/copilot/store-utils'
 import { ClientToolCallState } from '@/lib/copilot/tools/client/tool-display-registry'
 import type { CopilotStore, CopilotToolCall } from '@/stores/panel/copilot/types'
-import {
-  type SSEHandler,
-  sseHandlers,
-  updateStreamingMessage,
-} from './handlers'
+import { type SSEHandler, sseHandlers, updateStreamingMessage } from './handlers'
 import { executeRunToolOnClient } from './run-tool-execution'
 import type { ClientStreamingContext } from './types'
 
@@ -274,7 +270,13 @@ export const subAgentSSEHandlers: Record<string, SSEHandler> = {
       const updatedSubAgentToolCall = {
         ...existing,
         state: targetState,
-        display: resolveToolDisplay(existing.name, targetState, toolCallId, existing.params, existing.serverUI),
+        display: resolveToolDisplay(
+          existing.name,
+          targetState,
+          toolCallId,
+          existing.params,
+          existing.serverUI
+        ),
       }
       context.subAgentToolCalls[parentToolCallId][existingIndex] = updatedSubAgentToolCall
 

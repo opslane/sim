@@ -9,24 +9,19 @@ import {
   environment,
   form,
   knowledgeBase,
+  userTableDefinitions,
   workflow,
   workflowDeploymentVersion,
+  workflowExecutionLogs,
   workflowMcpServer,
   workflowMcpTool,
   workspaceEnvironment,
-  workflowExecutionLogs,
-  userTableDefinitions,
 } from '@sim/db/schema'
 import { createLogger } from '@sim/logger'
 import { and, count, desc, eq, isNull } from 'drizzle-orm'
-import { getAllBlocks } from '@/blocks/registry'
-import { getLatestVersionTools, stripVersionSuffix } from '@/tools/utils'
-import { tools as toolRegistry } from '@/tools/registry'
-import { hasWorkflowChanged } from '@/lib/workflows/comparison'
-import { loadWorkflowFromNormalizedTables } from '@/lib/workflows/persistence/utils'
-import { sanitizeForCopilot } from '@/lib/workflows/sanitization/json-sanitizer'
-import type { GrepMatch, GrepOptions, ReadResult, DirEntry } from '@/lib/copilot/vfs/operations'
+import type { DirEntry, GrepMatch, GrepOptions, ReadResult } from '@/lib/copilot/vfs/operations'
 import * as ops from '@/lib/copilot/vfs/operations'
+import type { DeploymentData } from '@/lib/copilot/vfs/serializers'
 import {
   serializeApiKeys,
   serializeBlockSchema,
@@ -41,7 +36,12 @@ import {
   serializeTableMeta,
   serializeWorkflowMeta,
 } from '@/lib/copilot/vfs/serializers'
-import type { DeploymentData } from '@/lib/copilot/vfs/serializers'
+import { hasWorkflowChanged } from '@/lib/workflows/comparison'
+import { loadWorkflowFromNormalizedTables } from '@/lib/workflows/persistence/utils'
+import { sanitizeForCopilot } from '@/lib/workflows/sanitization/json-sanitizer'
+import { getAllBlocks } from '@/blocks/registry'
+import { tools as toolRegistry } from '@/tools/registry'
+import { getLatestVersionTools, stripVersionSuffix } from '@/tools/utils'
 
 const logger = createLogger('WorkspaceVFS')
 
@@ -95,9 +95,7 @@ function getStaticComponentFiles(): Map<string, string> {
 
     // Derive operation name by stripping the service prefix
     const prefix = `${service}_`
-    const operation = baseName.startsWith(prefix)
-      ? baseName.slice(prefix.length)
-      : baseName
+    const operation = baseName.startsWith(prefix) ? baseName.slice(prefix.length) : baseName
 
     const path = `components/integrations/${service}/${operation}.json`
     files.set(path, serializeIntegrationSchema(tool))
@@ -105,32 +103,69 @@ function getStaticComponentFiles(): Map<string, string> {
   }
 
   // Add synthetic component files for subflow containers (not in block registry)
-  files.set('components/blocks/loop.json', JSON.stringify({
-    type: 'loop',
-    name: 'Loop',
-    description: 'Iterate over a collection or repeat a fixed number of times. Blocks inside the loop run once per iteration.',
-    inputs: {
-      loopType: { type: 'string', enum: ['for', 'forEach', 'while', 'doWhile'], description: 'Loop strategy' },
-      iterations: { type: 'number', description: 'Number of iterations (for loopType "for")' },
-      collection: { type: 'string', description: 'Collection expression to iterate (for loopType "forEach")' },
-      condition: { type: 'string', description: 'Condition expression (for loopType "while" or "doWhile")' },
-    },
-    sourceHandles: ['loop-start-source', 'source'],
-    notes: 'Use "loop-start-source" to connect to blocks inside the loop. Use "source" for the edge that runs after the loop completes. Blocks inside the loop must have parentId set to the loop block ID.',
-  }, null, 2))
+  files.set(
+    'components/blocks/loop.json',
+    JSON.stringify(
+      {
+        type: 'loop',
+        name: 'Loop',
+        description:
+          'Iterate over a collection or repeat a fixed number of times. Blocks inside the loop run once per iteration.',
+        inputs: {
+          loopType: {
+            type: 'string',
+            enum: ['for', 'forEach', 'while', 'doWhile'],
+            description: 'Loop strategy',
+          },
+          iterations: { type: 'number', description: 'Number of iterations (for loopType "for")' },
+          collection: {
+            type: 'string',
+            description: 'Collection expression to iterate (for loopType "forEach")',
+          },
+          condition: {
+            type: 'string',
+            description: 'Condition expression (for loopType "while" or "doWhile")',
+          },
+        },
+        sourceHandles: ['loop-start-source', 'source'],
+        notes:
+          'Use "loop-start-source" to connect to blocks inside the loop. Use "source" for the edge that runs after the loop completes. Blocks inside the loop must have parentId set to the loop block ID.',
+      },
+      null,
+      2
+    )
+  )
 
-  files.set('components/blocks/parallel.json', JSON.stringify({
-    type: 'parallel',
-    name: 'Parallel',
-    description: 'Run blocks in parallel branches. All branches execute concurrently.',
-    inputs: {
-      parallelType: { type: 'string', enum: ['count', 'collection'], description: 'Parallel strategy' },
-      count: { type: 'number', description: 'Number of parallel branches (for parallelType "count")' },
-      collection: { type: 'string', description: 'Collection to distribute (for parallelType "collection")' },
-    },
-    sourceHandles: ['parallel-start-source', 'source'],
-    notes: 'Use "parallel-start-source" to connect to blocks inside the parallel container. Use "source" for the edge after all branches complete. Blocks inside must have parentId set to the parallel block ID.',
-  }, null, 2))
+  files.set(
+    'components/blocks/parallel.json',
+    JSON.stringify(
+      {
+        type: 'parallel',
+        name: 'Parallel',
+        description: 'Run blocks in parallel branches. All branches execute concurrently.',
+        inputs: {
+          parallelType: {
+            type: 'string',
+            enum: ['count', 'collection'],
+            description: 'Parallel strategy',
+          },
+          count: {
+            type: 'number',
+            description: 'Number of parallel branches (for parallelType "count")',
+          },
+          collection: {
+            type: 'string',
+            description: 'Collection to distribute (for parallelType "collection")',
+          },
+        },
+        sourceHandles: ['parallel-start-source', 'source'],
+        notes:
+          'Use "parallel-start-source" to connect to blocks inside the parallel container. Use "source" for the edge after all branches complete. Blocks inside must have parentId set to the parallel block ID.',
+      },
+      null,
+      2
+    )
+  )
 
   logger.info('Static component files built', {
     blocks: visibleBlocks.length,
@@ -293,7 +328,13 @@ export class WorkspaceVFS {
 
         // Deployment configuration
         try {
-          const deploymentData = await this.getWorkflowDeployments(wf.id, workspaceId, wf.isDeployed, wf.deployedAt, normalized)
+          const deploymentData = await this.getWorkflowDeployments(
+            wf.id,
+            workspaceId,
+            wf.isDeployed,
+            wf.deployedAt,
+            normalized
+          )
           if (deploymentData) {
             this.files.set(`${prefix}deployment.json`, serializeDeployments(deploymentData))
           }
@@ -468,9 +509,7 @@ export class WorkspaceVFS {
           capabilities: a2aAgent.capabilities,
         })
         .from(a2aAgent)
-        .where(
-          and(eq(a2aAgent.workflowId, workflowId), eq(a2aAgent.workspaceId, workspaceId))
-        ),
+        .where(and(eq(a2aAgent.workflowId, workflowId), eq(a2aAgent.workspaceId, workspaceId))),
       isDeployed
         ? db
             .select({
@@ -490,7 +529,11 @@ export class WorkspaceVFS {
     ])
 
     const hasAnyDeployment =
-      isDeployed || chatRows.length > 0 || formRows.length > 0 || mcpRows.length > 0 || a2aRows.length > 0
+      isDeployed ||
+      chatRows.length > 0 ||
+      formRows.length > 0 ||
+      mcpRows.length > 0 ||
+      a2aRows.length > 0
     if (!hasAnyDeployment) return null
 
     // Compute needsRedeployment by comparing current state to deployed state
@@ -518,7 +561,9 @@ export class WorkspaceVFS {
       isDeployed,
       deployedAt,
       needsRedeployment,
-      api: deployedVersion ? { version: deployedVersion.version, createdAt: deployedVersion.createdAt } : null,
+      api: deployedVersion
+        ? { version: deployedVersion.version, createdAt: deployedVersion.createdAt }
+        : null,
       chat: chatRows[0] ?? null,
       form: formRows[0] ?? null,
       mcp: mcpRows,
@@ -650,4 +695,3 @@ export async function getOrMaterializeVFS(
 function sanitizeName(name: string): string {
   return name.trim().replace(/\//g, '-')
 }
-

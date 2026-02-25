@@ -1,25 +1,21 @@
 import type { ExecutionContext, ToolCallResult } from '@/lib/copilot/orchestrator/types'
 import { formatNormalizedWorkflowForCopilot } from '@/lib/copilot/tools/shared/workflow-utils'
-import { listCustomTools } from '@/lib/workflows/custom-tools/operations'
 import { mcpService } from '@/lib/mcp/service'
 import { listWorkspaceFiles } from '@/lib/uploads/contexts/workspace'
 import { getEffectiveBlockOutputPaths } from '@/lib/workflows/blocks/block-outputs'
 import { BlockPathCalculator } from '@/lib/workflows/blocks/block-path-calculator'
+import { listCustomTools } from '@/lib/workflows/custom-tools/operations'
 import {
   loadDeployedWorkflowState,
   loadWorkflowFromNormalizedTables,
 } from '@/lib/workflows/persistence/utils'
+import { hasTriggerCapability } from '@/lib/workflows/triggers/trigger-utils'
 import { getWorkflowById, listFolders } from '@/lib/workflows/utils'
 import { listUserWorkspaces } from '@/lib/workspaces/utils'
-import { hasTriggerCapability } from '@/lib/workflows/triggers/trigger-utils'
 import { getBlock } from '@/blocks/registry'
 import { normalizeName } from '@/executor/constants'
 import type { Loop, Parallel } from '@/stores/workflows/workflow/types'
-import {
-  ensureWorkflowAccess,
-  ensureWorkspaceAccess,
-  getDefaultWorkspaceId,
-} from '../access'
+import { ensureWorkflowAccess, ensureWorkspaceAccess, getDefaultWorkspaceId } from '../access'
 import type {
   GetBlockOutputsParams,
   GetBlockUpstreamReferencesParams,

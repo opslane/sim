@@ -7,7 +7,11 @@ import { z } from 'zod'
 import { getSession } from '@/lib/auth'
 import { resolveOrCreateChat } from '@/lib/copilot/chat-lifecycle'
 import { buildCopilotRequestPayload } from '@/lib/copilot/chat-payload'
-import { createSSEStream, requestChatTitle, SSE_RESPONSE_HEADERS } from '@/lib/copilot/chat-streaming'
+import {
+  createSSEStream,
+  requestChatTitle,
+  SSE_RESPONSE_HEADERS,
+} from '@/lib/copilot/chat-streaming'
 import { COPILOT_REQUEST_MODES } from '@/lib/copilot/models'
 import { orchestrateCopilotStream } from '@/lib/copilot/orchestrator'
 import {

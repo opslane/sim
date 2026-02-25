@@ -121,10 +121,7 @@ export function resolveToolDisplay(
 }
 
 /** Generates display from copilot-provided UI metadata. */
-function serverUIFallback(
-  serverUI: ServerToolUI,
-  state: ClientToolCallState
-): ClientToolDisplay {
+function serverUIFallback(serverUI: ServerToolUI, state: ClientToolCallState): ClientToolDisplay {
   const icon = resolveIcon(serverUI.icon)
   const title = serverUI.title!
 
@@ -241,7 +238,13 @@ export function abortAllInProgressTools(set: StoreSet, get: () => CopilotStore) 
                 toolCall: {
                   ...prev,
                   state: resolved,
-                  display: resolveToolDisplay(prev?.name, resolved, prev?.id, prev?.params, prev?.serverUI),
+                  display: resolveToolDisplay(
+                    prev?.name,
+                    resolved,
+                    prev?.id,
+                    prev?.params,
+                    prev?.serverUI
+                  ),
                 },
               }
             }

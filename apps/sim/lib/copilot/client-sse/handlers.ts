@@ -246,7 +246,13 @@ export const sseHandlers: Record<string, SSEHandler> = {
         updatedMap[toolCallId] = {
           ...current,
           state: targetState,
-          display: resolveToolDisplay(current.name, targetState, current.id, current.params, current.serverUI),
+          display: resolveToolDisplay(
+            current.name,
+            targetState,
+            current.id,
+            current.params,
+            current.serverUI
+          ),
         }
         set({ toolCallsById: updatedMap })
 
@@ -296,8 +302,7 @@ export const sseHandlers: Record<string, SSEHandler> = {
             )
             const input = asRecord(current.params || current.input)
             const workflowId =
-              (input?.workflowId as string) ||
-              useWorkflowRegistry.getState().activeWorkflowId
+              (input?.workflowId as string) || useWorkflowRegistry.getState().activeWorkflowId
 
             if (!workflowId) {
               logger.warn('[SSE] edit_workflow result has no workflowId, skipping diff')
@@ -503,7 +508,13 @@ export const sseHandlers: Record<string, SSEHandler> = {
         updatedMap[toolCallId] = {
           ...current,
           state: targetState,
-          display: resolveToolDisplay(current.name, targetState, current.id, current.params, current.serverUI),
+          display: resolveToolDisplay(
+            current.name,
+            targetState,
+            current.id,
+            current.params,
+            current.serverUI
+          ),
         }
         set({ toolCallsById: updatedMap })
       }
@@ -607,7 +618,13 @@ export const sseHandlers: Record<string, SSEHandler> = {
           ...(args ? { params: args } : {}),
           ...(effectiveServerUI ? { serverUI: effectiveServerUI } : {}),
           ...(clientExecutable ? { clientExecutable: true } : {}),
-          display: resolveToolDisplay(toolName, initialState, id, args || existing.params, effectiveServerUI),
+          display: resolveToolDisplay(
+            toolName,
+            initialState,
+            id,
+            args || existing.params,
+            effectiveServerUI
+          ),
         }
       : {
           id,

@@ -8,7 +8,6 @@ import {
   getExecutionState,
   getLatestExecutionState,
 } from '@/lib/workflows/executor/execution-state'
-import { hasExecutionResult } from '@/executor/utils/errors'
 import {
   createFolderRecord,
   createWorkflowRecord,
@@ -18,6 +17,7 @@ import {
   updateFolderRecord,
   updateWorkflowRecord,
 } from '@/lib/workflows/utils'
+import { hasExecutionResult } from '@/executor/utils/errors'
 import { ensureWorkflowAccess, ensureWorkspaceAccess, getDefaultWorkspaceId } from '../access'
 
 function stripBinaryFields(value: unknown): unknown {
@@ -32,13 +32,16 @@ function stripBinaryFields(value: unknown): unknown {
   return out
 }
 
-function buildExecutionOutput(result: {
-  success: boolean
-  metadata?: { executionId?: string }
-  output?: unknown
-  logs?: unknown[]
-  error?: string
-}, extra?: Record<string, unknown>): ToolCallResult {
+function buildExecutionOutput(
+  result: {
+    success: boolean
+    metadata?: { executionId?: string }
+    output?: unknown
+    logs?: unknown[]
+    error?: string
+  },
+  extra?: Record<string, unknown>
+): ToolCallResult {
   return {
     success: result.success,
     output: {
@@ -55,12 +58,15 @@ function buildExecutionOutput(result: {
 function buildExecutionError(error: unknown): ToolCallResult {
   const message = error instanceof Error ? error.message : String(error)
   if (hasExecutionResult(error)) {
-    return buildExecutionOutput(
-      { ...error.executionResult, success: false, error: error.executionResult.error || message }
-    )
+    return buildExecutionOutput({
+      ...error.executionResult,
+      success: false,
+      error: error.executionResult.error || message,
+    })
   }
   return { success: false, error: message }
 }
+
 import type {
   CreateFolderParams,
   CreateWorkflowParams,
@@ -513,7 +519,8 @@ export async function executeUpdateWorkflow(
     if (typeof params.name === 'string') {
       const name = params.name.trim()
       if (!name) return { success: false, error: 'name cannot be empty' }
-      if (name.length > 200) return { success: false, error: 'Workflow name must be 200 characters or less' }
+      if (name.length > 200)
+        return { success: false, error: 'Workflow name must be 200 characters or less' }
       updates.name = name
     }
 

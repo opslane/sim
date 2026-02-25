@@ -1,6 +1,6 @@
 import crypto from 'crypto'
 import { db } from '@sim/db'
-import { permissions, userStats, workflow as workflowTable, workflowFolder } from '@sim/db/schema'
+import { permissions, userStats, workflowFolder, workflow as workflowTable } from '@sim/db/schema'
 import { createLogger } from '@sim/logger'
 import { and, asc, eq, inArray, isNull, max } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
@@ -333,11 +333,20 @@ export interface CreateWorkflowInput {
 }
 
 export async function createWorkflowRecord(params: CreateWorkflowInput) {
-  const { userId, workspaceId, name, description = null, color = '#3972F6', folderId = null } = params
+  const {
+    userId,
+    workspaceId,
+    name,
+    description = null,
+    color = '#3972F6',
+    folderId = null,
+  } = params
   const workflowId = crypto.randomUUID()
   const now = new Date()
 
-  const folderCondition = folderId ? eq(workflowTable.folderId, folderId) : isNull(workflowTable.folderId)
+  const folderCondition = folderId
+    ? eq(workflowTable.folderId, folderId)
+    : isNull(workflowTable.folderId)
   const [maxResult] = await db
     .select({ maxOrder: max(workflowTable.sortOrder) })
     .from(workflowTable)

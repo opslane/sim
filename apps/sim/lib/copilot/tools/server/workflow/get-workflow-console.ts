@@ -90,7 +90,12 @@ export const getWorkflowConsoleServerTool: BaseServerTool<GetWorkflowConsoleArgs
       throw new Error(authorization.message || 'Unauthorized workflow access')
     }
 
-    logger.info('Fetching workflow console logs', { workflowId, executionId, limit, includeDetails })
+    logger.info('Fetching workflow console logs', {
+      workflowId,
+      executionId,
+      limit,
+      includeDetails,
+    })
 
     const conditions = [eq(workflowExecutionLogs.workflowId, workflowId)]
     if (executionId) {
@@ -143,7 +148,11 @@ export const getWorkflowConsoleServerTool: BaseServerTool<GetWorkflowConsoleArgs
         startedAt: log.startedAt.toISOString(),
         endedAt: log.endedAt ? log.endedAt.toISOString() : null,
         durationMs: log.totalDurationMs ?? null,
-        ...(errorMessage ? { error: typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage) } : {}),
+        ...(errorMessage
+          ? {
+              error: typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage),
+            }
+          : {}),
         ...(simplifiedBlocks.length > 0 ? { blocks: simplifiedBlocks } : {}),
       }
     })

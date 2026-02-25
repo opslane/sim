@@ -272,10 +272,7 @@ export async function executeUpdateWorkspaceMcpServer(
       return { success: false, error: 'MCP server not found' }
     }
 
-    await db
-      .update(workflowMcpServer)
-      .set(updates)
-      .where(eq(workflowMcpServer.id, serverId))
+    await db.update(workflowMcpServer).set(updates).where(eq(workflowMcpServer.id, serverId))
 
     return { success: true, output: { serverId, ...updates, updatedAt: undefined } }
   } catch (error) {
@@ -294,7 +291,11 @@ export async function executeDeleteWorkspaceMcpServer(
     }
 
     const [existing] = await db
-      .select({ id: workflowMcpServer.id, name: workflowMcpServer.name, workspaceId: workflowMcpServer.workspaceId })
+      .select({
+        id: workflowMcpServer.id,
+        name: workflowMcpServer.name,
+        workspaceId: workflowMcpServer.workspaceId,
+      })
       .from(workflowMcpServer)
       .where(eq(workflowMcpServer.id, serverId))
       .limit(1)

@@ -1,10 +1,7 @@
 import { db } from '@sim/db'
 import { permissions, workspace } from '@sim/db/schema'
 import { and, desc, eq } from 'drizzle-orm'
-import {
-  authorizeWorkflowByWorkspacePermission,
-  getWorkflowById,
-} from '@/lib/workflows/utils'
+import { authorizeWorkflowByWorkspacePermission, type getWorkflowById } from '@/lib/workflows/utils'
 
 type WorkflowRecord = NonNullable<Awaited<ReturnType<typeof getWorkflowById>>>
 
@@ -83,4 +80,3 @@ export async function ensureWorkspaceAccess(
     throw new Error('Access denied to workspace')
   }
 }
-

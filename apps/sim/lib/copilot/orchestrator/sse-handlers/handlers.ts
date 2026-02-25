@@ -18,11 +18,7 @@ import type {
   StreamingContext,
   ToolCallState,
 } from '@/lib/copilot/orchestrator/types'
-import {
-  executeToolAndReport,
-  waitForToolCompletion,
-  waitForToolDecision,
-} from './tool-execution'
+import { executeToolAndReport, waitForToolCompletion, waitForToolDecision } from './tool-execution'
 
 const logger = createLogger('CopilotSseHandlers')
 
