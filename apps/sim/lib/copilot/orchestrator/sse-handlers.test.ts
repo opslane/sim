@@ -31,7 +31,6 @@ describe('sse-handlers tool lifecycle', () => {
     vi.clearAllMocks()
     context = {
       chatId: undefined,
-      conversationId: undefined,
       messageId: 'msg-1',
       accumulatedContent: '',
       contentBlocks: [],

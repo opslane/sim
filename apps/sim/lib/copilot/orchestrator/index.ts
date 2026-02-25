@@ -1,5 +1,5 @@
 import { createLogger } from '@sim/logger'
-import { SIM_AGENT_API_URL } from '@/lib/copilot/constants'
+import { SIM_AGENT_API_URL, SIM_AGENT_VERSION } from '@/lib/copilot/constants'
 import { prepareExecutionContext } from '@/lib/copilot/orchestrator/tool-executor'
 import type {
   ExecutionContext,
@@ -17,13 +17,15 @@ export interface OrchestrateStreamOptions extends OrchestratorOptions {
   workflowId?: string
   workspaceId?: string
   chatId?: string
+  /** Go-side route to proxy to. Defaults to '/api/copilot'. */
+  goRoute?: string
 }
 
 export async function orchestrateCopilotStream(
   requestPayload: Record<string, unknown>,
   options: OrchestrateStreamOptions
 ): Promise<OrchestratorResult> {
-  const { userId, workflowId, workspaceId, chatId } = options
+  const { userId, workflowId, workspaceId, chatId, goRoute = '/api/copilot' } = options
 
   let execContext: ExecutionContext
   if (workflowId) {
@@ -46,12 +48,13 @@ export async function orchestrateCopilotStream(
 
   try {
     await runStreamLoop(
-      `${SIM_AGENT_API_URL}/api/chat-completion-streaming`,
+      `${SIM_AGENT_API_URL}${goRoute}`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(env.COPILOT_API_KEY ? { 'x-api-key': env.COPILOT_API_KEY } : {}),
+          'X-Client-Version': SIM_AGENT_VERSION,
         },
         body: JSON.stringify(requestPayload),
       },
@@ -66,7 +69,6 @@ export async function orchestrateCopilotStream(
       contentBlocks: context.contentBlocks,
       toolCalls: buildToolCallSummaries(context),
       chatId: context.chatId,
-      conversationId: context.conversationId,
       errors: context.errors.length ? context.errors : undefined,
     }
     await options.onComplete?.(result)
@@ -81,7 +83,6 @@ export async function orchestrateCopilotStream(
       contentBlocks: [],
       toolCalls: [],
       chatId: context.chatId,
-      conversationId: context.conversationId,
       error: err.message,
     }
   }

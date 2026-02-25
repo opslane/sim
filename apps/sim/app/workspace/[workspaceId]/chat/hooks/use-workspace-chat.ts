@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react'
 import { createLogger } from '@sim/logger'
-import { COPILOT_CHAT_API_PATH } from '@/lib/copilot/constants'
+import { MOTHERSHIP_CHAT_API_PATH } from '@/lib/copilot/constants'
 
 const logger = createLogger('useWorkspaceChat')
 
@@ -125,13 +125,13 @@ export function useWorkspaceChat({ workspaceId }: UseWorkspaceChatProps): UseWor
       }
 
       try {
-        const response = await fetch(COPILOT_CHAT_API_PATH, {
+        const response = await fetch(MOTHERSHIP_CHAT_API_PATH, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             message,
             workspaceId,
-            stream: true,
+            userMessageId: userMessage.id,
             createNewChat: !chatIdRef.current,
             ...(chatIdRef.current ? { chatId: chatIdRef.current } : {}),
           }),

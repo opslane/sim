@@ -364,19 +364,10 @@ export const sseHandlers: Record<string, SSEHandler> = {
     context.accumulatedContent += chunk
     addContentBlock(context, { type: 'text', content: chunk })
   },
-  done: (event, context) => {
-    const d = asRecord(event.data)
-    if (d.responseId) {
-      context.conversationId = d.responseId as string
-    }
+  done: (_event, context) => {
     context.streamComplete = true
   },
-  start: (event, context) => {
-    const d = asRecord(event.data)
-    if (d.responseId) {
-      context.conversationId = d.responseId as string
-    }
-  },
+  start: () => {},
   error: (event, context) => {
     const d = asRecord(event.data)
     const message = (d.message || d.error || event.error) as string | undefined

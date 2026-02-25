@@ -91,11 +91,9 @@ const ChatMessageSchema = z.object({
   prefetch: z.boolean().optional(),
   createNewChat: z.boolean().optional().default(false),
   stream: z.boolean().optional().default(true),
-  headless: z.boolean().optional(),
   implicitFeedback: z.string().optional(),
   fileAttachments: z.array(FileAttachmentSchema).optional(),
   provider: z.string().optional(),
-  conversationId: z.string().optional(),
   contexts: z
     .array(
       z.object({
@@ -147,18 +145,15 @@ export async function POST(req: NextRequest) {
       userMessageId,
       chatId,
       workflowId: providedWorkflowId,
-      workspaceId: providedWorkspaceId,
       workflowName,
       model,
       mode,
       prefetch,
       createNewChat,
       stream,
-      headless,
       implicitFeedback,
       fileAttachments,
       provider,
-      conversationId,
       contexts,
       commands,
     } = ChatMessageSchema.parse(body)
@@ -177,38 +172,24 @@ export async function POST(req: NextRequest) {
         })
       : contexts
 
-    // Resolve scope: workflow-mode (has workflowId) or workspace-mode (workspaceId only)
-    let workflowId: string | undefined
-    let workflowResolvedName: string | undefined
-    let workspaceId: string | undefined
-    const isWorkspaceMode = !providedWorkflowId && !workflowName
-
-    if (!isWorkspaceMode) {
-      const resolved = await resolveWorkflowIdForUser(
-        authenticatedUserId,
-        providedWorkflowId,
-        workflowName
+    // Copilot route always requires a workflow scope
+    const resolved = await resolveWorkflowIdForUser(
+      authenticatedUserId,
+      providedWorkflowId,
+      workflowName
+    )
+    if (!resolved) {
+      return createBadRequestResponse(
+        'No workflows found. Create a workflow first or provide a valid workflowId.'
       )
-      if (!resolved) {
-        return createBadRequestResponse(
-          'No workflows found. Create a workflow first or provide a valid workflowId.'
-        )
-      }
-      workflowId = resolved.workflowId
-      workflowResolvedName = resolved.workflowName
-    } else {
-      if (!providedWorkspaceId) {
-        return createBadRequestResponse('workspaceId is required when no workflowId is provided.')
-      }
-      workspaceId = providedWorkspaceId
     }
+    const workflowId = resolved.workflowId
+    const workflowResolvedName = resolved.workflowName
 
     const userMessageIdToUse = userMessageId || crypto.randomUUID()
     try {
       logger.info(`[${tracker.requestId}] Received chat POST`, {
-        isWorkspaceMode,
         workflowId,
-        workspaceId,
         hasContexts: Array.isArray(normalizedContexts),
         contextsCount: Array.isArray(normalizedContexts) ? normalizedContexts.length : 0,
         contextsPreview: Array.isArray(normalizedContexts)
@@ -262,21 +243,15 @@ export async function POST(req: NextRequest) {
         chatId,
         userId: authenticatedUserId,
         workflowId,
-        workspaceId,
         model: selectedModel,
       })
       currentChat = chatResult.chat
       actualChatId = chatResult.chatId || chatId
-      const history = buildConversationHistory(
-        chatResult.conversationHistory,
-        (chatResult.chat?.conversationId as string | undefined) || conversationId
-      )
+      const history = buildConversationHistory(chatResult.conversationHistory)
       conversationHistory = history.history
     }
 
     const effectiveMode = mode === 'agent' ? 'build' : mode
-    const effectiveConversationId =
-      (currentChat?.conversationId as string | undefined) || conversationId
 
     const requestPayload = await buildCopilotRequestPayload(
       {
@@ -288,7 +263,6 @@ export async function POST(req: NextRequest) {
         mode,
         model: selectedModel,
         provider,
-        conversationId: effectiveConversationId,
         conversationHistory,
         contexts: agentContexts,
         fileAttachments,
@@ -302,20 +276,10 @@ export async function POST(req: NextRequest) {
       }
     )
 
-    if (isWorkspaceMode) {
-      requestPayload.source = 'workspace-chat'
-      requestPayload.headless = true
-    }
-    if (headless !== undefined) {
-      requestPayload.headless = headless
-    }
-
     try {
       logger.info(`[${tracker.requestId}] About to call Sim Agent`, {
-        isWorkspaceMode,
         hasContext: agentContexts.length > 0,
         contextCount: agentContexts.length,
-        hasConversationId: !!effectiveConversationId,
         hasFileAttachments: Array.isArray(requestPayload.fileAttachments),
         messageLength: message.length,
         mode: effectiveMode,
@@ -399,22 +363,19 @@ export async function POST(req: NextRequest) {
             const result = await orchestrateCopilotStream(requestPayload, {
               userId: authenticatedUserId,
               workflowId,
-              workspaceId,
               chatId: actualChatId,
+              goRoute: '/api/copilot',
               autoExecuteTools: true,
-              interactive: !isWorkspaceMode,
+              interactive: true,
               onEvent: async (event) => {
                 await pushEvent(event)
               },
             })
 
-            if (currentChat && result.conversationId) {
+            if (currentChat) {
               await db
                 .update(copilotChats)
-                .set({
-                  updatedAt: new Date(),
-                  conversationId: result.conversationId,
-                })
+                .set({ updatedAt: new Date() })
                 .where(eq(copilotChats.id, actualChatId!))
             }
             await eventWriter.close()
@@ -458,10 +419,10 @@ export async function POST(req: NextRequest) {
     const nonStreamingResult = await orchestrateCopilotStream(requestPayload, {
       userId: authenticatedUserId,
       workflowId,
-      workspaceId,
       chatId: actualChatId,
+      goRoute: '/api/copilot',
       autoExecuteTools: true,
-      interactive: !isWorkspaceMode,
+      interactive: true,
     })
 
     const responseData = {
@@ -535,9 +496,6 @@ export async function POST(req: NextRequest) {
         .set({
           messages: updatedMessages,
           updatedAt: new Date(),
-          ...(nonStreamingResult.conversationId
-            ? { conversationId: nonStreamingResult.conversationId }
-            : {}),
         })
         .where(eq(copilotChats.id, actualChatId!))
     }

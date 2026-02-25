@@ -69,7 +69,6 @@ export interface ContentBlock {
 
 export interface StreamingContext {
   chatId?: string
-  conversationId?: string
   messageId: string
   accumulatedContent: string
   contentBlocks: ContentBlock[]
@@ -100,7 +99,6 @@ export interface OrchestratorRequest {
   chatId?: string
   mode?: 'agent' | 'ask' | 'plan'
   model?: string
-  conversationId?: string
   contexts?: Array<{ type: string; content: string }>
   fileAttachments?: FileAttachment[]
   commands?: string[]
@@ -127,7 +125,6 @@ export interface OrchestratorResult {
   contentBlocks: ContentBlock[]
   toolCalls: ToolCallSummary[]
   chatId?: string
-  conversationId?: string
   error?: string
   errors?: string[]
 }

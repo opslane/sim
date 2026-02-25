@@ -7,15 +7,8 @@ const logger = createLogger('CopilotChatContext')
 /**
  * Build conversation history from stored chat messages.
  */
-export function buildConversationHistory(
-  messages: unknown[],
-  conversationId?: string
-): { history: unknown[]; conversationId?: string } {
-  const history = Array.isArray(messages) ? messages : []
-  return {
-    history,
-    ...(conversationId ? { conversationId } : {}),
-  }
+export function buildConversationHistory(messages: unknown[]): { history: unknown[] } {
+  return { history: Array.isArray(messages) ? messages : [] }
 }
 
 export interface FileAttachmentInput {

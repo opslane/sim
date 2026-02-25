@@ -1,8 +1,6 @@
 import { createLogger } from '@sim/logger'
 import { processFileAttachments } from '@/lib/copilot/chat-context'
-import { SIM_AGENT_VERSION } from '@/lib/copilot/constants'
 import { isHosted } from '@/lib/core/config/feature-flags'
-import { getCredentialsServerTool } from '@/lib/copilot/tools/server/user/get-credentials'
 import { tools } from '@/tools/registry'
 import { getLatestVersionTools, stripVersionSuffix } from '@/tools/utils'
 
@@ -22,7 +20,6 @@ export interface BuildPayloadParams {
   fileAttachments?: Array<{ id: string; key: string; size: number; [key: string]: unknown }>
   commands?: string[]
   chatId?: string
-  conversationId?: string
   prefetch?: boolean
   implicitFeedback?: string
 }
@@ -34,18 +31,6 @@ interface ToolSchema {
   defer_loading?: boolean
   executeLocally?: boolean
   oauth?: { required: boolean; provider: string }
-}
-
-interface CredentialsPayload {
-  oauth: Record<
-    string,
-    { accessToken: string; accountId: string; name: string; expiresAt?: string }
-  >
-  apiKeys: string[]
-  metadata?: {
-    connectedOAuth: Array<{ provider: string; name: string; scopes?: string[] }>
-    configuredApiKeys: string[]
-  }
 }
 
 /**
@@ -68,7 +53,6 @@ export async function buildCopilotRequestPayload(
     fileAttachments,
     commands,
     chatId,
-    conversationId,
     prefetch,
     conversationHistory,
     implicitFeedback,
@@ -82,42 +66,8 @@ export async function buildCopilotRequestPayload(
   const processedFileContents = await processFileAttachments(fileAttachments ?? [], userId)
 
   const integrationTools: ToolSchema[] = []
-  let credentials: CredentialsPayload | null = null
 
   if (effectiveMode === 'build') {
-    try {
-      const rawCredentials = await getCredentialsServerTool.execute(
-        workflowId ? { workflowId } : {},
-        { userId }
-      )
-
-      const oauthMap: CredentialsPayload['oauth'] = {}
-      const connectedOAuth: Array<{ provider: string; name: string; scopes?: string[] }> = []
-      for (const cred of rawCredentials?.oauth?.connected?.credentials ?? []) {
-        if (cred.accessToken) {
-          oauthMap[cred.provider] = {
-            accessToken: cred.accessToken,
-            accountId: cred.id,
-            name: cred.name,
-          }
-          connectedOAuth.push({ provider: cred.provider, name: cred.name })
-        }
-      }
-
-      credentials = {
-        oauth: oauthMap,
-        apiKeys: rawCredentials?.environment?.variableNames ?? [],
-        metadata: {
-          connectedOAuth,
-          configuredApiKeys: rawCredentials?.environment?.variableNames ?? [],
-        },
-      }
-    } catch (error) {
-      logger.warn('Failed to fetch credentials for build payload', {
-        error: error instanceof Error ? error.message : String(error),
-      })
-    }
-
     try {
       const { createUserToolSchema } = await import('@/tools/params')
       const latestTools = getLatestVersionTools(tools)
@@ -157,14 +107,12 @@ export async function buildCopilotRequestPayload(
     ...(workflowId ? { workflowId } : {}),
     ...(params.workflowName ? { workflowName: params.workflowName } : {}),
     userId,
-    model: selectedModel,
+    ...(selectedModel ? { model: selectedModel } : {}),
     ...(provider ? { provider } : {}),
     mode: transportMode,
     messageId: userMessageId,
-    version: SIM_AGENT_VERSION,
     ...(contexts && contexts.length > 0 ? { context: contexts } : {}),
     ...(chatId ? { chatId } : {}),
-    ...(conversationId ? { conversationId } : {}),
     ...(Array.isArray(conversationHistory) && conversationHistory.length > 0
       ? { conversationHistory }
       : {}),
@@ -172,7 +120,6 @@ export async function buildCopilotRequestPayload(
     ...(implicitFeedback ? { implicitFeedback } : {}),
     ...(processedFileContents.length > 0 ? { fileAttachments: processedFileContents } : {}),
     ...(integrationTools.length > 0 ? { integrationTools } : {}),
-    ...(credentials ? { credentials } : {}),
     ...(commands && commands.length > 0 ? { commands } : {}),
     isHosted,
   }

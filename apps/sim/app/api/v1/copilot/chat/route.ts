@@ -93,8 +93,7 @@ export async function POST(req: NextRequest) {
       success: result.success,
       content: result.content,
       toolCalls: result.toolCalls,
-      chatId: result.chatId || chatId, // Return the chatId for conversation continuity
-      conversationId: result.conversationId,
+      chatId: result.chatId || chatId,
       error: result.error,
     })
   } catch (error) {
