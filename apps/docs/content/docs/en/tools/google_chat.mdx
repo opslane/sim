@@ -1,0 +1,62 @@
+---
+title: Google Chat
+description: Send messages and manage Google Chat spaces
+---
+
+import { BlockInfoCard } from "@/components/ui/block-info-card"
+
+<BlockInfoCard 
+  type="google_chat"
+  color="#E0E0E0"
+/>
+
+## Usage Instructions
+
+Integrate with Google Chat to send messages to spaces and list available spaces using OAuth.
+
+
+
+## Tools
+
+### `google_chat_send_message`
+
+Send a message to a Google Chat space
+
+#### Input
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| `spaceId` | string | Yes | The Google Chat space ID \(e.g., spaces/AAAA1234\) |
+| `message` | string | Yes | Message text to send |
+| `threadKey` | string | No | Thread key for sending a threaded reply |
+
+#### Output
+
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+| `messageName` | string | Google Chat message resource name |
+| `spaceName` | string | Space the message was sent to |
+| `threadName` | string | Thread resource name |
+| `text` | string | Message text that was sent |
+| `createTime` | string | Timestamp when the message was created |
+
+### `google_chat_list_spaces`
+
+List Google Chat spaces the user is a member of
+
+#### Input
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| `pageSize` | number | No | Maximum number of spaces to return \(default 100, max 1000\) |
+| `pageToken` | string | No | Token for fetching the next page of results |
+| `filter` | string | No | Filter by space type \(e.g., spaceType = "SPACE", spaceType = "GROUP_CHAT" OR spaceType = "DIRECT_MESSAGE"\) |
+
+#### Output
+
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+| `spaces` | json | Array of Google Chat space objects |
+| `nextPageToken` | string | Token for fetching the next page of results |
+
+

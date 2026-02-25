@@ -621,6 +621,7 @@ import {
 } from '@/tools/gong'
 import { googleSearchTool } from '@/tools/google'
 import { googleBooksVolumeDetailsTool, googleBooksVolumeSearchTool } from '@/tools/google_books'
+import { googleChatListSpacesTool, googleChatSendMessageTool } from '@/tools/google_chat'
 import {
   googleCalendarCreateTool,
   googleCalendarCreateV2Tool,
@@ -2878,6 +2879,8 @@ export const tools: Record<string, ToolConfig> = {
   google_docs_create: googleDocsCreateTool,
   google_books_volume_search: googleBooksVolumeSearchTool,
   google_books_volume_details: googleBooksVolumeDetailsTool,
+  google_chat_list_spaces: googleChatListSpacesTool,
+  google_chat_send_message: googleChatSendMessageTool,
   google_maps_air_quality: googleMapsAirQualityTool,
   google_maps_directions: googleMapsDirectionsTool,
   google_maps_distance_matrix: googleMapsDistanceMatrixTool,

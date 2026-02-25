@@ -52,6 +52,8 @@ const SCOPE_DESCRIPTIONS: Record<string, string> = {
   'https://www.googleapis.com/auth/admin.directory.group.readonly': 'View Google Workspace groups',
   'https://www.googleapis.com/auth/admin.directory.group.member.readonly':
     'View Google Workspace group memberships',
+  'https://www.googleapis.com/auth/chat.spaces.readonly': 'View Google Chat spaces',
+  'https://www.googleapis.com/auth/chat.messages.create': 'Send messages in Google Chat',
   'https://www.googleapis.com/auth/cloud-platform':
     'Full access to Google Cloud resources for Vertex AI',
   'read:confluence-content.all': 'Read all Confluence content',

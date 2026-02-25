@@ -12,6 +12,7 @@ import {
   GoogleDocsIcon,
   GoogleDriveIcon,
   GoogleFormsIcon,
+  GoogleChatIcon,
   GoogleGroupsIcon,
   GoogleIcon,
   GoogleSheetsIcon,
@@ -139,6 +140,17 @@ export const OAUTH_PROVIDERS: Record<string, OAuthProviderConfig> = {
         scopes: [
           'https://www.googleapis.com/auth/admin.directory.group',
           'https://www.googleapis.com/auth/admin.directory.group.member',
+        ],
+      },
+      'google-chat': {
+        name: 'Google Chat',
+        description: 'Send messages and manage Google Chat spaces.',
+        providerId: 'google-chat',
+        icon: GoogleChatIcon,
+        baseProviderIcon: GoogleIcon,
+        scopes: [
+          'https://www.googleapis.com/auth/chat.spaces.readonly',
+          'https://www.googleapis.com/auth/chat.messages.create',
         ],
       },
       'vertex-ai': {
