@@ -10,7 +10,7 @@ export const GoogleChatBlock: BlockConfig<GoogleChatResponse> = {
   authMode: AuthMode.OAuth,
   longDescription:
     'Integrate with Google Chat to send messages to spaces and list available spaces using OAuth.',
-  docsLink: 'https://docs.sim.ai/tools/google-chat',
+  docsLink: 'https://docs.sim.ai/tools/google_chat',
   category: 'tools',
   bgColor: '#E0E0E0',
   icon: GoogleChatIcon,
