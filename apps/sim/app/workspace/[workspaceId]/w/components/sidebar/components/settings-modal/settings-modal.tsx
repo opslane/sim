@@ -6,7 +6,6 @@ import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   Bug,
-  Files,
   KeySquare,
   LogIn,
   Mail,
@@ -47,7 +46,6 @@ import {
   Credentials,
   CustomTools,
   Debug,
-  FileUploads,
   General,
   MCP,
   Skills,
@@ -173,7 +171,6 @@ const allNavigationItems: NavigationItem[] = [
     section: 'system',
     requiresHosted: true,
   },
-  { id: 'files', label: 'Files', icon: Files, section: 'system' },
   {
     id: 'credential-sets',
     label: 'Email Polling',
@@ -248,9 +245,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
         return false
       }
       if (item.id === 'apikeys' && permissionConfig.hideApiKeysTab) {
-        return false
-      }
-      if (item.id === 'files' && permissionConfig.hideFilesTab) {
         return false
       }
       if (item.id === 'mcp' && permissionConfig.disableMcpTools) {
@@ -505,7 +499,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             {effectiveActiveSection === 'credential-sets' && <CredentialSets />}
             {effectiveActiveSection === 'access-control' && <AccessControl />}
             {effectiveActiveSection === 'apikeys' && <ApiKeys onOpenChange={onOpenChange} />}
-            {effectiveActiveSection === 'files' && <FileUploads />}
             {isBillingEnabled && effectiveActiveSection === 'subscription' && <Subscription />}
             {isBillingEnabled && effectiveActiveSection === 'team' && <TeamManagement />}
             {effectiveActiveSection === 'sso' && <SSO />}

@@ -4,6 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createLogger } from '@sim/logger'
 import {
   Database,
+  Files,
   HelpCircle,
   Layout,
   MessageSquare,
@@ -291,6 +292,13 @@ export const Sidebar = memo(function Sidebar() {
           hidden: permissionConfig.hideTablesTab,
         },
         {
+          id: 'files',
+          label: 'Files',
+          icon: Files,
+          href: `/workspace/${workspaceId}/files`,
+          hidden: permissionConfig.hideFilesTab,
+        },
+        {
           id: 'help',
           label: 'Help',
           icon: HelpCircle,
@@ -303,7 +311,7 @@ export const Sidebar = memo(function Sidebar() {
           onClick: () => openSettingsModal(),
         },
       ].filter((item) => !item.hidden),
-    [workspaceId, permissionConfig.hideTemplates, permissionConfig.hideKnowledgeBaseTab]
+    [workspaceId, permissionConfig.hideTemplates, permissionConfig.hideKnowledgeBaseTab, permissionConfig.hideFilesTab]
   )
 
   const isLoading = workflowsLoading || sessionLoading

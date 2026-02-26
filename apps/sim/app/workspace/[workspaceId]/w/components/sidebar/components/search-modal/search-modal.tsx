@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Command } from 'cmdk'
-import { Database, HelpCircle, Layout, Settings, Table } from 'lucide-react'
+import { Database, Files, HelpCircle, Layout, Settings, Table } from 'lucide-react'
 import { useParams, useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { Library } from '@/components/emcn'
@@ -127,6 +127,13 @@ export function SearchModal({
           hidden: permissionConfig.hideTablesTab,
         },
         {
+          id: 'files',
+          name: 'Files',
+          icon: Files,
+          href: `/workspace/${workspaceId}/files`,
+          hidden: permissionConfig.hideFilesTab,
+        },
+        {
           id: 'help',
           name: 'Help',
           icon: HelpCircle,
@@ -145,6 +152,7 @@ export function SearchModal({
       openSettingsModal,
       permissionConfig.hideTemplates,
       permissionConfig.hideKnowledgeBaseTab,
+      permissionConfig.hideFilesTab,
     ]
   )
 
