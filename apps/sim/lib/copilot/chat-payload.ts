@@ -22,6 +22,7 @@ export interface BuildPayloadParams {
   chatId?: string
   prefetch?: boolean
   implicitFeedback?: string
+  workspaceContext?: string
 }
 
 interface ToolSchema {
@@ -121,6 +122,7 @@ export async function buildCopilotRequestPayload(
     ...(processedFileContents.length > 0 ? { fileAttachments: processedFileContents } : {}),
     ...(integrationTools.length > 0 ? { integrationTools } : {}),
     ...(commands && commands.length > 0 ? { commands } : {}),
+    ...(params.workspaceContext ? { workspaceContext: params.workspaceContext } : {}),
     isHosted,
   }
 }

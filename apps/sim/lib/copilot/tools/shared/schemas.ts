@@ -27,6 +27,7 @@ export const KnowledgeBaseArgsSchema = z.object({
     'query',
     'update',
     'delete',
+    'add_file',
     'list_tags',
     'create_tag',
     'update_tag',
@@ -41,8 +42,10 @@ export const KnowledgeBaseArgsSchema = z.object({
       description: z.string().optional(),
       /** Workspace ID to associate with (required for create, optional for list) */
       workspaceId: z.string().optional(),
-      /** Knowledge base ID (required for get, query, list_tags, create_tag, get_tag_usage) */
+      /** Knowledge base ID (required for get, query, add_file, list_tags, create_tag, get_tag_usage) */
       knowledgeBaseId: z.string().optional(),
+      /** Workspace file path to add as a document (required for add_file). Example: "files/report.pdf" */
+      filePath: z.string().optional(),
       /** Search query text (required for query) */
       query: z.string().optional(),
       /** Number of results to return (optional for query, defaults to 5) */

@@ -3,6 +3,10 @@ import type { BaseServerTool } from '@/lib/copilot/tools/server/base-tool'
 import type { KnowledgeBaseArgs, KnowledgeBaseResult } from '@/lib/copilot/tools/shared/schemas'
 import { generateSearchEmbedding } from '@/lib/knowledge/embeddings'
 import {
+  createSingleDocument,
+  processDocumentAsync,
+} from '@/lib/knowledge/documents/service'
+import {
   createKnowledgeBase,
   deleteKnowledgeBase,
   getKnowledgeBaseById,
@@ -16,6 +20,8 @@ import {
   getTagUsageStats,
   updateTagDefinition,
 } from '@/lib/knowledge/tags/service'
+import { StorageService } from '@/lib/uploads'
+import { listWorkspaceFiles } from '@/lib/uploads/contexts/workspace/workspace-file-manager'
 import { getQueryStrategy, handleVectorOnlySearch } from '@/app/api/knowledge/search/utils'
 
 const logger = createLogger('KnowledgeBaseServerTool')
@@ -193,6 +199,95 @@ export const knowledgeBaseServerTool: BaseServerTool<KnowledgeBaseArgs, Knowledg
                 chunkIndex: result.chunkIndex,
                 similarity: 1 - result.distance,
               })),
+            },
+          }
+        }
+
+        case 'add_file': {
+          if (!args.knowledgeBaseId) {
+            return {
+              success: false,
+              message: 'Knowledge base ID is required for add_file operation',
+            }
+          }
+
+          if (!args.filePath) {
+            return {
+              success: false,
+              message: 'filePath is required (e.g. "files/report.pdf")',
+            }
+          }
+
+          const targetKb = await getKnowledgeBaseById(args.knowledgeBaseId)
+          if (!targetKb || !targetKb.workspaceId) {
+            return {
+              success: false,
+              message: `Knowledge base with ID "${args.knowledgeBaseId}" not found`,
+            }
+          }
+
+          const match = args.filePath.match(/^files\/(.+)$/)
+          const fileName = match ? match[1] : args.filePath
+          const kbWorkspaceId: string = targetKb.workspaceId
+          const files = await listWorkspaceFiles(kbWorkspaceId)
+          const fileRecord = files.find(
+            (f) => f.name === fileName || f.name.normalize('NFC') === fileName.normalize('NFC')
+          )
+
+          if (!fileRecord) {
+            return {
+              success: false,
+              message: `Workspace file not found: "${args.filePath}"`,
+            }
+          }
+
+          const presignedUrl = await StorageService.generatePresignedDownloadUrl(
+            fileRecord.key,
+            'workspace',
+            5 * 60
+          )
+
+          const requestId = crypto.randomUUID().slice(0, 8)
+          const doc = await createSingleDocument(
+            {
+              filename: fileRecord.name,
+              fileUrl: presignedUrl,
+              fileSize: fileRecord.size,
+              mimeType: fileRecord.type,
+            },
+            args.knowledgeBaseId,
+            requestId
+          )
+
+          processDocumentAsync(args.knowledgeBaseId, doc.id, {
+            filename: fileRecord.name,
+            fileUrl: presignedUrl,
+            fileSize: fileRecord.size,
+            mimeType: fileRecord.type,
+          }, {}).catch((err) => {
+            logger.error('Background document processing failed', {
+              documentId: doc.id,
+              error: err instanceof Error ? err.message : String(err),
+            })
+          })
+
+          logger.info('Workspace file added to knowledge base via copilot', {
+            knowledgeBaseId: args.knowledgeBaseId,
+            documentId: doc.id,
+            fileName: fileRecord.name,
+            userId: context.userId,
+          })
+
+          return {
+            success: true,
+            message: `File "${fileRecord.name}" added to knowledge base "${targetKb.name}". Processing started (chunking + embedding).`,
+            data: {
+              documentId: doc.id,
+              knowledgeBaseId: args.knowledgeBaseId,
+              knowledgeBaseName: targetKb.name,
+              filename: fileRecord.name,
+              fileSize: fileRecord.size,
+              mimeType: fileRecord.type,
             },
           }
         }
@@ -449,7 +544,7 @@ export const knowledgeBaseServerTool: BaseServerTool<KnowledgeBaseArgs, Knowledg
         default:
           return {
             success: false,
-            message: `Unknown operation: ${operation}. Supported operations: create, list, get, query, update, delete, list_tags, create_tag, update_tag, delete_tag, get_tag_usage`,
+            message: `Unknown operation: ${operation}. Supported operations: create, get, query, add_file, update, delete, list_tags, create_tag, update_tag, delete_tag, get_tag_usage`,
           }
       }
     } catch (error) {

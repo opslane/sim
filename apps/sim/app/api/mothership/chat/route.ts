@@ -6,6 +6,7 @@ import { resolveOrCreateChat } from '@/lib/copilot/chat-lifecycle'
 import { buildCopilotRequestPayload } from '@/lib/copilot/chat-payload'
 import { createSSEStream, SSE_RESPONSE_HEADERS } from '@/lib/copilot/chat-streaming'
 import { createRequestTracker, createUnauthorizedResponse } from '@/lib/copilot/request-helpers'
+import { generateWorkspaceContext } from '@/lib/copilot/workspace-context'
 
 const logger = createLogger('MothershipChatAPI')
 
@@ -106,6 +107,8 @@ export async function POST(req: NextRequest) {
         : []
     }
 
+    const workspaceContext = await generateWorkspaceContext(workspaceId, authenticatedUserId)
+
     const requestPayload = await buildCopilotRequestPayload(
       {
         message,
@@ -117,6 +120,7 @@ export async function POST(req: NextRequest) {
         contexts: agentContexts,
         fileAttachments,
         chatId: actualChatId,
+        workspaceContext,
       },
       { selectedModel: '' }
     )
