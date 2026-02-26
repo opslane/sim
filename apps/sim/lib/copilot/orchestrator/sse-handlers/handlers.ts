@@ -48,7 +48,7 @@ function getEventUI(event: SSEEvent): {
 function handleClientCompletion(
   toolCall: ToolCallState,
   toolCallId: string,
-  completion: { status: string; message?: string } | null
+  completion: { status: string; message?: string; data?: Record<string, unknown> } | null
 ): void {
   if (completion?.status === 'background') {
     toolCall.status = 'skipped'
@@ -89,7 +89,13 @@ function handleClientCompletion(
   toolCall.status = success ? 'success' : 'error'
   toolCall.endTime = Date.now()
   const msg = completion?.message || (success ? 'Tool completed' : 'Tool failed or timed out')
-  markToolComplete(toolCall.id, toolCall.name, success ? 200 : 500, msg).catch((err) => {
+  markToolComplete(
+    toolCall.id,
+    toolCall.name,
+    success ? 200 : 500,
+    msg,
+    completion?.data
+  ).catch((err) => {
     logger.error('markToolComplete fire-and-forget failed (client completion)', {
       toolCallId: toolCall.id,
       toolName: toolCall.name,

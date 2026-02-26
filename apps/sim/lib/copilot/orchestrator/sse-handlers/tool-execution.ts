@@ -185,7 +185,7 @@ export async function waitForToolCompletion(
   toolCallId: string,
   timeoutMs: number,
   abortSignal?: AbortSignal
-): Promise<{ status: string; message?: string } | null> {
+): Promise<{ status: string; message?: string; data?: Record<string, unknown> } | null> {
   const start = Date.now()
   let interval = TOOL_DECISION_INITIAL_POLL_MS
   const maxInterval = TOOL_DECISION_MAX_POLL_MS

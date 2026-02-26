@@ -138,13 +138,14 @@ async function doExecuteRunTool(
       await reportCompletion(
         toolCallId,
         true,
-        `Workflow execution completed. Started at: ${executionStartTime}`
+        `Workflow execution completed. Started at: ${executionStartTime}`,
+        buildResultData(result)
       )
     } else {
       const msg = errorMessage || 'Workflow execution failed'
       logger.error('[RunTool] Workflow execution failed', { toolCallId, toolName, error: msg })
       setToolState(toolCallId, ClientToolCallState.error)
-      await reportCompletion(toolCallId, false, msg)
+      await reportCompletion(toolCallId, false, msg, buildResultData(result))
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
@@ -187,15 +188,45 @@ function setToolState(toolCallId: string, state: ClientToolCallState): void {
 }
 
 /**
+ * Extract a structured result payload from the raw execution result
+ * for the LLM to see the actual workflow output.
+ */
+function buildResultData(result: unknown): Record<string, unknown> | undefined {
+  if (!result || typeof result !== 'object') return undefined
+
+  const r = result as Record<string, unknown>
+
+  if ('success' in r) {
+    return {
+      success: r.success,
+      output: r.output,
+      error: r.error,
+    }
+  }
+
+  if ('execution' in r && r.execution && typeof r.execution === 'object') {
+    const exec = r.execution as Record<string, unknown>
+    return {
+      success: exec.success,
+      output: exec.output,
+      error: exec.error,
+    }
+  }
+
+  return undefined
+}
+
+/**
  * Report tool completion to the server via the existing /api/copilot/confirm endpoint.
- * This writes {status: 'success'|'error', message} to Redis. The server-side handler
+ * This writes {status, message, data} to Redis. The server-side handler
  * is polling Redis via waitForToolCompletion() and will pick this up, then fire-and-forget
  * markToolComplete to the Go backend.
  */
 async function reportCompletion(
   toolCallId: string,
   success: boolean,
-  message?: string
+  message?: string,
+  data?: Record<string, unknown>
 ): Promise<void> {
   try {
     const res = await fetch(COPILOT_CONFIRM_API_PATH, {
@@ -205,6 +236,7 @@ async function reportCompletion(
         toolCallId,
         status: success ? 'success' : 'error',
         message: message || (success ? 'Tool completed' : 'Tool failed'),
+        ...(data ? { data } : {}),
       }),
     })
     if (!res.ok) {
