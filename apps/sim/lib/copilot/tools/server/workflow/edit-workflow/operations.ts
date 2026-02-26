@@ -9,6 +9,7 @@ import {
   applyTriggerConfigToBlockSubblocks,
   createBlockFromParams,
   filterDisallowedTools,
+  JSON_STRING_SUBBLOCK_KEYS,
   normalizeArrayWithIds,
   normalizeResponseFormat,
   normalizeTools,
@@ -146,6 +147,9 @@ export function handleEditOperation(op: EditWorkflowOperation, ctx: OperationCon
       // Normalize array subblocks with id fields (inputFormat, table rows, etc.)
       if (shouldNormalizeArrayIds(key)) {
         sanitizedValue = normalizeArrayWithIds(value)
+        if (JSON_STRING_SUBBLOCK_KEYS.has(key)) {
+          sanitizedValue = JSON.stringify(sanitizedValue)
+        }
       }
 
       // Special handling for tools - normalize and filter disallowed
@@ -164,9 +168,10 @@ export function handleEditOperation(op: EditWorkflowOperation, ctx: OperationCon
       }
 
       if (!block.subBlocks[key]) {
+        const subBlockDef = getBlock(block.type)?.subBlocks.find((sb) => sb.id === key)
         block.subBlocks[key] = {
           id: key,
-          type: 'short-input',
+          type: subBlockDef?.type || 'short-input',
           value: sanitizedValue,
         }
       } else {
@@ -817,6 +822,9 @@ export function handleInsertIntoSubflowOperation(
         // Normalize array subblocks with id fields (inputFormat, table rows, etc.)
         if (shouldNormalizeArrayIds(key)) {
           sanitizedValue = normalizeArrayWithIds(value)
+          if (JSON_STRING_SUBBLOCK_KEYS.has(key)) {
+            sanitizedValue = JSON.stringify(sanitizedValue)
+          }
         }
 
         // Special handling for tools - normalize and filter disallowed
@@ -835,9 +843,10 @@ export function handleInsertIntoSubflowOperation(
         }
 
         if (!existingBlock.subBlocks[key]) {
+          const subBlockDef = getBlock(existingBlock.type)?.subBlocks.find((sb) => sb.id === key)
           existingBlock.subBlocks[key] = {
             id: key,
-            type: 'short-input',
+            type: subBlockDef?.type || 'short-input',
             value: sanitizedValue,
           }
         } else {

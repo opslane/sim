@@ -93,6 +93,9 @@ export function createBlockFromParams(
       // Normalize array subblocks with id fields (inputFormat, table rows, etc.)
       if (shouldNormalizeArrayIds(key)) {
         sanitizedValue = normalizeArrayWithIds(value)
+        if (JSON_STRING_SUBBLOCK_KEYS.has(key)) {
+          sanitizedValue = JSON.stringify(sanitizedValue)
+        }
       }
 
       // Special handling for tools - normalize and filter disallowed
@@ -127,6 +130,8 @@ export function createBlockFromParams(
           type: subBlock.type,
           value: null,
         }
+      } else {
+        blockState.subBlocks[subBlock.id].type = subBlock.type
       }
     })
 
@@ -141,16 +146,16 @@ export function createBlockFromParams(
     blockState.subBlocks.conditions = {
       id: 'conditions',
       type: 'condition-input',
-      value: [
+      value: JSON.stringify([
         { id: crypto.randomUUID(), title: 'If', value: '' },
         { id: crypto.randomUUID(), title: 'Else', value: '' },
-      ],
+      ]),
     }
   } else if (params.type === 'router_v2' && !blockState.subBlocks.routes?.value) {
     blockState.subBlocks.routes = {
       id: 'routes',
       type: 'router-input',
-      value: [{ id: crypto.randomUUID(), title: 'Route 1', value: '' }],
+      value: JSON.stringify([{ id: crypto.randomUUID(), title: 'Route 1', value: '' }]),
     }
   }
 
@@ -250,6 +255,12 @@ const ARRAY_WITH_ID_SUBBLOCK_TYPES = new Set([
   'conditions', // condition-input: Condition branches with id, title, value
   'routes', // router-input: Router routes with id, title, value
 ])
+
+/**
+ * Subblock keys whose UI components expect a JSON string, not a raw array.
+ * After normalizeArrayWithIds returns an array, these must be re-stringified.
+ */
+export const JSON_STRING_SUBBLOCK_KEYS = new Set(['conditions', 'routes'])
 
 /**
  * Normalizes array subblock values by ensuring each item has a valid UUID.
@@ -468,8 +479,15 @@ export function addConnectionsAsEdges(
   logger: ReturnType<typeof createLogger>,
   skippedItems?: SkippedItem[]
 ): void {
-  Object.entries(connections).forEach(([sourceHandle, targets]) => {
+  const normalizeHandle = (handle: string): string => {
+    if (handle === 'success') return 'source'
+    return handle
+  }
+
+  Object.entries(connections).forEach(([rawHandle, targets]) => {
     if (targets === null) return
+
+    const sourceHandle = normalizeHandle(rawHandle)
 
     const addEdgeForTarget = (targetBlock: string, targetHandle?: string) => {
       createValidatedEdge(

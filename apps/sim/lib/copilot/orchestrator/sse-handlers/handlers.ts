@@ -232,6 +232,19 @@ export const sseHandlers: Record<string, SSEHandler> = {
       return
     }
 
+    if (!isToolAvailableOnSimSide(toolName)) {
+      return
+    }
+
+    // Non-interactive mode (Mothership/MCP): skip confirmation & client gates,
+    // execute server-side directly.
+    if (options.interactive === false) {
+      if (options.autoExecuteTools !== false) {
+        await executeToolAndReport(toolCallId, context, execContext, options)
+      }
+      return
+    }
+
     if (requiresConfirmation) {
       const decision = await waitForToolDecision(
         toolCallId,
@@ -437,6 +450,15 @@ export const subAgentHandlers: Record<string, SSEHandler> = {
     }
 
     if (!isToolAvailableOnSimSide(toolName)) {
+      return
+    }
+
+    // Non-interactive mode (Mothership/MCP): skip confirmation & client gates,
+    // execute server-side directly.
+    if (options.interactive === false) {
+      if (options.autoExecuteTools !== false) {
+        await executeToolAndReport(toolCallId, context, execContext, options)
+      }
       return
     }
 

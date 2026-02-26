@@ -277,6 +277,10 @@ const SERVER_TOOLS = new Set<string>([
   'make_api_request',
   'knowledge_base',
   'user_table',
+  'run_workflow',
+  'run_workflow_until_block',
+  'run_block',
+  'run_from_block',
 ])
 
 const SIM_WORKFLOW_TOOL_HANDLERS: Record<
