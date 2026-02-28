@@ -6,7 +6,7 @@ export const shortIoListLinksTool: ToolConfig<ShortIoListLinksParams, ToolRespon
   name: 'Short.io List Links',
   description:
     'List short links for a domain. Requires domain_id (from List Domains or dashboard). Max 150 per request.',
-  version: '1.0',
+  version: '1.0.0',
   params: {
     apiKey: {
       type: 'string',
@@ -61,7 +61,7 @@ export const shortIoListLinksTool: ToolConfig<ShortIoListLinksParams, ToolRespon
   transformResponse: async (response: Response) => {
     if (!response.ok) {
       const err = await response.text().catch(() => response.statusText)
-      return { success: false, output: { success: false, error: err } }
+      return { success: false, output: { links: [], count: 0 }, error: err }
     }
     const data = await response.json().catch(() => ({}))
     const links = data.links ?? []
@@ -69,7 +69,6 @@ export const shortIoListLinksTool: ToolConfig<ShortIoListLinksParams, ToolRespon
     return {
       success: true,
       output: {
-        success: true,
         links,
         count,
         nextPageToken: data.nextPageToken ?? undefined,
@@ -77,13 +76,11 @@ export const shortIoListLinksTool: ToolConfig<ShortIoListLinksParams, ToolRespon
     }
   },
   outputs: {
-    success: { type: 'boolean', description: 'Success status' },
     links: {
       type: 'array',
       description: 'List of link objects (idString, shortURL, originalURL, path, etc.)',
     },
     count: { type: 'number', description: 'Number of links returned' },
-    nextPageToken: { type: 'string', description: 'Token for next page' },
-    error: { type: 'string', description: 'Error message' },
+    nextPageToken: { type: 'string', description: 'Token for next page', optional: true },
   },
 }

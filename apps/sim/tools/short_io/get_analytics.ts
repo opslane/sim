@@ -17,7 +17,7 @@ export const shortIoGetAnalyticsTool: ToolConfig<ShortIoGetAnalyticsParams, Tool
   name: 'Short.io Get Link Statistics',
   description:
     'Fetch click statistics for a Short.io link (Statistics API: totalClicks, humanClicks, referer, country, etc.).',
-  version: '1.0',
+  version: '1.0.0',
   params: {
     apiKey: {
       type: 'string',
@@ -35,13 +35,13 @@ export const shortIoGetAnalyticsTool: ToolConfig<ShortIoGetAnalyticsParams, Tool
     tz: {
       type: 'string',
       required: false,
-      visibility: 'hidden',
+      visibility: 'user-or-llm',
       description: 'Timezone (default UTC)',
     },
   },
   request: {
     url: (params) => {
-      const base = `https://statistics.short.io/statistics/link/${encodeURIComponent(params.linkId)}`
+      const base = `https://statistics.short.io/statistics/link/${encodeURIComponent(params.linkId.trim())}`
       const period = STATS_PERIOD_MAP[params.period] ?? params.period ?? 'last30'
       const q = new URLSearchParams({ period })
       if (params.tz) q.set('tz', params.tz)
@@ -56,20 +56,18 @@ export const shortIoGetAnalyticsTool: ToolConfig<ShortIoGetAnalyticsParams, Tool
   transformResponse: async (response: Response) => {
     if (!response.ok) {
       const err = await response.text().catch(() => response.statusText)
-      return { success: false, output: { success: false, error: err } }
+      return { success: false, output: { totalClicks: 0, humanClicks: 0 }, error: err }
     }
     const data = await response.json().catch(() => ({}))
-    const totalClicks = data.totalClicks ?? data.clicks ?? 0
+    const totalClicks = data.totalClicks ?? 0
     const humanClicks = data.humanClicks ?? totalClicks
     return {
       success: true,
       output: {
-        success: true,
-        clicks: totalClicks,
         totalClicks,
         humanClicks,
-        totalClicksChange: data.totalClicksChange,
-        humanClicksChange: data.humanClicksChange,
+        totalClicksChange: data.totalClicksChange ?? null,
+        humanClicksChange: data.humanClicksChange ?? null,
         referer: data.referer ?? [],
         country: data.country ?? [],
         browser: data.browser ?? [],
@@ -80,18 +78,16 @@ export const shortIoGetAnalyticsTool: ToolConfig<ShortIoGetAnalyticsParams, Tool
         utmMedium: data.utm_medium ?? [],
         utmSource: data.utm_source ?? [],
         utmCampaign: data.utm_campaign ?? [],
-        clickStatistics: data.clickStatistics,
-        interval: data.interval,
+        clickStatistics: data.clickStatistics ?? null,
+        interval: data.interval ?? null,
       },
     }
   },
   outputs: {
-    success: { type: 'boolean', description: 'Success status' },
-    clicks: { type: 'number', description: 'Total clicks in period' },
     totalClicks: { type: 'number', description: 'Total clicks' },
     humanClicks: { type: 'number', description: 'Human clicks' },
-    totalClicksChange: { type: 'string', description: 'Change vs previous period' },
-    humanClicksChange: { type: 'string', description: 'Human clicks change' },
+    totalClicksChange: { type: 'string', description: 'Change vs previous period', optional: true },
+    humanClicksChange: { type: 'string', description: 'Human clicks change', optional: true },
     referer: { type: 'array', description: 'Referrer breakdown (referer, score)' },
     country: { type: 'array', description: 'Country breakdown (countryName, country, score)' },
     browser: { type: 'array', description: 'Browser breakdown (browser, score)' },
@@ -105,11 +101,12 @@ export const shortIoGetAnalyticsTool: ToolConfig<ShortIoGetAnalyticsParams, Tool
     clickStatistics: {
       type: 'object',
       description: 'Time-series click data (datasets with x/y points per interval)',
+      optional: true,
     },
     interval: {
       type: 'object',
       description: 'Date range (startDate, endDate, prevStartDate, prevEndDate, tz)',
+      optional: true,
     },
-    error: { type: 'string', description: 'Error message' },
   },
 }

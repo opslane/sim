@@ -5,7 +5,7 @@ export const shortIoCreateLinkTool: ToolConfig<ShortIoCreateLinkParams, ToolResp
   id: 'short_io_create_link',
   name: 'Short.io Create Link',
   description: 'Create a short link using your Short.io custom domain.',
-  version: '1.0',
+  version: '1.0.0',
   params: {
     apiKey: {
       type: 'string',
@@ -55,10 +55,8 @@ export const shortIoCreateLinkTool: ToolConfig<ShortIoCreateLinkParams, ToolResp
       const errorText = await response.text().catch(() => response.statusText)
       return {
         success: false,
-        output: {
-          success: false,
-          error: `Failed to create short link: ${errorText}`,
-        },
+        output: { shortURL: '', idString: '', originalURL: '', path: null, createdAt: null },
+        error: `Failed to create short link: ${errorText}`,
       }
     }
 
@@ -66,16 +64,19 @@ export const shortIoCreateLinkTool: ToolConfig<ShortIoCreateLinkParams, ToolResp
     return {
       success: true,
       output: {
-        success: true,
         shortURL: data.shortURL,
         idString: data.idString,
+        originalURL: data.originalURL,
+        path: data.path ?? null,
+        createdAt: data.createdAt ?? null,
       },
     }
   },
   outputs: {
-    success: { type: 'boolean', description: 'Whether the link was created successfully' },
     shortURL: { type: 'string', description: 'The generated short link URL' },
     idString: { type: 'string', description: 'The unique Short.io link ID string' },
-    error: { type: 'string', description: 'Error message if failed' },
+    originalURL: { type: 'string', description: 'The original long URL' },
+    path: { type: 'string', description: 'The path/slug of the short link', optional: true },
+    createdAt: { type: 'string', description: 'ISO 8601 creation timestamp', optional: true },
   },
 }

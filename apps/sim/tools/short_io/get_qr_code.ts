@@ -5,7 +5,7 @@ export const shortIoGetQrCodeTool: ToolConfig<ShortIoGetQrParams, ToolResponse> 
   id: 'short_io_get_qr_code',
   name: 'Short.io Generate QR Code',
   description: 'Generate a QR code for a Short.io link (POST /links/qr/{linkIdString}).',
-  version: '1.0',
+  version: '1.0.0',
   params: {
     apiKey: {
       type: 'string',
@@ -75,7 +75,8 @@ export const shortIoGetQrCodeTool: ToolConfig<ShortIoGetQrParams, ToolResponse> 
     if (!response.ok || !data.success) {
       return {
         success: false,
-        output: { success: false, error: data.error || response.statusText },
+        output: {},
+        error: data.error || response.statusText,
       }
     }
     return {
