@@ -27,10 +27,17 @@ function addToSet(set: Set<string>, id: string): void {
 const parseEventData = (data: unknown): EventDataObject => {
   if (!data) return undefined
   if (typeof data !== 'string') {
-    return data as EventDataObject
+    if (typeof data === 'object' && !Array.isArray(data)) {
+      return data as EventDataObject
+    }
+    return undefined
   }
   try {
-    return JSON.parse(data) as EventDataObject
+    const parsed = JSON.parse(data)
+    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+      return parsed as EventDataObject
+    }
+    return undefined
   } catch {
     return undefined
   }

@@ -27,13 +27,55 @@ export interface BuildPayloadParams {
   workspaceContext?: string
 }
 
-interface ToolSchema {
+export interface ToolSchema {
   name: string
   description: string
   input_schema: Record<string, unknown>
   defer_loading?: boolean
   executeLocally?: boolean
   oauth?: { required: boolean; provider: string }
+}
+
+/**
+ * Build deferred integration tool schemas from the Sim tool registry.
+ * Shared by the interactive chat payload builder and the non-interactive
+ * block execution route so both paths send the same tool definitions to Go.
+ */
+export async function buildIntegrationToolSchemas(): Promise<ToolSchema[]> {
+  const integrationTools: ToolSchema[] = []
+  try {
+    const { createUserToolSchema } = await import('@/tools/params')
+    const latestTools = getLatestVersionTools(tools)
+
+    for (const [toolId, toolConfig] of Object.entries(latestTools)) {
+      try {
+        const userSchema = createUserToolSchema(toolConfig)
+        const strippedName = stripVersionSuffix(toolId)
+        integrationTools.push({
+          name: strippedName,
+          description: toolConfig.description || toolConfig.name || strippedName,
+          input_schema: userSchema as unknown as Record<string, unknown>,
+          defer_loading: true,
+          ...(toolConfig.oauth?.required && {
+            oauth: {
+              required: true,
+              provider: toolConfig.oauth.provider,
+            },
+          }),
+        })
+      } catch (toolError) {
+        logger.warn('Failed to build schema for tool, skipping', {
+          toolId,
+          error: toolError instanceof Error ? toolError.message : String(toolError),
+        })
+      }
+    }
+  } catch (error) {
+    logger.warn('Failed to build tool schemas', {
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+  return integrationTools
 }
 
 /**
@@ -68,41 +110,10 @@ export async function buildCopilotRequestPayload(
 
   const processedFileContents = await processFileAttachments(fileAttachments ?? [], userId)
 
-  const integrationTools: ToolSchema[] = []
+  let integrationTools: ToolSchema[] = []
 
   if (effectiveMode === 'build') {
-    try {
-      const { createUserToolSchema } = await import('@/tools/params')
-      const latestTools = getLatestVersionTools(tools)
-
-      for (const [toolId, toolConfig] of Object.entries(latestTools)) {
-        try {
-          const userSchema = createUserToolSchema(toolConfig)
-          const strippedName = stripVersionSuffix(toolId)
-          integrationTools.push({
-            name: strippedName,
-            description: toolConfig.description || toolConfig.name || strippedName,
-            input_schema: userSchema as unknown as Record<string, unknown>,
-            defer_loading: true,
-            ...(toolConfig.oauth?.required && {
-              oauth: {
-                required: true,
-                provider: toolConfig.oauth.provider,
-              },
-            }),
-          })
-        } catch (toolError) {
-          logger.warn('Failed to build schema for tool, skipping', {
-            toolId,
-            error: toolError instanceof Error ? toolError.message : String(toolError),
-          })
-        }
-      }
-    } catch (error) {
-      logger.warn('Failed to build tool schemas for payload', {
-        error: error instanceof Error ? error.message : String(error),
-      })
-    }
+    integrationTools = await buildIntegrationToolSchemas()
 
     // Discover MCP tools from workspace servers and include as deferred tools
     if (workflowId) {

@@ -2063,6 +2063,7 @@ export const usageLogSourceEnum = pgEnum('usage_log_source', [
   'wand',
   'copilot',
   'mcp_copilot',
+  'mothership_block',
 ])
 
 export const usageLog = pgTable(

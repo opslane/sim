@@ -82,6 +82,7 @@ import { MailchimpBlock } from '@/blocks/blocks/mailchimp'
 import { MailgunBlock } from '@/blocks/blocks/mailgun'
 import { ManualTriggerBlock } from '@/blocks/blocks/manual_trigger'
 import { McpBlock } from '@/blocks/blocks/mcp'
+import { MothershipBlock } from '@/blocks/blocks/mothership'
 import { Mem0Block } from '@/blocks/blocks/mem0'
 import { MemoryBlock } from '@/blocks/blocks/memory'
 import { MicrosoftDataverseBlock } from '@/blocks/blocks/microsoft_dataverse'
@@ -285,6 +286,7 @@ export const registry: Record<string, BlockConfig> = {
   mistral_parse_v2: MistralParseV2Block,
   mistral_parse_v3: MistralParseV3Block,
   mongodb: MongoDBBlock,
+  mothership: MothershipBlock,
   mysql: MySQLBlock,
   neo4j: Neo4jBlock,
   note: NoteBlock,

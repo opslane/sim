@@ -18,7 +18,7 @@ const UpdateCostSchema = z.object({
   model: z.string().min(1, 'Model is required'),
   inputTokens: z.number().min(0).default(0),
   outputTokens: z.number().min(0).default(0),
-  source: z.enum(['copilot', 'workspace-chat', 'mcp_copilot']).default('copilot'),
+  source: z.enum(['copilot', 'workspace-chat', 'mcp_copilot', 'mothership_block']).default('copilot'),
 })
 
 /**
