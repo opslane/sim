@@ -1,4 +1,5 @@
 import type { BlockConfig } from '@/blocks/types'
+import { RESPONSE_FORMAT_WAND_CONFIG } from '@/blocks/utils'
 import { Blimp } from '@/components/emcn'
 import type { ToolResponse } from '@/tools/types'
 
@@ -42,6 +43,7 @@ export const MothershipBlock: BlockConfig<MothershipResponse> = {
       placeholder: 'Enter JSON schema...',
       language: 'json',
       mode: 'advanced',
+      wandConfig: RESPONSE_FORMAT_WAND_CONFIG,
     },
     {
       id: 'memoryType',
