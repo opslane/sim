@@ -13,6 +13,7 @@ import { convertSquareBracketsToTwiML } from '@/lib/webhooks/utils'
 import {
   handleSlackChallenge,
   handleWhatsAppVerification,
+  validateAttioSignature,
   validateCalcomSignature,
   validateCirclebackSignature,
   validateFirefliesSignature,
@@ -597,6 +598,33 @@ export async function verifyProviderAuth(
     }
   }
 
+  if (foundWebhook.provider === 'attio') {
+    const secret = providerConfig.webhookSecret as string | undefined
+
+    if (!secret) {
+      logger.debug(
+        `[${requestId}] Attio webhook ${foundWebhook.id} has no signing secret, skipping signature verification`
+      )
+    } else {
+      const signature = request.headers.get('Attio-Signature')
+
+      if (!signature) {
+        logger.warn(`[${requestId}] Attio webhook missing signature header`)
+        return new NextResponse('Unauthorized - Missing Attio signature', { status: 401 })
+      }
+
+      const isValidSignature = validateAttioSignature(secret, signature, rawBody)
+
+      if (!isValidSignature) {
+        logger.warn(`[${requestId}] Attio signature verification failed`, {
+          signatureLength: signature.length,
+          secretLength: secret.length,
+        })
+        return new NextResponse('Unauthorized - Invalid Attio signature', { status: 401 })
+      }
+    }
+  }
+
   if (foundWebhook.provider === 'linear') {
     const secret = providerConfig.webhookSecret as string | undefined
 
@@ -951,9 +979,10 @@ export async function queueWebhookExecution(
       const triggerId = providerConfig.triggerId as string | undefined
 
       if (triggerId && triggerId !== 'attio_webhook') {
-        const { isAttioPayloadMatch } = await import('@/triggers/attio/utils')
+        const { isAttioPayloadMatch, getAttioEvent } = await import('@/triggers/attio/utils')
         if (!isAttioPayloadMatch(triggerId, body)) {
-          const eventType = body?.event_type as string | undefined
+          const event = getAttioEvent(body)
+          const eventType = event?.event_type as string | undefined
           logger.debug(
             `[${options.requestId}] Attio event mismatch for trigger ${triggerId}. Event: ${eventType}. Skipping execution.`,
             {
@@ -961,6 +990,7 @@ export async function queueWebhookExecution(
               workflowId: foundWorkflow.id,
               triggerId,
               receivedEvent: eventType,
+              bodyKeys: Object.keys(body),
             }
           )
           return NextResponse.json({ status: 'skipped', reason: 'event_type_mismatch' })

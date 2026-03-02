@@ -56,6 +56,9 @@ export const Notifications = memo(function Notifications() {
           case 'refresh':
             window.location.reload()
             break
+          case 'unlock-workflow':
+            window.dispatchEvent(new CustomEvent('unlock-workflow'))
+            break
           default:
             logger.warn('Unknown action type', { notificationId, actionType: action.type })
         }
@@ -161,7 +164,9 @@ export const Notifications = memo(function Notifications() {
                     ? 'Fix in Copilot'
                     : notification.action!.type === 'refresh'
                       ? 'Refresh'
-                      : 'Take action'}
+                      : notification.action!.type === 'unlock-workflow'
+                        ? 'Unlock Workflow'
+                        : 'Take action'}
                 </Button>
               )}
             </div>

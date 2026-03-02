@@ -1291,6 +1291,49 @@ export async function formatWebhookInput(
     }
   }
 
+  if (foundWebhook.provider === 'attio') {
+    const {
+      extractAttioRecordData,
+      extractAttioRecordUpdatedData,
+      extractAttioRecordMergedData,
+      extractAttioNoteData,
+      extractAttioTaskData,
+      extractAttioCommentData,
+      extractAttioListEntryData,
+      extractAttioListEntryUpdatedData,
+      extractAttioGenericData,
+    } = await import('@/triggers/attio/utils')
+
+    const providerConfig = (foundWebhook.providerConfig as Record<string, any>) || {}
+    const triggerId = providerConfig.triggerId as string | undefined
+
+    if (triggerId === 'attio_record_updated') {
+      return extractAttioRecordUpdatedData(body)
+    }
+    if (triggerId === 'attio_record_merged') {
+      return extractAttioRecordMergedData(body)
+    }
+    if (triggerId === 'attio_record_created' || triggerId === 'attio_record_deleted') {
+      return extractAttioRecordData(body)
+    }
+    if (triggerId?.startsWith('attio_note_')) {
+      return extractAttioNoteData(body)
+    }
+    if (triggerId?.startsWith('attio_task_')) {
+      return extractAttioTaskData(body)
+    }
+    if (triggerId?.startsWith('attio_comment_')) {
+      return extractAttioCommentData(body)
+    }
+    if (triggerId === 'attio_list_entry_updated') {
+      return extractAttioListEntryUpdatedData(body)
+    }
+    if (triggerId === 'attio_list_entry_created' || triggerId === 'attio_list_entry_deleted') {
+      return extractAttioListEntryData(body)
+    }
+    return extractAttioGenericData(body)
+  }
+
   return body
 }
 
@@ -1391,6 +1434,41 @@ export function validateLinearSignature(secret: string, signature: string, body:
     return safeCompare(computedHash, signature)
   } catch (error) {
     logger.error('Error validating Linear signature:', error)
+    return false
+  }
+}
+
+/**
+ * Validates an Attio webhook request signature using HMAC SHA-256
+ * @param secret - Attio webhook signing secret (plain text)
+ * @param signature - Attio-Signature header value (hex-encoded HMAC SHA-256 signature)
+ * @param body - Raw request body string
+ * @returns Whether the signature is valid
+ */
+export function validateAttioSignature(secret: string, signature: string, body: string): boolean {
+  try {
+    if (!secret || !signature || !body) {
+      logger.warn('Attio signature validation missing required fields', {
+        hasSecret: !!secret,
+        hasSignature: !!signature,
+        hasBody: !!body,
+      })
+      return false
+    }
+
+    const computedHash = crypto.createHmac('sha256', secret).update(body, 'utf8').digest('hex')
+
+    logger.debug('Attio signature comparison', {
+      computedSignature: `${computedHash.substring(0, 10)}...`,
+      providedSignature: `${signature.substring(0, 10)}...`,
+      computedLength: computedHash.length,
+      providedLength: signature.length,
+      match: computedHash === signature,
+    })
+
+    return safeCompare(computedHash, signature)
+  } catch (error) {
+    logger.error('Error validating Attio signature:', error)
     return false
   }
 }

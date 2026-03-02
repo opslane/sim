@@ -22,15 +22,11 @@ export const attioTriggerOptions = [
   { label: 'Generic Webhook (All Events)', id: 'attio_webhook' },
 ]
 
-export function attioSetupInstructions(eventType: string): string {
+export function attioSetupInstructions(): string {
   const instructions = [
-    '<strong>Note:</strong> You need access to the Attio developer settings to create webhooks. See the <a href="https://docs.attio.com/rest-api/guides/webhooks" target="_blank" rel="noopener noreferrer">Attio webhook documentation</a> for details.',
-    'In Attio, navigate to <strong>Settings > Developers</strong> and select your integration.',
-    'Go to the <strong>Webhooks</strong> tab and click <strong>"Create Webhook"</strong>.',
-    'Paste the <strong>Webhook URL</strong> from above into the target URL field.',
-    `Add a subscription with the event type <strong>${eventType}</strong>. You can optionally add filters to scope the events.`,
-    'Save the webhook. Copy the <strong>signing secret</strong> shown and paste it in the field above for signature verification.',
-    'The webhook is now active. Attio will send events to the URL you configured.',
+    '<strong>Note:</strong> Webhooks are automatically created in Attio when you deploy this workflow, and deleted when you undeploy. See the <a href="https://docs.attio.com/rest-api/guides/webhooks" target="_blank" rel="noopener noreferrer">Attio webhook documentation</a> for details.',
+    'Connect your <strong>Attio account</strong> using the credential selector above.',
+    '<strong>Deploy</strong> the workflow — a webhook will be created automatically in your Attio workspace.',
   ]
 
   return instructions
@@ -41,17 +37,34 @@ export function attioSetupInstructions(eventType: string): string {
     .join('')
 }
 
-export function buildAttioExtraFields(triggerId: string): SubBlockConfig[] {
+/**
+ * Builds subBlocks for an Attio trigger with OAuth credentials and automatic webhook lifecycle.
+ * Used by both the primary trigger (with dropdown) and secondary triggers.
+ */
+export function buildAttioTriggerSubBlocks(triggerId: string): SubBlockConfig[] {
   return [
     {
-      id: 'webhookSecret',
-      title: 'Webhook Secret',
-      type: 'short-input',
-      placeholder: 'Enter the webhook signing secret from Attio',
-      description:
-        'The signing secret from Attio used to verify webhook deliveries via HMAC-SHA256 signature',
-      password: true,
-      required: false,
+      id: 'triggerCredentials',
+      title: 'Attio Account',
+      type: 'oauth-input',
+      serviceId: 'attio',
+      mode: 'trigger',
+      required: true,
+      condition: { field: 'selectedTriggerId', value: triggerId },
+    },
+    {
+      id: 'triggerSave',
+      title: 'Save',
+      type: 'trigger-save',
+      mode: 'trigger',
+      condition: { field: 'selectedTriggerId', value: triggerId },
+    },
+    {
+      id: 'triggerInstructions',
+      title: 'Setup Instructions',
+      hideFromPreview: true,
+      type: 'text',
+      defaultValue: attioSetupInstructions(),
       mode: 'trigger',
       condition: { field: 'selectedTriggerId', value: triggerId },
     },
@@ -257,7 +270,7 @@ export function buildGenericWebhookOutputs(): Record<string, TriggerOutput> {
 /**
  * Maps trigger IDs to the exact Attio event type strings.
  */
-const TRIGGER_EVENT_MAP: Record<string, string[]> = {
+export const TRIGGER_EVENT_MAP: Record<string, string[]> = {
   attio_record_created: ['record.created'],
   attio_record_updated: ['record.updated'],
   attio_record_deleted: ['record.deleted'],
@@ -278,6 +291,15 @@ const TRIGGER_EVENT_MAP: Record<string, string[]> = {
 }
 
 /**
+ * Extracts the first event from an Attio webhook payload.
+ * Attio wraps events in an `events` array: `{ webhook_id, events: [{ event_type, id, ... }] }`.
+ */
+export function getAttioEvent(body: Record<string, unknown>): Record<string, unknown> | undefined {
+  const events = body.events as Array<Record<string, unknown>> | undefined
+  return events?.[0]
+}
+
+/**
  * Checks if an Attio webhook payload matches a trigger.
  */
 export function isAttioPayloadMatch(triggerId: string, body: Record<string, unknown>): boolean {
@@ -285,11 +307,155 @@ export function isAttioPayloadMatch(triggerId: string, body: Record<string, unkn
     return true
   }
 
-  const eventType = body.event_type as string | undefined
+  const event = getAttioEvent(body)
+  const eventType = event?.event_type as string | undefined
   if (!eventType) {
     return false
   }
 
   const acceptedEvents = TRIGGER_EVENT_MAP[triggerId]
   return acceptedEvents ? acceptedEvents.includes(eventType) : false
+}
+
+/**
+ * Extracts formatted data from an Attio record event payload.
+ * Used for record.created, record.deleted triggers.
+ */
+export function extractAttioRecordData(body: Record<string, unknown>): Record<string, unknown> {
+  const event = getAttioEvent(body) ?? {}
+  const id = (event.id as Record<string, unknown>) ?? {}
+  return {
+    eventType: event.event_type ?? null,
+    workspaceId: id.workspace_id ?? null,
+    objectId: id.object_id ?? null,
+    recordId: id.record_id ?? null,
+  }
+}
+
+/**
+ * Extracts formatted data from an Attio record.updated event payload.
+ */
+export function extractAttioRecordUpdatedData(
+  body: Record<string, unknown>
+): Record<string, unknown> {
+  const event = getAttioEvent(body) ?? {}
+  const id = (event.id as Record<string, unknown>) ?? {}
+  return {
+    eventType: event.event_type ?? null,
+    workspaceId: id.workspace_id ?? null,
+    objectId: id.object_id ?? null,
+    recordId: id.record_id ?? null,
+    attributeId: id.attribute_id ?? null,
+  }
+}
+
+/**
+ * Extracts formatted data from an Attio record.merged event payload.
+ */
+export function extractAttioRecordMergedData(
+  body: Record<string, unknown>
+): Record<string, unknown> {
+  const event = getAttioEvent(body) ?? {}
+  const id = (event.id as Record<string, unknown>) ?? {}
+  return {
+    eventType: event.event_type ?? null,
+    workspaceId: id.workspace_id ?? null,
+    objectId: id.object_id ?? null,
+    recordId: id.record_id ?? null,
+    duplicateObjectId: (event.duplicate_object_id as string) ?? null,
+    duplicateRecordId: (event.duplicate_record_id as string) ?? null,
+  }
+}
+
+/**
+ * Extracts formatted data from an Attio note event payload.
+ */
+export function extractAttioNoteData(body: Record<string, unknown>): Record<string, unknown> {
+  const event = getAttioEvent(body) ?? {}
+  const id = (event.id as Record<string, unknown>) ?? {}
+  return {
+    eventType: event.event_type ?? null,
+    workspaceId: id.workspace_id ?? null,
+    noteId: id.note_id ?? null,
+    parentObjectId: (event.parent_object_id as string) ?? null,
+    parentRecordId: (event.parent_record_id as string) ?? null,
+  }
+}
+
+/**
+ * Extracts formatted data from an Attio task event payload.
+ */
+export function extractAttioTaskData(body: Record<string, unknown>): Record<string, unknown> {
+  const event = getAttioEvent(body) ?? {}
+  const id = (event.id as Record<string, unknown>) ?? {}
+  return {
+    eventType: event.event_type ?? null,
+    workspaceId: id.workspace_id ?? null,
+    taskId: id.task_id ?? null,
+  }
+}
+
+/**
+ * Extracts formatted data from an Attio comment event payload.
+ */
+export function extractAttioCommentData(body: Record<string, unknown>): Record<string, unknown> {
+  const event = getAttioEvent(body) ?? {}
+  const id = (event.id as Record<string, unknown>) ?? {}
+  return {
+    eventType: event.event_type ?? null,
+    workspaceId: id.workspace_id ?? null,
+    threadId: (event.thread_id as string) ?? null,
+    commentId: id.comment_id ?? null,
+    objectId: (event.object_id as string) ?? null,
+    recordId: (event.record_id as string) ?? null,
+    listId: (event.list_id as string) ?? null,
+    entryId: (event.entry_id as string) ?? null,
+  }
+}
+
+/**
+ * Extracts formatted data from an Attio list-entry event payload.
+ * Used for list-entry.created, list-entry.deleted triggers.
+ */
+export function extractAttioListEntryData(body: Record<string, unknown>): Record<string, unknown> {
+  const event = getAttioEvent(body) ?? {}
+  const id = (event.id as Record<string, unknown>) ?? {}
+  return {
+    eventType: event.event_type ?? null,
+    workspaceId: id.workspace_id ?? null,
+    listId: id.list_id ?? null,
+    entryId: id.entry_id ?? null,
+  }
+}
+
+/**
+ * Extracts formatted data from an Attio list-entry.updated event payload.
+ */
+export function extractAttioListEntryUpdatedData(
+  body: Record<string, unknown>
+): Record<string, unknown> {
+  const event = getAttioEvent(body) ?? {}
+  const id = (event.id as Record<string, unknown>) ?? {}
+  return {
+    eventType: event.event_type ?? null,
+    workspaceId: id.workspace_id ?? null,
+    listId: id.list_id ?? null,
+    entryId: id.entry_id ?? null,
+    attributeId: id.attribute_id ?? null,
+  }
+}
+
+/**
+ * Extracts formatted data from a generic Attio webhook payload.
+ * Passes through the first event with camelCase field mapping.
+ */
+export function extractAttioGenericData(body: Record<string, unknown>): Record<string, unknown> {
+  const event = getAttioEvent(body) ?? {}
+  const id = (event.id as Record<string, unknown>) ?? {}
+  return {
+    eventType: event.event_type ?? null,
+    id,
+    parentObjectId: (event.parent_object_id as string) ?? null,
+    parentRecordId: (event.parent_record_id as string) ?? null,
+  }
 }

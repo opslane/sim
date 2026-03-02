@@ -537,6 +537,34 @@ export function GithubIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+export function GithubOutlineIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      width='24'
+      height='24'
+      viewBox='0 0 24 24'
+      fill='none'
+      xmlns='http://www.w3.org/2000/svg'
+    >
+      <path
+        d='M15 21C15 21 15 18.73 15 18C15 17.37 15.15 16.04 14.5 15.5C15.89 15.37 16.98 14.92 18 14C19.02 13.08 19.5 11.69 19.5 9.5C19.5 8 19.25 7 18.5 6C18.79 5.22 18.84 4 18.5 3C16.94 3 15.53 4.07 15 4.5C14.61 4.4 13.67 4 12 4C10.33 4 9.39 4.4 9 4.5C8.47 4.07 7.06 3 5.5 3C5.16 4 5.21 5.22 5.5 6C4.75 7 4.5 8 4.5 9.5C4.5 11.69 4.98 13.08 6 14C7.02 14.92 8.11 15.37 9.5 15.5C8.85 16.04 9 17.37 9 18C9 18.73 9 21 9 21'
+        stroke='currentColor'
+        strokeWidth='2'
+        strokeLinecap='round'
+        strokeLinejoin='round'
+      />
+      <path
+        d='M9 19C7.59 19 6.16 18.44 5.31 17.81C4.47 17.18 4.22 16.15 3 15.5'
+        stroke='currentColor'
+        strokeWidth='2'
+        strokeLinecap='round'
+        strokeLinejoin='round'
+      />
+    </svg>
+  )
+}
+
 export function GitLabIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...props} width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'>
@@ -5440,6 +5468,34 @@ export function GoogleMapsIcon(props: SVGProps<SVGSVGElement>) {
       <path
         fill='#34a853'
         d='M59.1 109.2c15.4-24.1 33.3-35 33.3-63 0-7.7-1.9-14.9-5.2-21.3L25.6 98c2.6 3.4 5.3 7.3 7.9 11.3 9.4 14.5 6.8 23.1 12.8 23.1s3.4-8.7 12.8-23.2'
+      />
+    </svg>
+  )
+}
+
+export function GoogleTranslateIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...props} xmlns='http://www.w3.org/2000/svg' viewBox='0 0 998.1 998.3'>
+      <path
+        fill='#DBDBDB'
+        d='M931.7 998.3c36.5 0 66.4-29.4 66.4-65.4V265.8c0-36-29.9-65.4-66.4-65.4H283.6l260.1 797.9h388z'
+      />
+      <path
+        fill='#DCDCDC'
+        d='M931.7 230.4c9.7 0 18.9 3.8 25.8 10.6 6.8 6.7 10.6 15.5 10.6 24.8v667.1c0 9.3-3.7 18.1-10.6 24.8-6.9 6.8-16.1 10.6-25.8 10.6H565.5L324.9 230.4h606.8m0-30H283.6l260.1 797.9h388c36.5 0 66.4-29.4 66.4-65.4V265.8c0-36-29.9-65.4-66.4-65.4z'
+      />
+      <polygon fill='#4352B8' points='482.3,809.8 543.7,998.3 714.4,809.8' />
+      <path
+        fill='#607988'
+        d='M936.1 476.1V437H747.6v-63.2h-61.2V437H566.1v39.1h239.4c-12.8 45.1-41.1 87.7-68.7 120.8-48.9-57.9-49.1-76.7-49.1-76.7h-50.8s2.1 28.2 70.7 108.6c-22.3 22.8-39.2 36.3-39.2 36.3l15.6 48.8s23.6-20.3 53.1-51.6c29.6 32.1 67.8 70.7 117.2 116.7l32.1-32.1c-52.9-48-91.7-86.1-120.2-116.7 38.2-45.2 77-102.1 85.2-154.2H936v.1z'
+      />
+      <path
+        fill='#4285F4'
+        d='M66.4 0C29.9 0 0 29.9 0 66.5v677c0 36.5 29.9 66.4 66.4 66.4h648.1L454.4 0h-388z'
+      />
+      <path
+        fill='#EEEEEE'
+        d='M371.4 430.6c-2.5 30.3-28.4 75.2-91.1 75.2-54.3 0-98.3-44.9-98.3-100.2s44-100.2 98.3-100.2c30.9 0 51.5 13.4 63.3 24.3l41.2-39.6c-27.1-25-62.4-40.6-104.5-40.6-86.1 0-156 69.9-156 156s69.9 156 156 156c90.2 0 149.8-63.3 149.8-152.6 0-12.8-1.6-22.2-3.7-31.8h-146v53.4l91 .1z'
       />
     </svg>
   )
