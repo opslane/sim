@@ -141,10 +141,7 @@ export function createSSEStream(params: StreamingOrchestrationParams): ReadableS
         requestChatTitle({ message, model: titleModel, provider: titleProvider })
           .then(async (title) => {
             if (title) {
-              await db
-                .update(copilotChats)
-                .set({ title, updatedAt: new Date() })
-                .where(eq(copilotChats.id, chatId!))
+              await db.update(copilotChats).set({ title }).where(eq(copilotChats.id, chatId!))
               await pushEvent({ type: 'title_updated', title })
             }
           })

@@ -102,15 +102,6 @@ export function Home({ chatId }: HomeProps = {}) {
           />
         </div>
       </div>
-
-      <div className='hidden h-full w-[480px] flex-shrink-0 flex-col border-[var(--border)] border-l lg:flex'>
-        <div className='flex items-center border-[var(--border)] border-b px-[16px] py-[12px]'>
-          <span className='font-medium text-[13px] text-[var(--text-secondary)]'>Artifacts</span>
-        </div>
-        <div className='flex flex-1 items-center justify-center'>
-          <span className='text-[13px] text-[var(--text-muted)]'>No artifacts yet</span>
-        </div>
-      </div>
     </div>
   )
 }

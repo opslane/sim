@@ -190,7 +190,6 @@ export async function POST(req: NextRequest) {
               .set({
                 messages: updatedMessages,
                 conversationId: null,
-                updatedAt: new Date(),
               })
               .where(eq(copilotChats.id, actualChatId))
           } catch (error) {
