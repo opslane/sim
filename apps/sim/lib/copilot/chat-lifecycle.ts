@@ -23,8 +23,9 @@ export async function resolveOrCreateChat(params: {
   workflowId?: string
   workspaceId?: string
   model: string
+  type?: 'mothership' | 'copilot'
 }): Promise<ChatLoadResult> {
-  const { chatId, userId, workflowId, workspaceId, model } = params
+  const { chatId, userId, workflowId, workspaceId, model, type } = params
 
   if (chatId) {
     const [chat] = await db
@@ -47,6 +48,7 @@ export async function resolveOrCreateChat(params: {
       userId,
       ...(workflowId ? { workflowId } : {}),
       ...(workspaceId ? { workspaceId } : {}),
+      type: type ?? 'copilot',
       title: null,
       model,
       messages: [],

@@ -16,18 +16,15 @@ export function Home({ chatId, streamId }: HomeProps = {}) {
   const { workspaceId } = useParams<{ workspaceId: string }>()
   const router = useRouter()
   const [inputValue, setInputValue] = useState('')
-  const { messages, isSending, sendMessage, stopGeneration, chatBottomRef } = useChat(
-    workspaceId,
-    chatId,
-    streamId
-  )
+  const { messages, isSending, currentChatId, sendMessage, stopGeneration, chatBottomRef } =
+    useChat(workspaceId, chatId, streamId)
 
   const handleSubmit = useCallback(async () => {
     const trimmed = inputValue.trim()
     if (!trimmed) return
     setInputValue('')
 
-    if (chatId) {
+    if (chatId || currentChatId) {
       sendMessage(trimmed)
       return
     }
@@ -54,7 +51,7 @@ export function Home({ chatId, streamId }: HomeProps = {}) {
     } catch {
       setInputValue(trimmed)
     }
-  }, [inputValue, chatId, sendMessage, workspaceId, router])
+  }, [inputValue, chatId, currentChatId, sendMessage, workspaceId, router])
 
   const hasMessages = messages.length > 0
 

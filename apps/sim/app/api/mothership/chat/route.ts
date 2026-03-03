@@ -103,6 +103,7 @@ export async function POST(req: NextRequest) {
         userId: authenticatedUserId,
         workspaceId,
         model: 'claude-opus-4-5',
+        type: 'mothership',
       })
       currentChat = chatResult.chat
       actualChatId = chatResult.chatId || chatId

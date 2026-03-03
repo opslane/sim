@@ -21,6 +21,7 @@ export interface UseChatReturn {
   messages: ChatMessage[]
   isSending: boolean
   error: string | null
+  currentChatId: string | undefined
   sendMessage: (message: string) => Promise<void>
   stopGeneration: () => void
   chatBottomRef: React.RefObject<HTMLDivElement | null>
@@ -384,5 +385,13 @@ export function useChat(
     setIsSending(false)
   }, [])
 
-  return { messages, isSending, error, sendMessage, stopGeneration, chatBottomRef }
+  return {
+    messages,
+    isSending,
+    error,
+    currentChatId: chatIdRef.current,
+    sendMessage,
+    stopGeneration,
+    chatBottomRef,
+  }
 }

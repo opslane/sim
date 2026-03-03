@@ -3,36 +3,15 @@
 import { Popover, PopoverAnchor, PopoverContent, PopoverItem } from '@/components/emcn'
 
 interface NavItemContextMenuProps {
-  /**
-   * Whether the context menu is open
-   */
   isOpen: boolean
-  /**
-   * Position of the context menu
-   */
   position: { x: number; y: number }
-  /**
-   * Ref for the menu element
-   */
   menuRef: React.RefObject<HTMLDivElement | null>
-  /**
-   * Callback when menu should close
-   */
   onClose: () => void
-  /**
-   * Callback when open in new tab is clicked
-   */
   onOpenInNewTab: () => void
-  /**
-   * Callback when copy link is clicked
-   */
   onCopyLink: () => void
+  onDelete?: () => void
 }
 
-/**
- * Context menu component for sidebar navigation items.
- * Displays navigation-appropriate options (open in new tab, copy link) in a popover at the right-click position.
- */
 export function NavItemContextMenu({
   isOpen,
   position,
@@ -40,6 +19,7 @@ export function NavItemContextMenu({
   onClose,
   onOpenInNewTab,
   onCopyLink,
+  onDelete,
 }: NavItemContextMenuProps) {
   return (
     <Popover
@@ -75,6 +55,17 @@ export function NavItemContextMenu({
         >
           Copy link
         </PopoverItem>
+        {onDelete && (
+          <PopoverItem
+            onClick={() => {
+              onDelete()
+              onClose()
+            }}
+            className='text-[var(--color-error)]'
+          >
+            Delete
+          </PopoverItem>
+        )}
       </PopoverContent>
     </Popover>
   )

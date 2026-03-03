@@ -1,7 +1,7 @@
 import { db } from '@sim/db'
 import { copilotChats } from '@sim/db/schema'
 import { createLogger } from '@sim/logger'
-import { and, desc, eq, isNull } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
         and(
           eq(copilotChats.userId, userId),
           eq(copilotChats.workspaceId, workspaceId),
-          isNull(copilotChats.workflowId)
+          eq(copilotChats.type, 'mothership')
         )
       )
       .orderBy(desc(copilotChats.updatedAt))
@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
       .values({
         userId,
         workspaceId,
+        type: 'mothership',
         title: null,
         model: 'claude-opus-4-5',
         messages: [],

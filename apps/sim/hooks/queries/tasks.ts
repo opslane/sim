@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 export interface TaskMetadata {
   id: string
@@ -103,5 +103,29 @@ export function useChatHistory(chatId: string | undefined) {
     queryFn: () => fetchChatHistory(chatId!),
     enabled: Boolean(chatId),
     staleTime: 30 * 1000,
+  })
+}
+
+async function deleteTask(chatId: string): Promise<void> {
+  const response = await fetch('/api/copilot/chat/delete', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chatId }),
+  })
+  if (!response.ok) {
+    throw new Error('Failed to delete task')
+  }
+}
+
+/**
+ * Deletes a mothership chat task and invalidates the task list.
+ */
+export function useDeleteTask(workspaceId?: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deleteTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: taskKeys.list(workspaceId) })
+    },
   })
 }

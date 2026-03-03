@@ -1489,6 +1489,8 @@ export const docsEmbeddings = pgTable(
   })
 )
 
+export const chatTypeEnum = pgEnum('chat_type', ['mothership', 'copilot'])
+
 export const copilotChats = pgTable(
   'copilot_chats',
   {
@@ -1498,13 +1500,14 @@ export const copilotChats = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
     workflowId: text('workflow_id').references(() => workflow.id, { onDelete: 'cascade' }),
     workspaceId: text('workspace_id').references(() => workspace.id, { onDelete: 'cascade' }),
+    type: chatTypeEnum('type').notNull().default('copilot'),
     title: text('title'),
     messages: jsonb('messages').notNull().default('[]'),
     model: text('model').notNull().default('claude-3-7-sonnet-latest'),
     conversationId: text('conversation_id'),
-    previewYaml: text('preview_yaml'), // YAML content for pending workflow preview
-    planArtifact: text('plan_artifact'), // Plan/design document artifact for the chat
-    config: jsonb('config'), // JSON config storing model and mode settings { model, mode }
+    previewYaml: text('preview_yaml'),
+    planArtifact: text('plan_artifact'),
+    config: jsonb('config'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },

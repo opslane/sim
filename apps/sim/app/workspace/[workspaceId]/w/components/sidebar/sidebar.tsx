@@ -46,7 +46,7 @@ import {
   useImportWorkflow,
   useImportWorkspace,
 } from '@/app/workspace/[workspaceId]/w/hooks'
-import { useTasks } from '@/hooks/queries/tasks'
+import { useDeleteTask, useTasks } from '@/hooks/queries/tasks'
 import { usePermissionConfig } from '@/hooks/use-permission-config'
 import { SIDEBAR_WIDTH } from '@/stores/constants'
 import { useFolderStore } from '@/stores/folders/store'
@@ -183,6 +183,7 @@ export const Sidebar = memo(function Sidebar() {
   })
 
   const [activeNavItemHref, setActiveNavItemHref] = useState<string | null>(null)
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
   const {
     isOpen: isNavContextMenuOpen,
     position: navContextMenuPosition,
@@ -191,9 +192,21 @@ export const Sidebar = memo(function Sidebar() {
     closeMenu: closeNavContextMenu,
   } = useContextMenu()
 
+  const deleteTaskMutation = useDeleteTask(workspaceId)
+
   const handleNavItemContextMenu = useCallback(
     (e: React.MouseEvent, href: string) => {
       setActiveNavItemHref(href)
+      setActiveTaskId(null)
+      handleNavContextMenuBase(e)
+    },
+    [handleNavContextMenuBase]
+  )
+
+  const handleTaskContextMenu = useCallback(
+    (e: React.MouseEvent, href: string, taskId: string) => {
+      setActiveNavItemHref(href)
+      setActiveTaskId(taskId)
       handleNavContextMenuBase(e)
     },
     [handleNavContextMenuBase]
@@ -202,6 +215,7 @@ export const Sidebar = memo(function Sidebar() {
   const handleNavContextMenuClose = useCallback(() => {
     closeNavContextMenu()
     setActiveNavItemHref(null)
+    setActiveTaskId(null)
   }, [closeNavContextMenu])
 
   const handleNavOpenInNewTab = useCallback(() => {
@@ -220,6 +234,18 @@ export const Sidebar = memo(function Sidebar() {
       }
     }
   }, [activeNavItemHref])
+
+  const handleDeleteTask = useCallback(() => {
+    if (!activeTaskId) return
+    const isViewingDeletedTask = pathname === `/workspace/${workspaceId}/task/${activeTaskId}`
+    deleteTaskMutation.mutate(activeTaskId, {
+      onSuccess: () => {
+        if (isViewingDeletedTask) {
+          router.push(`/workspace/${workspaceId}/home`)
+        }
+      },
+    })
+  }, [activeTaskId, pathname, workspaceId, deleteTaskMutation, router])
 
   const { handleDuplicateWorkspace: duplicateWorkspace } = useDuplicateWorkspace({
     workspaceId,
@@ -687,7 +713,7 @@ export const Sidebar = memo(function Sidebar() {
                       key={task.id}
                       href={task.href}
                       className={`mx-[2px] flex h-[28px] items-center gap-[8px] rounded-[8px] px-[8px] text-[14px] hover:bg-[var(--surface-6)] dark:hover:bg-[var(--surface-5)] ${active ? 'bg-[var(--surface-6)] dark:bg-[var(--surface-5)]' : ''}`}
-                      onContextMenu={(e) => handleNavItemContextMenu(e, task.href)}
+                      onContextMenu={(e) => handleTaskContextMenu(e, task.href, task.id)}
                     >
                       <Blimp className={`h-[14px] w-[14px] flex-shrink-0 ${textColor}`} />
                       <div className={`min-w-0 truncate font-medium ${textColor}`}>{task.name}</div>
@@ -813,6 +839,7 @@ export const Sidebar = memo(function Sidebar() {
             onClose={handleNavContextMenuClose}
             onOpenInNewTab={handleNavOpenInNewTab}
             onCopyLink={handleNavCopyLink}
+            onDelete={activeTaskId ? handleDeleteTask : undefined}
           />
         </div>
 
