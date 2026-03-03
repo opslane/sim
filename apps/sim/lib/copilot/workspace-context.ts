@@ -5,23 +5,35 @@ import {
   userTableDefinitions,
   userTableRows,
   workflow,
-  workspaceFiles,
+  workspace,
 } from '@sim/db/schema'
 import { createLogger } from '@sim/logger'
 import { and, count, eq, isNull } from 'drizzle-orm'
+import { listWorkspaceFiles } from '@/lib/uploads/contexts/workspace'
+import { getUsersWithPermissions } from '@/lib/workspaces/permissions/utils'
 
 const logger = createLogger('WorkspaceContext')
 
 /**
  * Generate WORKSPACE.md content from actual database state.
- * This is injected into the system prompt — the LLM never writes it directly.
+ * Auto-injected into the system prompt and served as a top-level VFS file.
+ * The LLM never writes it directly.
  */
 export async function generateWorkspaceContext(
   workspaceId: string,
   userId: string
 ): Promise<string> {
   try {
-    const [workflows, kbs, tables, files, credentials] = await Promise.all([
+    const [wsRow, members, workflows, kbs, tables, files, credentials] = await Promise.all([
+      db
+        .select({ id: workspace.id, name: workspace.name, ownerId: workspace.ownerId })
+        .from(workspace)
+        .where(eq(workspace.id, workspaceId))
+        .limit(1)
+        .then((rows) => rows[0] ?? null),
+
+      getUsersWithPermissions(workspaceId),
+
       db
         .select({
           id: workflow.id,
@@ -51,15 +63,7 @@ export async function generateWorkspaceContext(
         .from(userTableDefinitions)
         .where(eq(userTableDefinitions.workspaceId, workspaceId)),
 
-      db
-        .select({
-          id: workspaceFiles.id,
-          originalName: workspaceFiles.originalName,
-          contentType: workspaceFiles.contentType,
-          size: workspaceFiles.size,
-        })
-        .from(workspaceFiles)
-        .where(eq(workspaceFiles.workspaceId, workspaceId)),
+      listWorkspaceFiles(workspaceId),
 
       db
         .select({
@@ -72,6 +76,22 @@ export async function generateWorkspaceContext(
 
     const sections: string[] = []
 
+    // Workspace identity
+    if (wsRow) {
+      sections.push(
+        `## Workspace\n- **Name**: ${wsRow.name}\n- **ID**: ${wsRow.id}\n- **Owner**: ${wsRow.ownerId}`
+      )
+    }
+
+    // Members & permissions
+    if (members.length > 0) {
+      const lines = members.map((m) => {
+        const display = m.name ? `${m.name} (${m.email})` : m.email
+        return `- ${display} — ${m.permissionType}`
+      })
+      sections.push(`## Members\n${lines.join('\n')}`)
+    }
+
     // Workflows
     if (workflows.length > 0) {
       const lines = workflows.map((wf) => {
@@ -83,9 +103,9 @@ export async function generateWorkspaceContext(
         if (flags.length > 0) parts[0] += ` — ${flags.join(', ')}`
         return parts.join('\n')
       })
-      sections.push(`## Workflows\n${lines.join('\n')}`)
+      sections.push(`## Workflows (${workflows.length})\n${lines.join('\n')}`)
     } else {
-      sections.push('## Workflows\n(none)')
+      sections.push('## Workflows (0)\n(none)')
     }
 
     // Knowledge Bases
@@ -95,9 +115,9 @@ export async function generateWorkspaceContext(
         if (kb.description) line += ` — ${kb.description}`
         return line
       })
-      sections.push(`## Knowledge Bases\n${lines.join('\n')}`)
+      sections.push(`## Knowledge Bases (${kbs.length})\n${lines.join('\n')}`)
     } else {
-      sections.push('## Knowledge Bases\n(none)')
+      sections.push('## Knowledge Bases (0)\n(none)')
     }
 
     // Tables (live row counts)
@@ -116,19 +136,17 @@ export async function generateWorkspaceContext(
         if (t.description) line += `, ${t.description}`
         return line
       })
-      sections.push(`## Tables\n${lines.join('\n')}`)
+      sections.push(`## Tables (${tables.length})\n${lines.join('\n')}`)
     } else {
-      sections.push('## Tables\n(none)')
+      sections.push('## Tables (0)\n(none)')
     }
 
     // Files
     if (files.length > 0) {
-      const lines = files.map(
-        (f) => `- **${f.originalName}** (${f.contentType}, ${formatSize(f.size)})`
-      )
-      sections.push(`## Files\n${lines.join('\n')}`)
+      const lines = files.map((f) => `- **${f.name}** (${f.type}, ${formatSize(f.size)})`)
+      sections.push(`## Files (${files.length})\n${lines.join('\n')}`)
     } else {
-      sections.push('## Files\n(none)')
+      sections.push('## Files (0)\n(none)')
     }
 
     // Credentials
@@ -145,7 +163,7 @@ export async function generateWorkspaceContext(
       workspaceId,
       error: err instanceof Error ? err.message : String(err),
     })
-    return '## Workflows\n(unavailable)\n\n## Knowledge Bases\n(unavailable)\n\n## Tables\n(unavailable)\n\n## Files\n(unavailable)\n\n## Credentials\n(unavailable)'
+    return '## Workspace\n(unavailable)\n\n## Workflows\n(unavailable)\n\n## Knowledge Bases\n(unavailable)\n\n## Tables\n(unavailable)\n\n## Files\n(unavailable)\n\n## Credentials\n(unavailable)'
   }
 }
 

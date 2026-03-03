@@ -16,10 +16,10 @@ import {
   workflowMcpServer,
   workflowMcpTool,
   workspaceEnvironment,
-  workspaceFiles,
 } from '@sim/db/schema'
 import { createLogger } from '@sim/logger'
 import { and, count, desc, eq, isNull } from 'drizzle-orm'
+import { generateWorkspaceContext } from '@/lib/copilot/workspace-context'
 import type { DirEntry, GrepMatch, GrepOptions, ReadResult } from '@/lib/copilot/vfs/operations'
 import * as ops from '@/lib/copilot/vfs/operations'
 import type { DeploymentData } from '@/lib/copilot/vfs/serializers'
@@ -38,6 +38,7 @@ import {
   serializeTableMeta,
   serializeWorkflowMeta,
 } from '@/lib/copilot/vfs/serializers'
+import { listWorkspaceFiles } from '@/lib/uploads/contexts/workspace'
 import { hasWorkflowChanged } from '@/lib/workflows/comparison'
 import { loadWorkflowFromNormalizedTables } from '@/lib/workflows/persistence/utils'
 import { sanitizeForCopilot } from '@/lib/workflows/sanitization/json-sanitizer'
@@ -184,6 +185,7 @@ function getStaticComponentFiles(): Map<string, string> {
  * Virtual Filesystem that materializes workspace data into an in-memory Map.
  *
  * Structure:
+ *   WORKSPACE.md                         — workspace identity, members, inventory (auto-generated)
  *   workflows/{name}/meta.json
  *   workflows/{name}/state.json          (sanitized blocks with embedded connections)
  *   workflows/{name}/executions.json
@@ -217,6 +219,9 @@ export class WorkspaceVFS {
       this.materializeFiles(workspaceId),
       this.materializeEnvironment(workspaceId, userId),
       this.materializeCustomTools(workspaceId),
+      generateWorkspaceContext(workspaceId, userId).then((content) => {
+        this.files.set('WORKSPACE.md', content)
+      }),
     ])
 
     // Merge static component files
@@ -460,25 +465,16 @@ export class WorkspaceVFS {
    */
   private async materializeFiles(workspaceId: string): Promise<void> {
     try {
-      const fileRows = await db
-        .select({
-          id: workspaceFiles.id,
-          originalName: workspaceFiles.originalName,
-          contentType: workspaceFiles.contentType,
-          size: workspaceFiles.size,
-          uploadedAt: workspaceFiles.uploadedAt,
-        })
-        .from(workspaceFiles)
-        .where(eq(workspaceFiles.workspaceId, workspaceId))
+      const files = await listWorkspaceFiles(workspaceId)
 
-      for (const file of fileRows) {
-        const safeName = sanitizeName(file.originalName)
+      for (const file of files) {
+        const safeName = sanitizeName(file.name)
         this.files.set(
           `files/${safeName}/meta.json`,
           serializeFileMeta({
             id: file.id,
-            name: file.originalName,
-            contentType: file.contentType,
+            name: file.name,
+            contentType: file.type,
             size: file.size,
             uploadedAt: file.uploadedAt,
           })
