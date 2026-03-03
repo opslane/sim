@@ -27,70 +27,70 @@ export async function generateWorkspaceContext(
   try {
     const [wsRow, members, workflows, kbs, tables, files, credentials, recentTasks] =
       await Promise.all([
-      db
-        .select({ id: workspace.id, name: workspace.name, ownerId: workspace.ownerId })
-        .from(workspace)
-        .where(eq(workspace.id, workspaceId))
-        .limit(1)
-        .then((rows) => rows[0] ?? null),
+        db
+          .select({ id: workspace.id, name: workspace.name, ownerId: workspace.ownerId })
+          .from(workspace)
+          .where(eq(workspace.id, workspaceId))
+          .limit(1)
+          .then((rows) => rows[0] ?? null),
 
-      getUsersWithPermissions(workspaceId),
+        getUsersWithPermissions(workspaceId),
 
-      db
-        .select({
-          id: workflow.id,
-          name: workflow.name,
-          description: workflow.description,
-          isDeployed: workflow.isDeployed,
-          lastRunAt: workflow.lastRunAt,
-        })
-        .from(workflow)
-        .where(eq(workflow.workspaceId, workspaceId)),
+        db
+          .select({
+            id: workflow.id,
+            name: workflow.name,
+            description: workflow.description,
+            isDeployed: workflow.isDeployed,
+            lastRunAt: workflow.lastRunAt,
+          })
+          .from(workflow)
+          .where(eq(workflow.workspaceId, workspaceId)),
 
-      db
-        .select({
-          id: knowledgeBase.id,
-          name: knowledgeBase.name,
-          description: knowledgeBase.description,
-        })
-        .from(knowledgeBase)
-        .where(and(eq(knowledgeBase.workspaceId, workspaceId), isNull(knowledgeBase.deletedAt))),
+        db
+          .select({
+            id: knowledgeBase.id,
+            name: knowledgeBase.name,
+            description: knowledgeBase.description,
+          })
+          .from(knowledgeBase)
+          .where(and(eq(knowledgeBase.workspaceId, workspaceId), isNull(knowledgeBase.deletedAt))),
 
-      db
-        .select({
-          id: userTableDefinitions.id,
-          name: userTableDefinitions.name,
-          description: userTableDefinitions.description,
-        })
-        .from(userTableDefinitions)
-        .where(eq(userTableDefinitions.workspaceId, workspaceId)),
+        db
+          .select({
+            id: userTableDefinitions.id,
+            name: userTableDefinitions.name,
+            description: userTableDefinitions.description,
+          })
+          .from(userTableDefinitions)
+          .where(eq(userTableDefinitions.workspaceId, workspaceId)),
 
-      listWorkspaceFiles(workspaceId),
+        listWorkspaceFiles(workspaceId),
 
-      db
-        .select({
-          providerId: account.providerId,
-          scope: account.scope,
-        })
-        .from(account)
-        .where(eq(account.userId, userId)),
+        db
+          .select({
+            providerId: account.providerId,
+            scope: account.scope,
+          })
+          .from(account)
+          .where(eq(account.userId, userId)),
 
-      db
-        .select({
-          id: copilotChats.id,
-          title: copilotChats.title,
-          updatedAt: copilotChats.updatedAt,
-        })
-        .from(copilotChats)
-        .where(
-          and(
-            eq(copilotChats.workspaceId, workspaceId),
-            eq(copilotChats.userId, userId),
-            eq(copilotChats.type, 'mothership')
+        db
+          .select({
+            id: copilotChats.id,
+            title: copilotChats.title,
+            updatedAt: copilotChats.updatedAt,
+          })
+          .from(copilotChats)
+          .where(
+            and(
+              eq(copilotChats.workspaceId, workspaceId),
+              eq(copilotChats.userId, userId),
+              eq(copilotChats.type, 'mothership')
+            )
           )
-        )
-        .orderBy(desc(copilotChats.updatedAt))
-        .limit(5),
+          .orderBy(desc(copilotChats.updatedAt))
+          .limit(5),
       ])
 
     const sections: string[] = []

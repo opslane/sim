@@ -553,7 +553,12 @@ export function serializeTaskChat(rawMessages: unknown[]): string {
     if (role === 'assistant' && Array.isArray(m.contentBlocks)) {
       const textParts: string[] = []
       for (const block of m.contentBlocks) {
-        if (block && typeof block === 'object' && (block as any).type === 'text' && (block as any).content) {
+        if (
+          block &&
+          typeof block === 'object' &&
+          (block as any).type === 'text' &&
+          (block as any).content
+        ) {
           textParts.push((block as any).content)
         }
       }
