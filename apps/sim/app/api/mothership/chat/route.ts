@@ -11,6 +11,7 @@ import { createSSEStream, SSE_RESPONSE_HEADERS } from '@/lib/copilot/chat-stream
 import type { OrchestratorResult } from '@/lib/copilot/orchestrator/types'
 import { createRequestTracker, createUnauthorizedResponse } from '@/lib/copilot/request-helpers'
 import { generateWorkspaceContext } from '@/lib/copilot/workspace-context'
+import { getUserEntityPermissions } from '@/lib/workspaces/permissions/utils'
 
 const logger = createLogger('MothershipChatAPI')
 
@@ -129,7 +130,10 @@ export async function POST(req: NextRequest) {
         .where(eq(copilotChats.id, actualChatId))
     }
 
-    const workspaceContext = await generateWorkspaceContext(workspaceId, authenticatedUserId)
+    const [workspaceContext, userPermission] = await Promise.all([
+      generateWorkspaceContext(workspaceId, authenticatedUserId),
+      getUserEntityPermissions(authenticatedUserId, 'workspace', workspaceId).catch(() => null),
+    ])
 
     const requestPayload = await buildCopilotRequestPayload(
       {
@@ -143,6 +147,7 @@ export async function POST(req: NextRequest) {
         contexts: agentContexts,
         fileAttachments,
         chatId: actualChatId,
+        userPermission: userPermission ?? undefined,
         workspaceContext,
       },
       { selectedModel: '' }

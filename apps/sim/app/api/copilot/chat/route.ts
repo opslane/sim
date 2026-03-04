@@ -14,6 +14,7 @@ import {
 } from '@/lib/copilot/chat-streaming'
 import { COPILOT_REQUEST_MODES } from '@/lib/copilot/models'
 import { orchestrateCopilotStream } from '@/lib/copilot/orchestrator'
+import { getUserEntityPermissions } from '@/lib/workspaces/permissions/utils'
 import {
   authenticateCopilotRequestSessionOnly,
   createBadRequestResponse,
@@ -218,6 +219,12 @@ export async function POST(req: NextRequest) {
 
     const effectiveMode = mode === 'agent' ? 'build' : mode
 
+    const userPermission = resolvedWorkspaceId
+      ? await getUserEntityPermissions(authenticatedUserId, 'workspace', resolvedWorkspaceId).catch(
+          () => null
+        )
+      : null
+
     const requestPayload = await buildCopilotRequestPayload(
       {
         message,
@@ -236,6 +243,7 @@ export async function POST(req: NextRequest) {
         chatId: actualChatId,
         prefetch,
         implicitFeedback,
+        userPermission: userPermission ?? undefined,
       },
       {
         selectedModel,
