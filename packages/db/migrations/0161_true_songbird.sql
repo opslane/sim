@@ -1,1 +1,0 @@
-ALTER TABLE "mcp_servers" ADD COLUMN "copilot_enabled" boolean DEFAULT false NOT NULL;

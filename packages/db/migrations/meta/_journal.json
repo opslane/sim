@@ -1114,34 +1114,6 @@
       "when": 1771897746619,
       "tag": "0159_magical_marten_broadcloak",
       "breakpoints": true
-    },
-    {
-      "idx": 160,
-      "version": "7",
-      "when": 1771970593817,
-      "tag": "0160_mushy_viper",
-      "breakpoints": true
-    },
-    {
-      "idx": 161,
-      "version": "7",
-      "when": 1772217895286,
-      "tag": "0161_true_songbird",
-      "breakpoints": true
-    },
-    {
-      "idx": 162,
-      "version": "7",
-      "when": 1772482049606,
-      "tag": "0162_early_bloodscream",
-      "breakpoints": true
-    },
-    {
-      "idx": 163,
-      "version": "7",
-      "when": 1772567614060,
-      "tag": "0163_pink_gambit",
-      "breakpoints": true
     }
   ]
 }
