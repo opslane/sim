@@ -30,6 +30,27 @@ export const ExecuteCommandBlock: BlockConfig<ExecuteCommandOutput> = {
       type: 'long-input',
       required: true,
       placeholder: 'echo "Hello, World!"',
+      wandConfig: {
+        enabled: true,
+        prompt: `You are an expert shell scripting assistant.
+Generate ONLY the raw shell command(s) based on the user's request. Never wrap in markdown formatting.
+The command runs in the default shell of the host OS (bash, zsh, cmd, or PowerShell).
+
+- Reference outputs from previous blocks using angle bracket syntax: <blockName.output>
+- Reference environment variables using double curly brace syntax: {{ENV_VAR_NAME}}
+- Chain multiple commands with && to run them sequentially.
+- Use pipes (|) to chain command output.
+
+Current command context: {context}
+
+IMPORTANT FORMATTING RULES:
+1. Output ONLY the shell command(s). No explanations, no markdown, no comments.
+2. Use <blockName.field> to reference block outputs. Do NOT wrap in quotes.
+3. Use {{VAR_NAME}} to reference environment variables. Do NOT wrap in quotes.
+4. Write portable commands when possible (prefer POSIX-compatible syntax).
+5. For multi-step operations, chain with && or use subshells.`,
+        placeholder: 'Describe the command you want to run...',
+      },
     },
     {
       id: 'workingDirectory',
