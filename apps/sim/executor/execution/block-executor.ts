@@ -668,6 +668,8 @@ export class BlockExecutor {
         if (done) break
         chunks.push(decoder.decode(value, { stream: true }))
       }
+      const tail = decoder.decode()
+      if (tail) chunks.push(tail)
     } catch (error) {
       logger.error('Error reading executor stream for block', { blockId, error })
     } finally {
