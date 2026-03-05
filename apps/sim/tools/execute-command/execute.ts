@@ -82,7 +82,6 @@ export const executeCommandRunTool: ToolConfig<ExecuteCommandInput, ExecuteComma
       blockNameMapping: params.blockNameMapping || {},
       blockOutputSchemas: params.blockOutputSchemas || {},
       workflowId: params._context?.workflowId,
-      userId: params._context?.userId,
     }),
   },
 

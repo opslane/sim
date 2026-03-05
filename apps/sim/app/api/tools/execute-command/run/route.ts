@@ -31,7 +31,7 @@ function resolveWorkflowVariables(command: string, workflowVariables: Record<str
   while ((match = regex.exec(command)) !== null) {
     const variableName = match[1].trim()
     const foundVariable = Object.entries(workflowVariables).find(
-      ([_, variable]) => normalizeName(variable.name || '') === variableName
+      ([_, variable]) => normalizeName(variable.name || '') === normalizeName(variableName)
     )
 
     if (!foundVariable) {
