@@ -16,7 +16,7 @@ export const ExecuteCommandBlock: BlockConfig<ExecuteCommandOutput> = {
   - Chain multiple commands with && to run them sequentially.
   - Use <blockName.output> syntax to reference outputs from other blocks.
   - Use {{ENV_VAR}} syntax to reference environment variables.
-  - The working directory defaults to the server process directory if not specified.
+  - The working directory defaults to the server process directory if not specified. Variable references are not supported in the Working Directory field — use a literal path.
   - A non-zero exit code is returned as data (exitCode > 0), not treated as a workflow error. Use a Condition block to branch on exitCode if needed.
   - Variable values from other blocks are interpolated directly into the command string. Avoid passing untrusted user input as block references to prevent shell injection.
   `,

@@ -44,13 +44,10 @@ export class ExecuteCommandBlockHandler implements BlockHandler {
     )
 
     if (!result.success) {
-      if (result.output) {
-        return {
-          ...result.output,
-          error: result.error || 'Command execution failed',
-        }
+      return {
+        ...(result.output ?? { stdout: '', stderr: '', exitCode: 1 }),
+        error: result.error || 'Command execution failed',
       }
-      throw new Error(result.error || 'Command execution failed')
     }
 
     return { ...result.output, error: null }

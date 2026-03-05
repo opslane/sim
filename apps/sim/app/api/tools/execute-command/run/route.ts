@@ -333,8 +333,12 @@ export async function POST(req: NextRequest) {
       workflowId,
     } = body
 
+    const MAX_ALLOWED_TIMEOUT_MS = (MAX_DURATION - 10) * 1000
     const parsedTimeout = Number(body.timeout)
-    const timeout = parsedTimeout > 0 ? parsedTimeout : DEFAULT_EXECUTION_TIMEOUT_MS
+    const timeout = Math.min(
+      parsedTimeout > 0 ? parsedTimeout : DEFAULT_EXECUTION_TIMEOUT_MS,
+      MAX_ALLOWED_TIMEOUT_MS
+    )
 
     if (!command || typeof command !== 'string') {
       return NextResponse.json(
