@@ -1,12 +1,12 @@
 import type { TokenBucketConfig } from '@/lib/core/rate-limiter/storage'
 
-export type ThrottleMode = 'per_request' | 'custom'
+export type HostedKeyRateLimitMode = 'per_request' | 'custom'
 
 /**
- * Simple per-request throttle configuration.
+ * Simple per-request rate limit configuration.
  * Enforces per-user rate limiting and distributes requests across keys.
  */
-export interface PerRequestThrottle {
+export interface PerRequestRateLimit {
   mode: 'per_request'
   /** Maximum requests per minute per user (enforced - blocks if exceeded) */
   userRequestsPerMinute: number
@@ -15,24 +15,24 @@ export interface PerRequestThrottle {
 }
 
 /**
- * Custom throttle with multiple dimensions (e.g., tokens, search units).
+ * Custom rate limit with multiple dimensions (e.g., tokens, search units).
  * Allows tracking different usage metrics independently.
  */
-export interface CustomThrottle {
+export interface CustomRateLimit {
   mode: 'custom'
   /** Maximum requests per minute per user (enforced - blocks if exceeded) */
   userRequestsPerMinute: number
   /** Multiple dimensions to track */
-  dimensions: ThrottleDimension[]
+  dimensions: RateLimitDimension[]
   /** Burst multiplier for token bucket max capacity. Default: 2 */
   burstMultiplier?: number
 }
 
 /**
- * A single dimension for custom throttling.
+ * A single dimension for custom rate limiting.
  * Each dimension has its own token bucket.
  */
-export interface ThrottleDimension {
+export interface RateLimitDimension {
   /** Dimension name (e.g., 'tokens', 'search_units') - used in storage key */
   name: string
   /** Limit per minute for this dimension */
@@ -46,11 +46,11 @@ export interface ThrottleDimension {
   extractUsage: (params: Record<string, unknown>, response: Record<string, unknown>) => number
 }
 
-/** Union of all throttle configuration types */
-export type ThrottleConfig = PerRequestThrottle | CustomThrottle
+/** Union of all hosted key rate limit configuration types */
+export type HostedKeyRateLimitConfig = PerRequestRateLimit | CustomRateLimit
 
 /**
- * Result from acquiring a key from the throttler
+ * Result from acquiring a key from the hosted key rate limiter
  */
 export interface AcquireKeyResult {
   /** Whether a key was successfully acquired */
@@ -63,14 +63,27 @@ export interface AcquireKeyResult {
   envVarName?: string
   /** Error message if no key available */
   error?: string
-  /** Whether the user was throttled (exceeded their per-user limit) */
-  userThrottled?: boolean
-  /** Milliseconds until user's rate limit resets (if userThrottled=true) */
+  /** Whether the user was rate limited (exceeded their per-user limit) */
+  userRateLimited?: boolean
+  /** Milliseconds until user's rate limit resets (if userRateLimited=true) */
   retryAfterMs?: number
 }
 
 /**
- * Convert throttle config to token bucket config for a dimension
+ * Result from reporting post-execution usage for custom dimensions
+ */
+export interface ReportUsageResult {
+  /** Per-dimension consumption results */
+  dimensions: {
+    name: string
+    consumed: number
+    allowed: boolean
+    tokensRemaining: number
+  }[]
+}
+
+/**
+ * Convert rate limit config to token bucket config for a dimension
  */
 export function toTokenBucketConfig(
   limitPerMinute: number,
@@ -85,9 +98,9 @@ export function toTokenBucketConfig(
 }
 
 /**
- * Default throttle window in milliseconds (1 minute)
+ * Default rate limit window in milliseconds (1 minute)
  */
-export const THROTTLE_WINDOW_MS = 60000
+export const DEFAULT_WINDOW_MS = 60000
 
 /**
  * Default burst multiplier

@@ -935,9 +935,9 @@ export const PlatformEvents = {
   },
 
   /**
-   * Track hosted key throttled (rate limited)
+   * Track hosted key rate limited
    */
-  hostedKeyThrottled: (attrs: {
+  hostedKeyRateLimited: (attrs: {
     toolId: string
     envVarName: string
     attempt: number
@@ -947,12 +947,12 @@ export const PlatformEvents = {
     workspaceId?: string
     workflowId?: string
   }) => {
-    trackPlatformEvent('platform.hosted_key.throttled', {
+    trackPlatformEvent('platform.hosted_key.rate_limited', {
       'tool.id': attrs.toolId,
       'hosted_key.env_var': attrs.envVarName,
-      'throttle.attempt': attrs.attempt,
-      'throttle.max_retries': attrs.maxRetries,
-      'throttle.delay_ms': attrs.delayMs,
+      'rate_limit.attempt': attrs.attempt,
+      'rate_limit.max_retries': attrs.maxRetries,
+      'rate_limit.delay_ms': attrs.delayMs,
       ...(attrs.userId && { 'user.id': attrs.userId }),
       ...(attrs.workspaceId && { 'workspace.id': attrs.workspaceId }),
       ...(attrs.workflowId && { 'workflow.id': attrs.workflowId }),

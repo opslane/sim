@@ -4,7 +4,7 @@ import { generateInternalToken } from '@/lib/auth/internal'
 import { logFixedUsage } from '@/lib/billing/core/usage-log'
 import { isHosted } from '@/lib/core/config/feature-flags'
 import { DEFAULT_EXECUTION_TIMEOUT_MS } from '@/lib/core/execution-limits'
-import { getHostedKeyThrottler } from '@/lib/core/hosted-key-throttler'
+import { getHostedKeyRateLimiter } from '@/lib/core/rate-limiter'
 import {
   secureFetchWithPinnedIP,
   validateUrlWithDNS,
@@ -44,7 +44,7 @@ interface HostedKeyInjectionResult {
 
 /**
  * Inject hosted API key if tool supports it and user didn't provide one.
- * Checks BYOK workspace keys first, then uses the HostedKeyThrottler for least-loaded key selection.
+ * Checks BYOK workspace keys first, then uses the HostedKeyRateLimiter for least-loaded key selection.
  * Returns whether a hosted (billable) key was injected and which env var it came from.
  */
 async function injectHostedKeyIfNeeded(
@@ -56,7 +56,7 @@ async function injectHostedKeyIfNeeded(
   if (!tool.hosting) return { isUsingHostedKey: false }
   if (!isHosted) return { isUsingHostedKey: false }
 
-  const { envKeys, apiKeyParam, byokProviderId, throttle } = tool.hosting
+  const { envKeys, apiKeyParam, byokProviderId, rateLimit } = tool.hosting
 
   // Check BYOK workspace key first
   if (byokProviderId && executionContext?.workspaceId) {
@@ -76,23 +76,22 @@ async function injectHostedKeyIfNeeded(
     }
   }
 
-  // Use the throttler for least-loaded key selection with per-user rate limiting
-  const throttler = getHostedKeyThrottler()
+  const rateLimiter = getHostedKeyRateLimiter()
   const provider = byokProviderId || tool.id
   const userId = executionContext?.userId
 
-  const acquireResult = await throttler.acquireKey(provider, envKeys, throttle, userId)
+  const acquireResult = await rateLimiter.acquireKey(provider, envKeys, rateLimit, userId)
 
   // Handle per-user rate limiting (enforced - blocks the user)
-  if (!acquireResult.success && acquireResult.userThrottled) {
-    logger.warn(`[${requestId}] User ${userId} throttled for ${tool.id}`, {
+  if (!acquireResult.success && acquireResult.userRateLimited) {
+    logger.warn(`[${requestId}] User ${userId} rate limited for ${tool.id}`, {
       provider,
       retryAfterMs: acquireResult.retryAfterMs,
     })
 
-    PlatformEvents.hostedKeyThrottled({
+    PlatformEvents.hostedKeyRateLimited({
       toolId: tool.id,
-      envVarName: 'user_throttled',
+      envVarName: 'user_rate_limited',
       attempt: 0,
       maxRetries: 0,
       delayMs: acquireResult.retryAfterMs ?? 0,
@@ -139,7 +138,7 @@ function isRateLimitError(error: unknown): boolean {
   return false
 }
 
-/** Context for retry with throttle tracking */
+/** Context for retry with rate limit tracking */
 interface RetryContext {
   requestId: string
   toolId: string
@@ -149,7 +148,7 @@ interface RetryContext {
 
 /**
  * Execute a function with exponential backoff retry for rate limiting errors.
- * Only used for hosted key requests. Tracks throttling events via telemetry.
+ * Only used for hosted key requests. Tracks rate limit events via telemetry.
  */
 async function executeWithRetry<T>(
   fn: () => Promise<T>,
@@ -173,7 +172,7 @@ async function executeWithRetry<T>(
       const delayMs = baseDelayMs * 2 ** attempt
 
       // Track throttling event via telemetry
-      PlatformEvents.hostedKeyThrottled({
+      PlatformEvents.hostedKeyRateLimited({
         toolId,
         envVarName,
         attempt: attempt + 1,
@@ -274,6 +273,47 @@ async function processHostedKeyCost(
   }
 
   return { cost, metadata }
+}
+
+/**
+ * Report custom dimension usage after successful hosted-key tool execution.
+ * Only applies to tools with `custom` rate limit mode. Fires and logs;
+ * failures here do not block the response since execution already succeeded.
+ */
+async function reportCustomDimensionUsage(
+  tool: ToolConfig,
+  params: Record<string, unknown>,
+  response: Record<string, unknown>,
+  executionContext: ExecutionContext | undefined,
+  requestId: string
+): Promise<void> {
+  if (tool.hosting?.rateLimit.mode !== 'custom') return
+  const userId = executionContext?.userId
+  if (!userId) return
+
+  const rateLimiter = getHostedKeyRateLimiter()
+  const provider = tool.hosting.byokProviderId || tool.id
+
+  try {
+    const result = await rateLimiter.reportUsage(
+      provider,
+      userId,
+      tool.hosting.rateLimit,
+      params,
+      response
+    )
+
+    for (const dim of result.dimensions) {
+      if (!dim.allowed) {
+        logger.warn(
+          `[${requestId}] Dimension ${dim.name} overdrawn after ${tool.id} execution`,
+          { consumed: dim.consumed, tokensRemaining: dim.tokensRemaining }
+        )
+      }
+    }
+  } catch (error) {
+    logger.error(`[${requestId}] Failed to report custom dimension usage for ${tool.id}:`, error)
+  }
 }
 
 /**
@@ -695,8 +735,10 @@ export async function executeTool(
       const endTimeISO = endTime.toISOString()
       const duration = endTime.getTime() - startTime.getTime()
 
-      // Calculate hosted key cost and merge into output.cost
+      // Post-execution: report custom dimension usage and calculate cost
       if (hostedKeyInfo.isUsingHostedKey && finalResult.success) {
+        await reportCustomDimensionUsage(tool, contextParams, finalResult.output, executionContext, requestId)
+
         const { cost: hostedKeyCost, metadata } = await processHostedKeyCost(
           tool,
           contextParams,
@@ -761,8 +803,10 @@ export async function executeTool(
     const endTimeISO = endTime.toISOString()
     const duration = endTime.getTime() - startTime.getTime()
 
-    // Calculate hosted key cost and merge into output.cost
+    // Post-execution: report custom dimension usage and calculate cost
     if (hostedKeyInfo.isUsingHostedKey && finalResult.success) {
+      await reportCustomDimensionUsage(tool, contextParams, finalResult.output, executionContext, requestId)
+
       const { cost: hostedKeyCost, metadata } = await processHostedKeyCost(
         tool,
         contextParams,

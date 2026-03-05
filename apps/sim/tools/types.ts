@@ -1,4 +1,4 @@
-import type { ThrottleConfig } from '@/lib/core/hosted-key-throttler'
+import type { HostedKeyRateLimitConfig } from '@/lib/core/rate-limiter'
 import type { OAuthService } from '@/lib/oauth'
 
 export type BYOKProviderId = 'openai' | 'anthropic' | 'google' | 'mistral' | 'exa'
@@ -273,6 +273,6 @@ export interface ToolHostingConfig<P = Record<string, unknown>> {
   byokProviderId?: BYOKProviderId
   /** Pricing when using hosted key */
   pricing: ToolHostingPricing<P>
-  /** Pre-emptive throttle configuration (required for hosted key distribution) */
-  throttle: ThrottleConfig
+  /** Hosted key rate limit configuration (required for hosted key distribution) */
+  rateLimit: HostedKeyRateLimitConfig
 }
