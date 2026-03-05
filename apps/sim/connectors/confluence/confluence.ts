@@ -2,6 +2,7 @@ import { createLogger } from '@sim/logger'
 import { ConfluenceIcon } from '@/components/icons'
 import { fetchWithRetry } from '@/lib/knowledge/documents/utils'
 import type { ConnectorConfig, ExternalDocument, ExternalDocumentList } from '@/connectors/types'
+import { computeContentHash } from '@/connectors/utils'
 import { getConfluenceCloudId } from '@/tools/confluence/utils'
 
 const logger = createLogger('ConfluenceConnector')
@@ -29,19 +30,10 @@ function htmlToPlainText(html: string): string {
 }
 
 /**
- * Computes a SHA-256 hash of the given content.
- */
-async function computeContentHash(content: string): Promise<string> {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(content)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
-}
-
-/**
  * Fetches labels for a batch of page IDs using the v2 labels endpoint.
  */
+const LABEL_FETCH_CONCURRENCY = 10
+
 async function fetchLabelsForPages(
   cloudId: string,
   accessToken: string,
@@ -49,39 +41,42 @@ async function fetchLabelsForPages(
 ): Promise<Map<string, string[]>> {
   const labelsByPageId = new Map<string, string[]>()
 
-  const results = await Promise.all(
-    pageIds.map(async (pageId) => {
-      try {
-        const url = `https://api.atlassian.com/ex/confluence/${cloudId}/wiki/api/v2/pages/${pageId}/labels`
-        const response = await fetchWithRetry(url, {
-          method: 'GET',
-          headers: {
-            Accept: 'application/json',
-            Authorization: `Bearer ${accessToken}`,
-          },
-        })
+  for (let i = 0; i < pageIds.length; i += LABEL_FETCH_CONCURRENCY) {
+    const batch = pageIds.slice(i, i + LABEL_FETCH_CONCURRENCY)
+    const results = await Promise.all(
+      batch.map(async (pageId) => {
+        try {
+          const url = `https://api.atlassian.com/ex/confluence/${cloudId}/wiki/api/v2/pages/${pageId}/labels`
+          const response = await fetchWithRetry(url, {
+            method: 'GET',
+            headers: {
+              Accept: 'application/json',
+              Authorization: `Bearer ${accessToken}`,
+            },
+          })
 
-        if (!response.ok) {
-          logger.warn(`Failed to fetch labels for page ${pageId}`, { status: response.status })
+          if (!response.ok) {
+            logger.warn(`Failed to fetch labels for page ${pageId}`, { status: response.status })
+            return { pageId, labels: [] as string[] }
+          }
+
+          const data = await response.json()
+          const labels = (data.results || []).map(
+            (label: Record<string, unknown>) => label.name as string
+          )
+          return { pageId, labels }
+        } catch (error) {
+          logger.warn(`Error fetching labels for page ${pageId}`, {
+            error: error instanceof Error ? error.message : String(error),
+          })
           return { pageId, labels: [] as string[] }
         }
+      })
+    )
 
-        const data = await response.json()
-        const labels = (data.results || []).map(
-          (label: Record<string, unknown>) => label.name as string
-        )
-        return { pageId, labels }
-      } catch (error) {
-        logger.warn(`Error fetching labels for page ${pageId}`, {
-          error: error instanceof Error ? error.message : String(error),
-        })
-        return { pageId, labels: [] as string[] }
-      }
-    })
-  )
-
-  for (const { pageId, labels } of results) {
-    labelsByPageId.set(pageId, labels)
+    for (const { pageId, labels } of results) {
+      labelsByPageId.set(pageId, labels)
+    }
   }
 
   return labelsByPageId
@@ -181,7 +176,8 @@ export const confluenceConnector: ConnectorConfig = {
   listDocuments: async (
     accessToken: string,
     sourceConfig: Record<string, unknown>,
-    cursor?: string
+    cursor?: string,
+    syncContext?: Record<string, unknown>
   ): Promise<ExternalDocumentList> => {
     const domain = sourceConfig.domain as string
     const spaceKey = sourceConfig.spaceKey as string
@@ -189,9 +185,12 @@ export const confluenceConnector: ConnectorConfig = {
     const labelFilter = (sourceConfig.labelFilter as string) || ''
     const maxPages = sourceConfig.maxPages ? Number(sourceConfig.maxPages) : 0
 
-    const cloudId = await getConfluenceCloudId(domain, accessToken)
+    let cloudId = syncContext?.cloudId as string | undefined
+    if (!cloudId) {
+      cloudId = await getConfluenceCloudId(domain, accessToken)
+      if (syncContext) syncContext.cloudId = cloudId
+    }
 
-    // If label filtering is enabled, use CQL search via v1 API
     if (labelFilter.trim()) {
       return listDocumentsViaCql(
         cloudId,
@@ -205,11 +204,23 @@ export const confluenceConnector: ConnectorConfig = {
       )
     }
 
-    // Otherwise use v2 API (default path)
-    const spaceId = await resolveSpaceId(cloudId, accessToken, spaceKey)
+    let spaceId = syncContext?.spaceId as string | undefined
+    if (!spaceId) {
+      spaceId = await resolveSpaceId(cloudId, accessToken, spaceKey)
+      if (syncContext) syncContext.spaceId = spaceId
+    }
 
     if (contentType === 'all') {
-      return listAllContentTypes(cloudId, accessToken, domain, spaceId, spaceKey, maxPages, cursor)
+      return listAllContentTypes(
+        cloudId,
+        accessToken,
+        domain,
+        spaceId,
+        spaceKey,
+        maxPages,
+        cursor,
+        syncContext
+      )
     }
 
     return listDocumentsV2(
@@ -220,7 +231,8 @@ export const confluenceConnector: ConnectorConfig = {
       spaceKey,
       contentType,
       maxPages,
-      cursor
+      cursor,
+      syncContext
     )
   },
 
@@ -336,7 +348,8 @@ async function listDocumentsV2(
   spaceKey: string,
   contentType: string,
   maxPages: number,
-  cursor?: string
+  cursor?: string,
+  syncContext?: Record<string, unknown>
 ): Promise<ExternalDocumentList> {
   const queryParams = new URLSearchParams()
   queryParams.append('limit', '50')
@@ -370,7 +383,6 @@ async function listDocumentsV2(
   const data = await response.json()
   const results = data.results || []
 
-  // Fetch labels for all pages in this batch
   const pageIds = results.map((page: Record<string, unknown>) => String(page.id))
   const labelsByPageId = await fetchLabelsForPages(cloudId, accessToken, pageIds)
 
@@ -401,7 +413,6 @@ async function listDocumentsV2(
     })
   )
 
-  // Extract next cursor from _links.next
   let nextCursor: string | undefined
   const nextLink = (data._links as Record<string, string>)?.next
   if (nextLink) {
@@ -412,16 +423,14 @@ async function listDocumentsV2(
     }
   }
 
-  // Enforce maxPages limit
-  if (maxPages > 0 && !cursor) {
-    // On subsequent pages, the sync engine tracks total count
-    // We signal stop by clearing hasMore when we'd exceed maxPages
-  }
+  const totalFetched = ((syncContext?.totalDocsFetched as number) ?? 0) + documents.length
+  if (syncContext) syncContext.totalDocsFetched = totalFetched
+  const hitLimit = maxPages > 0 && totalFetched >= maxPages
 
   return {
     documents,
-    nextCursor,
-    hasMore: Boolean(nextCursor),
+    nextCursor: hitLimit ? undefined : nextCursor,
+    hasMore: hitLimit ? false : Boolean(nextCursor),
   }
 }
 
@@ -436,7 +445,8 @@ async function listAllContentTypes(
   spaceId: string,
   spaceKey: string,
   maxPages: number,
-  cursor?: string
+  cursor?: string,
+  syncContext?: Record<string, unknown>
 ): Promise<ExternalDocumentList> {
   let pageCursor: string | undefined
   let blogCursor: string | undefined
@@ -466,7 +476,8 @@ async function listAllContentTypes(
       spaceKey,
       'page',
       maxPages,
-      pageCursor
+      pageCursor,
+      syncContext
     )
     results.documents.push(...pagesResult.documents)
     pageCursor = pagesResult.nextCursor
@@ -482,7 +493,8 @@ async function listAllContentTypes(
       spaceKey,
       'blogpost',
       maxPages,
-      blogCursor
+      blogCursor,
+      syncContext
     )
     results.documents.push(...blogResult.documents)
     blogCursor = blogResult.nextCursor

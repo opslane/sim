@@ -1,11 +1,17 @@
 import { db } from '@sim/db'
-import { knowledgeBase, knowledgeConnector, knowledgeConnectorSyncLog } from '@sim/db/schema'
+import {
+  document,
+  knowledgeBase,
+  knowledgeConnector,
+  knowledgeConnectorSyncLog,
+} from '@sim/db/schema'
 import { createLogger } from '@sim/logger'
 import { and, desc, eq, isNull } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { checkSessionOrInternalAuth } from '@/lib/auth/hybrid'
 import { generateRequestId } from '@/lib/core/utils/request'
+import { cleanupUnusedTagDefinitions } from '@/lib/knowledge/tags/service'
 import { refreshAccessTokenIfNeeded } from '@/app/api/auth/oauth/utils'
 import { checkKnowledgeBaseAccess, checkKnowledgeBaseWriteAccess } from '@/app/api/knowledge/utils'
 import { CONNECTOR_REGISTRY } from '@/connectors/registry'
@@ -238,7 +244,18 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         )
       )
 
-    logger.info(`[${requestId}] Soft-deleted connector ${connectorId}`)
+    // Soft-delete all documents belonging to this connector
+    await db
+      .update(document)
+      .set({ deletedAt: new Date() })
+      .where(and(eq(document.connectorId, connectorId), isNull(document.deletedAt)))
+
+    // Reclaim tag slots that are no longer used by any active connector
+    await cleanupUnusedTagDefinitions(knowledgeBaseId, requestId).catch((error) => {
+      logger.warn(`[${requestId}] Failed to cleanup tag definitions`, error)
+    })
+
+    logger.info(`[${requestId}] Soft-deleted connector ${connectorId} and its documents`)
 
     return NextResponse.json({ success: true })
   } catch (error) {

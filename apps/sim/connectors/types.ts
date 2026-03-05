@@ -85,16 +85,26 @@ export interface ConnectorConfig {
   configFields: ConnectorConfigField[]
 
   /**
+   * Whether this connector supports incremental sync (only fetching changes since last sync).
+   * When true, the sync engine passes `lastSyncAt` to `listDocuments` so the connector
+   * can filter to only changed documents. Connectors without this flag always do full syncs.
+   */
+  supportsIncrementalSync?: boolean
+
+  /**
    * List all documents from the configured source (handles pagination via cursor).
    * syncContext is a mutable object shared across all pages of a single sync run —
    * connectors can use it to cache expensive lookups (e.g. schema fetches) without
    * leaking state into module-level globals.
+   * lastSyncAt is provided when incremental sync is active — connectors should only
+   * return documents modified after this timestamp.
    */
   listDocuments: (
     accessToken: string,
     sourceConfig: Record<string, unknown>,
     cursor?: string,
-    syncContext?: Record<string, unknown>
+    syncContext?: Record<string, unknown>,
+    lastSyncAt?: Date
   ) => Promise<ExternalDocumentList>
 
   /** Fetch a single document by its external ID */

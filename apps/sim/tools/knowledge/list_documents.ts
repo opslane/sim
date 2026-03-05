@@ -45,8 +45,8 @@ export const knowledgeListDocumentsTool: ToolConfig<any, KnowledgeListDocumentsR
       const queryParams = new URLSearchParams()
       if (params.search) queryParams.set('search', params.search)
       if (params.enabledFilter) queryParams.set('enabledFilter', params.enabledFilter)
-      if (params.limit) queryParams.set('limit', String(params.limit))
-      if (params.offset) queryParams.set('offset', String(params.offset))
+      if (params.limit != null) queryParams.set('limit', String(params.limit))
+      if (params.offset != null) queryParams.set('offset', String(params.offset))
       const qs = queryParams.toString()
       return `/api/knowledge/${params.knowledgeBaseId}/documents${qs ? `?${qs}` : ''}`
     },

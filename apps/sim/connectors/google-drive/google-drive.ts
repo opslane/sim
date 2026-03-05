@@ -2,6 +2,7 @@ import { createLogger } from '@sim/logger'
 import { GoogleDriveIcon } from '@/components/icons'
 import { fetchWithRetry, VALIDATE_RETRY_OPTIONS } from '@/lib/knowledge/documents/utils'
 import type { ConnectorConfig, ExternalDocument, ExternalDocumentList } from '@/connectors/types'
+import { computeContentHash } from '@/connectors/utils'
 
 const logger = createLogger('GoogleDriveConnector')
 
@@ -21,14 +22,6 @@ const SUPPORTED_TEXT_MIME_TYPES = [
 ]
 
 const MAX_EXPORT_SIZE = 10 * 1024 * 1024 // 10 MB (Google export limit)
-
-async function computeContentHash(content: string): Promise<string> {
-  const data = new TextEncoder().encode(content)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
-}
 
 function isGoogleWorkspaceFile(mimeType: string): boolean {
   return mimeType in GOOGLE_WORKSPACE_MIME_TYPES

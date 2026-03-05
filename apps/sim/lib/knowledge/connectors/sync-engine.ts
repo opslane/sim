@@ -6,10 +6,11 @@ import {
   knowledgeConnectorSyncLog,
 } from '@sim/db/schema'
 import { createLogger } from '@sim/logger'
-import { and, eq, isNull, ne } from 'drizzle-orm'
+import { and, eq, inArray, isNull, ne } from 'drizzle-orm'
 import { getInternalApiBaseUrl } from '@/lib/core/utils/urls'
 import { isTriggerAvailable, processDocumentAsync } from '@/lib/knowledge/documents/service'
 import { StorageService } from '@/lib/uploads'
+import { deleteFile } from '@/lib/uploads/core/storage-service'
 import { refreshAccessTokenIfNeeded } from '@/app/api/auth/oauth/utils'
 import { knowledgeConnectorSync } from '@/background/knowledge-connector-sync'
 import { CONNECTOR_REGISTRY } from '@/connectors/registry'
@@ -154,12 +155,22 @@ export async function executeSync(
     const MAX_PAGES = 500
     const syncContext: Record<string, unknown> = {}
 
+    // Determine if this sync should be incremental
+    const isIncremental =
+      connectorConfig.supportsIncrementalSync &&
+      connector.syncMode !== 'full' &&
+      !options?.fullSync &&
+      connector.lastSyncAt != null
+    const lastSyncAt =
+      isIncremental && connector.lastSyncAt ? new Date(connector.lastSyncAt) : undefined
+
     for (let pageNum = 0; hasMore && pageNum < MAX_PAGES; pageNum++) {
       const page = await connectorConfig.listDocuments(
         accessToken,
         sourceConfig,
         cursor,
-        syncContext
+        syncContext,
+        lastSyncAt
       )
       externalDocs.push(...page.documents)
 
@@ -281,7 +292,8 @@ export async function executeSync(
       }
     }
 
-    if (options?.fullSync || connector.syncMode === 'full') {
+    // Skip deletion reconciliation during incremental syncs — results only contain changed docs
+    if (!isIncremental && (options?.fullSync || connector.syncMode === 'full')) {
       for (const existing of existingDocs) {
         if (existing.externalId && !seenExternalIds.has(existing.externalId)) {
           await db
@@ -290,6 +302,45 @@ export async function executeSync(
             .where(eq(document.id, existing.id))
           result.docsDeleted++
         }
+      }
+    }
+
+    // Retry stuck documents that failed or never completed processing
+    const stuckDocs = await db
+      .select({
+        id: document.id,
+        fileUrl: document.fileUrl,
+        filename: document.filename,
+        fileSize: document.fileSize,
+      })
+      .from(document)
+      .where(
+        and(
+          eq(document.connectorId, connectorId),
+          inArray(document.processingStatus, ['pending', 'failed']),
+          isNull(document.deletedAt)
+        )
+      )
+
+    if (stuckDocs.length > 0) {
+      logger.info(`Retrying ${stuckDocs.length} stuck documents`, { connectorId })
+      for (const doc of stuckDocs) {
+        processDocumentAsync(
+          connector.knowledgeBaseId,
+          doc.id,
+          {
+            filename: doc.filename ?? 'document.txt',
+            fileUrl: doc.fileUrl ?? '',
+            fileSize: doc.fileSize ?? 0,
+            mimeType: 'text/plain',
+          },
+          {}
+        ).catch((error) => {
+          logger.warn('Failed to retry stuck document', {
+            documentId: doc.id,
+            error: error instanceof Error ? error.message : String(error),
+          })
+        })
       }
     }
 
@@ -450,6 +501,14 @@ async function updateDocument(
   extDoc: ExternalDocument,
   sourceConfig?: Record<string, unknown>
 ): Promise<void> {
+  // Fetch old file URL before uploading replacement
+  const existingRows = await db
+    .select({ fileUrl: document.fileUrl })
+    .from(document)
+    .where(eq(document.id, existingDocId))
+    .limit(1)
+  const oldFileUrl = existingRows[0]?.fileUrl
+
   const contentBuffer = Buffer.from(extDoc.content, 'utf-8')
   const safeTitle = extDoc.title.replace(/[^a-zA-Z0-9.-]/g, '_')
   const customKey = `kb/${Date.now()}-${existingDocId}-${safeTitle}.txt`
@@ -484,6 +543,22 @@ async function updateDocument(
       uploadedAt: new Date(),
     })
     .where(eq(document.id, existingDocId))
+
+  // Clean up old storage file
+  if (oldFileUrl) {
+    try {
+      const urlPath = new URL(oldFileUrl, 'http://localhost').pathname
+      const storageKey = urlPath.replace(/^\/api\/uploads\//, '')
+      if (storageKey && storageKey !== urlPath) {
+        await deleteFile({ key: storageKey, context: 'knowledge-base' })
+      }
+    } catch (error) {
+      logger.warn('Failed to delete old storage file', {
+        documentId: existingDocId,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
 
   processDocumentAsync(
     knowledgeBaseId,

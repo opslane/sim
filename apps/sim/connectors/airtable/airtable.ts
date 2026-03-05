@@ -2,22 +2,12 @@ import { createLogger } from '@sim/logger'
 import { AirtableIcon } from '@/components/icons'
 import { fetchWithRetry, VALIDATE_RETRY_OPTIONS } from '@/lib/knowledge/documents/utils'
 import type { ConnectorConfig, ExternalDocument, ExternalDocumentList } from '@/connectors/types'
+import { computeContentHash } from '@/connectors/utils'
 
 const logger = createLogger('AirtableConnector')
 
 const AIRTABLE_API = 'https://api.airtable.com/v0'
 const PAGE_SIZE = 100
-
-/**
- * Computes a SHA-256 hash of the given content.
- */
-async function computeContentHash(content: string): Promise<string> {
-  const data = new TextEncoder().encode(content)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
-}
 
 /**
  * Flattens a record's fields into a plain-text representation.
