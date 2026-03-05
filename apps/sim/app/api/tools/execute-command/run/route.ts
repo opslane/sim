@@ -35,14 +35,22 @@ function getSafeBaseEnv(): Record<string, string> {
   return env
 }
 
+interface Replacement {
+  index: number
+  length: number
+  value: string
+}
+
 /**
- * Resolves workflow variables (<variable.name>) by replacing them with their actual values
+ * Collects workflow variable (<variable.name>) replacements from the original command string
  */
-function resolveWorkflowVariables(command: string, workflowVariables: Record<string, any>): string {
-  let resolved = command
+function collectWorkflowVariableReplacements(
+  command: string,
+  workflowVariables: Record<string, any>
+): Replacement[] {
   const regex = createWorkflowVariablePattern()
+  const replacements: Replacement[] = []
   let match: RegExpExecArray | null
-  const replacements: Array<{ match: string; index: number; value: string }> = []
 
   while ((match = regex.exec(command)) !== null) {
     const variableName = match[1].trim()
@@ -69,57 +77,49 @@ function resolveWorkflowVariables(command: string, workflowVariables: Record<str
       value = String(value ?? '')
     }
 
-    replacements.push({ match: match[0], index: match.index, value })
+    replacements.push({ index: match.index, length: match[0].length, value })
   }
 
-  for (let i = replacements.length - 1; i >= 0; i--) {
-    const { match: matchStr, index, value } = replacements[i]
-    resolved = resolved.slice(0, index) + value + resolved.slice(index + matchStr.length)
-  }
-
-  return resolved
+  return replacements
 }
 
 /**
- * Resolves environment variables ({{ENV_VAR}}) by replacing them with their actual values
+ * Collects environment variable ({{ENV_VAR}}) replacements from the original command string
  */
-function resolveEnvironmentVariables(command: string, envVars: Record<string, string>): string {
-  let resolved = command
+function collectEnvVarReplacements(
+  command: string,
+  envVars: Record<string, string>
+): Replacement[] {
   const regex = createEnvVarPattern()
+  const replacements: Replacement[] = []
   let match: RegExpExecArray | null
-  const replacements: Array<{ match: string; index: number; value: string }> = []
 
   while ((match = regex.exec(command)) !== null) {
     const varName = match[1].trim()
     if (!(varName in envVars)) {
       continue
     }
-    replacements.push({ match: match[0], index: match.index, value: envVars[varName] })
+    replacements.push({ index: match.index, length: match[0].length, value: envVars[varName] })
   }
 
-  for (let i = replacements.length - 1; i >= 0; i--) {
-    const { match: matchStr, index, value } = replacements[i]
-    resolved = resolved.slice(0, index) + value + resolved.slice(index + matchStr.length)
-  }
-
-  return resolved
+  return replacements
 }
 
 /**
- * Resolves block reference tags (<blockName.field>) by replacing them with their actual values
+ * Collects block reference tag (<blockName.field>) replacements from the original command string
  */
-function resolveTagVariables(
+function collectTagReplacements(
   command: string,
   blockData: Record<string, unknown>,
   blockNameMapping: Record<string, string>,
   blockOutputSchemas: Record<string, OutputSchema>
-): string {
+): Replacement[] {
   const tagPattern = new RegExp(
     `${REFERENCE.START}([a-zA-Z_](?:[a-zA-Z0-9_${REFERENCE.PATH_DELIMITER}]*[a-zA-Z0-9_])?)${REFERENCE.END}`,
     'g'
   )
 
-  const replacements: Array<{ match: string; index: number; value: string }> = []
+  const replacements: Replacement[] = []
   let match: RegExpExecArray | null
 
   while ((match = tagPattern.exec(command)) !== null) {
@@ -147,20 +147,17 @@ function resolveTagVariables(
       stringValue = String(result.value)
     }
 
-    replacements.push({ match: match[0], index: match.index, value: stringValue })
+    replacements.push({ index: match.index, length: match[0].length, value: stringValue })
   }
 
-  let resolved = command
-  for (let i = replacements.length - 1; i >= 0; i--) {
-    const { match: matchStr, index, value } = replacements[i]
-    resolved = resolved.slice(0, index) + value + resolved.slice(index + matchStr.length)
-  }
-
-  return resolved
+  return replacements
 }
 
 /**
- * Resolves all variable references in a command string
+ * Resolves all variable references in a command string in a single pass.
+ * All three patterns are matched against the ORIGINAL command to prevent
+ * cascading resolution (e.g. a workflow variable value containing {{ENV_VAR}}
+ * would NOT be further resolved).
  */
 function resolveCommandVariables(
   command: string,
@@ -170,10 +167,20 @@ function resolveCommandVariables(
   blockOutputSchemas: Record<string, OutputSchema>,
   workflowVariables: Record<string, unknown>
 ): string {
+  const allReplacements = [
+    ...collectWorkflowVariableReplacements(command, workflowVariables),
+    ...collectEnvVarReplacements(command, envVars),
+    ...collectTagReplacements(command, blockData, blockNameMapping, blockOutputSchemas),
+  ]
+
+  allReplacements.sort((a, b) => a.index - b.index)
+
   let resolved = command
-  resolved = resolveWorkflowVariables(resolved, workflowVariables)
-  resolved = resolveEnvironmentVariables(resolved, envVars)
-  resolved = resolveTagVariables(resolved, blockData, blockNameMapping, blockOutputSchemas)
+  for (let i = allReplacements.length - 1; i >= 0; i--) {
+    const { index, length, value } = allReplacements[i]
+    resolved = resolved.slice(0, index) + value + resolved.slice(index + length)
+  }
+
   return resolved
 }
 
