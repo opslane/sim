@@ -132,8 +132,10 @@ export const researchTool: ToolConfig<ExaResearchParams, ExaResearchResponse> = 
               },
             ],
             // Include cost breakdown for pricing calculation (internal field, stripped from final output)
-            _costDollars: taskData.costDollars,
+            costDollars: taskData.costDollars,
           }
+          // Add internal cost field for pricing calculation
+          ;(result.output as Record<string, unknown>)._costDollars = taskData.costDollars
           return result
         }
 
