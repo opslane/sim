@@ -177,7 +177,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
           isStreaming={!!message.isStreaming}
           renderer={renderWordWrap}
         />
-        {message.isStreaming && <StreamingIndicator />}
+        {message.isStreaming && !formattedContent && <StreamingIndicator />}
       </div>
     </div>
   )
