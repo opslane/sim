@@ -724,6 +724,7 @@ export class LoopOrchestrator {
     const output = { results: [] }
     const block = ctx.workflow?.blocks.find((b) => b.id === blockId)
     const blockName = block?.metadata?.name ?? blockType
+    const iterationContext = buildContainerIterationContext(ctx, blockId)
 
     ctx.blockLogs.push({
       blockId,
@@ -742,13 +743,19 @@ export class LoopOrchestrator {
     }
 
     if (this.contextExtensions?.onBlockComplete) {
-      this.contextExtensions.onBlockComplete(blockId, blockName, blockType, {
-        output,
-        executionTime: DEFAULTS.EXECUTION_TIME,
-        startedAt: now,
-        executionOrder,
-        endedAt: now,
-      })
+      this.contextExtensions.onBlockComplete(
+        blockId,
+        blockName,
+        blockType,
+        {
+          output,
+          executionTime: DEFAULTS.EXECUTION_TIME,
+          startedAt: now,
+          executionOrder,
+          endedAt: now,
+        },
+        iterationContext
+      )
     }
   }
 }

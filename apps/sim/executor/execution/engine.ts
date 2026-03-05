@@ -422,12 +422,7 @@ export class ExecutionEngine {
     )
 
     if (activatedEdges.length > 0) {
-      const existing = this.context.activatedEdges.get(nodeId)
-      if (existing) {
-        existing.push(...activatedEdges)
-      } else {
-        this.context.activatedEdges.set(nodeId, [...activatedEdges])
-      }
+      this.context.activatedEdges.set(nodeId, activatedEdges)
     }
 
     logger.info('Processing outgoing edges', {
