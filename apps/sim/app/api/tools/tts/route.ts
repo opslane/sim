@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (!response.ok) {
-      await response.text().catch(() => {})
+      await response.body?.cancel().catch(() => {})
       logger.error(`Failed to generate TTS: ${response.status} ${response.statusText}`)
       return NextResponse.json(
         { error: `Failed to generate TTS: ${response.status} ${response.statusText}` },

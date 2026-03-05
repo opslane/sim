@@ -239,7 +239,7 @@ export async function downloadAttachments(
       )
 
       if (!attachmentResponse.ok) {
-        await attachmentResponse.text().catch(() => {})
+        await attachmentResponse.body?.cancel().catch(() => {})
         continue
       }
 
