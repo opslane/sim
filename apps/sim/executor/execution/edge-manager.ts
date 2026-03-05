@@ -69,15 +69,17 @@ export class EdgeManager {
       }
     }
 
+    const isUnroutedDeadEnd =
+      activatedTargets.length === 0 && !output.selectedOption && !output.selectedRoute
+
     for (const targetId of cascadeTargets) {
       if (!readyNodes.includes(targetId) && !activatedTargets.includes(targetId)) {
-        // Only queue cascade terminal control nodes when ALL outgoing edges from the
-        // current node were deactivated (dead-end scenario). When some edges are
-        // activated, terminal control nodes on deactivated branches should NOT be
-        // queued - they will be reached through the normal activated path's completion.
-        // This prevents loop/parallel sentinels on fully deactivated paths (e.g., an
-        // upstream condition took a different branch) from being spuriously executed.
-        if (activatedTargets.length === 0 && this.isTargetReady(targetId)) {
+        // Only queue cascade terminal control nodes in a true dead-end scenario:
+        // all outgoing edges deactivated AND no routing decision was made. When a
+        // condition/router deliberately selected a path that has no outgoing edge,
+        // selectedOption/selectedRoute will be set, signaling that downstream
+        // subflow sentinels should NOT fire -- the entire branch is intentionally dead.
+        if (isUnroutedDeadEnd && this.isTargetReady(targetId)) {
           readyNodes.push(targetId)
         }
       }

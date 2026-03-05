@@ -2626,6 +2626,171 @@ describe('EdgeManager', () => {
       expect(readyNodes).not.toContain(afterLoopId)
     })
 
+    it('should not queue sentinel-end when condition selects no-edge path (loop)', () => {
+      // Bug scenario: condition → (if) → sentinel_start → body → sentinel_end → (loop_exit) → after_loop
+      //                         → (else) → [NO outgoing edge]
+      // Condition evaluates false, else is selected but has no edge.
+      // With selectedOption set (routing decision made), cascadeTargets should NOT be queued.
+      // Previously sentinel_end was queued via cascadeTargets, causing downstream blocks to execute.
+
+      const conditionId = 'condition'
+      const sentinelStartId = 'sentinel-start'
+      const loopBodyId = 'loop-body'
+      const sentinelEndId = 'sentinel-end'
+      const afterLoopId = 'after-loop'
+
+      const conditionNode = createMockNode(conditionId, [
+        { target: sentinelStartId, sourceHandle: 'condition-if-id' },
+      ])
+
+      const sentinelStartNode = createMockNode(
+        sentinelStartId,
+        [{ target: loopBodyId }],
+        [conditionId]
+      )
+
+      const loopBodyNode = createMockNode(
+        loopBodyId,
+        [{ target: sentinelEndId }],
+        [sentinelStartId]
+      )
+
+      const sentinelEndNode = createMockNode(
+        sentinelEndId,
+        [
+          { target: sentinelStartId, sourceHandle: 'loop_continue' },
+          { target: afterLoopId, sourceHandle: 'loop_exit' },
+        ],
+        [loopBodyId]
+      )
+
+      const afterLoopNode = createMockNode(afterLoopId, [], [sentinelEndId])
+
+      const nodes = new Map<string, DAGNode>([
+        [conditionId, conditionNode],
+        [sentinelStartId, sentinelStartNode],
+        [loopBodyId, loopBodyNode],
+        [sentinelEndId, sentinelEndNode],
+        [afterLoopId, afterLoopNode],
+      ])
+
+      const dag = createMockDAG(nodes)
+      const edgeManager = new EdgeManager(dag)
+
+      // Condition selected else, but else has no outgoing edge.
+      // selectedOption is set (routing decision was made).
+      const readyNodes = edgeManager.processOutgoingEdges(conditionNode, {
+        selectedOption: 'else-id',
+      })
+
+      // Nothing should be queued -- the entire branch is intentionally dead
+      expect(readyNodes).not.toContain(sentinelStartId)
+      expect(readyNodes).not.toContain(loopBodyId)
+      expect(readyNodes).not.toContain(sentinelEndId)
+      expect(readyNodes).not.toContain(afterLoopId)
+      expect(readyNodes).toHaveLength(0)
+    })
+
+    it('should not queue sentinel-end when condition selects no-edge path (parallel)', () => {
+      // Same scenario with parallel instead of loop
+      const conditionId = 'condition'
+      const parallelStartId = 'parallel-start'
+      const branchId = 'branch-0'
+      const parallelEndId = 'parallel-end'
+      const afterParallelId = 'after-parallel'
+
+      const conditionNode = createMockNode(conditionId, [
+        { target: parallelStartId, sourceHandle: 'condition-if-id' },
+      ])
+
+      const parallelStartNode = createMockNode(
+        parallelStartId,
+        [{ target: branchId }],
+        [conditionId]
+      )
+
+      const branchNode = createMockNode(
+        branchId,
+        [{ target: parallelEndId, sourceHandle: 'parallel_exit' }],
+        [parallelStartId]
+      )
+
+      const parallelEndNode = createMockNode(
+        parallelEndId,
+        [{ target: afterParallelId, sourceHandle: 'parallel_exit' }],
+        [branchId]
+      )
+
+      const afterParallelNode = createMockNode(afterParallelId, [], [parallelEndId])
+
+      const nodes = new Map<string, DAGNode>([
+        [conditionId, conditionNode],
+        [parallelStartId, parallelStartNode],
+        [branchId, branchNode],
+        [parallelEndId, parallelEndNode],
+        [afterParallelId, afterParallelNode],
+      ])
+
+      const dag = createMockDAG(nodes)
+      const edgeManager = new EdgeManager(dag)
+
+      const readyNodes = edgeManager.processOutgoingEdges(conditionNode, {
+        selectedOption: 'else-id',
+      })
+
+      expect(readyNodes).not.toContain(parallelStartId)
+      expect(readyNodes).not.toContain(branchId)
+      expect(readyNodes).not.toContain(parallelEndId)
+      expect(readyNodes).not.toContain(afterParallelId)
+      expect(readyNodes).toHaveLength(0)
+    })
+
+    it('should still queue sentinel-end inside loop when no condition matches (true dead-end)', () => {
+      // Contrast: condition INSIDE a loop with selectedOption null (no match, no routing decision).
+      // This is a true dead-end where cascadeTargets SHOULD fire so the loop sentinel can handle exit.
+
+      const sentinelStartId = 'sentinel-start'
+      const sentinelEndId = 'sentinel-end'
+      const conditionId = 'condition'
+      const nodeAId = 'node-a'
+
+      const sentinelStartNode = createMockNode(sentinelStartId, [{ target: conditionId }])
+      const conditionNode = createMockNode(
+        conditionId,
+        [{ target: nodeAId, sourceHandle: 'condition-if' }],
+        [sentinelStartId]
+      )
+      const nodeANode = createMockNode(nodeAId, [{ target: sentinelEndId }], [conditionId])
+      const sentinelEndNode = createMockNode(
+        sentinelEndId,
+        [
+          { target: sentinelStartId, sourceHandle: 'loop_continue' },
+          { target: 'after-loop', sourceHandle: 'loop_exit' },
+        ],
+        [nodeAId]
+      )
+
+      const nodes = new Map<string, DAGNode>([
+        [sentinelStartId, sentinelStartNode],
+        [conditionId, conditionNode],
+        [nodeAId, nodeANode],
+        [sentinelEndId, sentinelEndNode],
+      ])
+
+      const dag = createMockDAG(nodes)
+      const edgeManager = new EdgeManager(dag)
+
+      conditionNode.incomingEdges.clear()
+
+      // selectedOption: null → no routing decision, true dead-end
+      const readyNodes = edgeManager.processOutgoingEdges(conditionNode, {
+        selectedOption: null,
+      })
+
+      // sentinel-end SHOULD be queued (true dead-end inside loop)
+      expect(readyNodes).toContain(sentinelEndId)
+    })
+
     it('should still correctly handle normal loop exit (not deactivate when loop runs)', () => {
       // When a loop actually executes and exits normally, after_loop should become ready
       const sentinelStartId = 'sentinel-start'
