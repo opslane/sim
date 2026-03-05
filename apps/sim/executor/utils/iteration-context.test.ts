@@ -23,6 +23,7 @@ function makeCtx(overrides: Partial<ExecutionContext> = {}): ExecutionContext {
     decisions: { router: new Map(), condition: new Map() },
     completedLoops: new Set(),
     activeExecutionPath: [],
+    activatedEdges: new Map(),
     executionOrder: 0,
     ...overrides,
   } as unknown as ExecutionContext

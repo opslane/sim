@@ -6,6 +6,17 @@ import type { NormalizedBlockOutput } from '@/executor/types'
 
 const logger = createLogger('EdgeManager')
 
+export interface ActivatedEdge {
+  source: string
+  target: string
+  sourceHandle?: string
+}
+
+export interface ProcessOutgoingEdgesResult {
+  readyNodes: string[]
+  activatedEdges: ActivatedEdge[]
+}
+
 export class EdgeManager {
   private deactivatedEdges = new Set<string>()
   private nodesWithActivatedEdge = new Set<string>()
@@ -16,9 +27,10 @@ export class EdgeManager {
     node: DAGNode,
     output: NormalizedBlockOutput,
     skipBackwardsEdge = false
-  ): string[] {
+  ): ProcessOutgoingEdgesResult {
     const readyNodes: string[] = []
     const activatedTargets: string[] = []
+    const activatedEdges: ActivatedEdge[] = []
     const edgesToDeactivate: Array<{ target: string; handle?: string }> = []
 
     for (const [, edge] of node.outgoingEdges) {
@@ -34,6 +46,7 @@ export class EdgeManager {
       }
 
       activatedTargets.push(edge.target)
+      activatedEdges.push({ source: node.id, target: edge.target, sourceHandle: edge.sourceHandle })
     }
 
     // Track nodes that have received at least one activated edge
@@ -98,7 +111,7 @@ export class EdgeManager {
       }
     }
 
-    return readyNodes
+    return { readyNodes, activatedEdges }
   }
 
   isNodeReady(node: DAGNode): boolean {

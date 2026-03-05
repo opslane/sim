@@ -248,6 +248,8 @@ export interface ExecutionContext {
 
   activeExecutionPath: Set<string>
 
+  activatedEdges: Map<string, Array<{ source: string; target: string; sourceHandle?: string }>>
+
   workflow?: SerializedWorkflow
 
   stream?: boolean

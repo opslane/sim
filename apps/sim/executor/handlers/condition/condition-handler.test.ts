@@ -133,6 +133,7 @@ describe('ConditionBlockHandler', () => {
       loopExecutions: new Map(),
       executedBlocks: new Set([mockSourceBlock.id]),
       activeExecutionPath: new Set(),
+      activatedEdges: new Map(),
       workflow: mockWorkflow as SerializedWorkflow,
       completedLoops: new Set(),
     }

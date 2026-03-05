@@ -54,6 +54,7 @@ describe('EvaluatorBlockHandler', () => {
       completedLoops: new Set(),
       executedBlocks: new Set(),
       activeExecutionPath: new Set(),
+      activatedEdges: new Map(),
     }
 
     // Reset mocks using vi

@@ -313,6 +313,9 @@ export class DAGExecutor {
       activeExecutionPath: snapshotState?.activeExecutionPath
         ? new Set(snapshotState.activeExecutionPath)
         : new Set(),
+      activatedEdges: snapshotState?.activatedEdges
+        ? new Map(Object.entries(snapshotState.activatedEdges))
+        : new Map(),
       workflow: this.workflow,
       stream: this.contextExtensions.stream ?? false,
       selectedOutputs: this.contextExtensions.selectedOutputs ?? [],

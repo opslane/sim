@@ -596,6 +596,7 @@ export class LoopOrchestrator {
       if (!scope.items || scope.items.length === 0) {
         logger.info('ForEach loop has empty collection, skipping loop body', { loopId })
         this.state.setBlockOutput(loopId, { results: [] }, DEFAULTS.EXECUTION_TIME)
+        this.emitEmptySubflowEvents(ctx, loopId, 'loop')
         return false
       }
       return true
@@ -605,6 +606,7 @@ export class LoopOrchestrator {
       if (scope.maxIterations === 0) {
         logger.info('For loop has 0 iterations, skipping loop body', { loopId })
         this.state.setBlockOutput(loopId, { results: [] }, DEFAULTS.EXECUTION_TIME)
+        this.emitEmptySubflowEvents(ctx, loopId, 'loop')
         return false
       }
       return true
@@ -617,6 +619,8 @@ export class LoopOrchestrator {
     if (scope.loopType === 'while') {
       if (!scope.condition) {
         logger.warn('No condition defined for while loop', { loopId })
+        this.state.setBlockOutput(loopId, { results: [] }, DEFAULTS.EXECUTION_TIME)
+        this.emitEmptySubflowEvents(ctx, loopId, 'loop')
         return false
       }
 
@@ -626,6 +630,11 @@ export class LoopOrchestrator {
         condition: scope.condition,
         result,
       })
+
+      if (!result) {
+        this.state.setBlockOutput(loopId, { results: [] }, DEFAULTS.EXECUTION_TIME)
+        this.emitEmptySubflowEvents(ctx, loopId, 'loop')
+      }
 
       return result
     }
@@ -706,6 +715,40 @@ export class LoopOrchestrator {
     } catch (error) {
       logger.error('Failed to evaluate loop condition', { condition, error })
       return false
+    }
+  }
+
+  private emitEmptySubflowEvents(ctx: ExecutionContext, blockId: string, blockType: string): void {
+    const now = new Date().toISOString()
+    const executionOrder = getNextExecutionOrder(ctx)
+    const output = { results: [] }
+    const block = ctx.workflow?.blocks.find((b) => b.id === blockId)
+    const blockName = block?.metadata?.name ?? blockType
+
+    ctx.blockLogs.push({
+      blockId,
+      blockName,
+      blockType,
+      startedAt: now,
+      endedAt: now,
+      durationMs: DEFAULTS.EXECUTION_TIME,
+      success: true,
+      output,
+      executionOrder,
+    })
+
+    if (this.contextExtensions?.onBlockStart) {
+      this.contextExtensions.onBlockStart(blockId, blockName, blockType, executionOrder)
+    }
+
+    if (this.contextExtensions?.onBlockComplete) {
+      this.contextExtensions.onBlockComplete(blockId, blockName, blockType, {
+        output,
+        executionTime: DEFAULTS.EXECUTION_TIME,
+        startedAt: now,
+        executionOrder,
+        endedAt: now,
+      })
     }
   }
 }

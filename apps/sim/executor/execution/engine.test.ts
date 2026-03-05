@@ -57,6 +57,7 @@ function createMockContext(overrides: Partial<ExecutionContext> = {}): Execution
     parallelExecutions: new Map(),
     completedLoops: new Set(),
     activeExecutionPath: new Set(),
+    activatedEdges: new Map(),
     metadata: {
       executionId: 'test-execution',
       startTime: new Date().toISOString(),
@@ -84,7 +85,13 @@ interface MockEdgeManager extends EdgeManager {
 function createMockEdgeManager(
   processOutgoingEdgesImpl?: (node: DAGNode) => string[]
 ): MockEdgeManager {
-  const mockFn = vi.fn().mockImplementation(processOutgoingEdgesImpl || (() => []))
+  const mockFn = vi
+    .fn()
+    .mockImplementation(
+      processOutgoingEdgesImpl
+        ? (node: DAGNode) => ({ readyNodes: processOutgoingEdgesImpl(node), activatedEdges: [] })
+        : () => ({ readyNodes: [], activatedEdges: [] })
+    )
   return {
     processOutgoingEdges: mockFn,
     isNodeReady: vi.fn().mockReturnValue(true),

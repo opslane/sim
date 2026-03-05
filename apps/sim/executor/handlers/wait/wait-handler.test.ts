@@ -37,6 +37,7 @@ describe('WaitBlockHandler', () => {
       completedLoops: new Set(),
       executedBlocks: new Set(),
       activeExecutionPath: new Set(),
+      activatedEdges: new Map(),
     }
   })
 

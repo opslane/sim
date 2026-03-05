@@ -451,7 +451,6 @@ export function PreviewWorkflow({
   const edges: Edge[] = useMemo(() => {
     if (!isValidWorkflowState) return []
 
-    /** Edge is green if target executed and source condition met by edge type. */
     const getEdgeExecutionStatus = (edge: {
       source: string
       target: string
@@ -459,21 +458,41 @@ export function PreviewWorkflow({
     }): ExecutionStatus | undefined => {
       if (blockExecutionMap.size === 0) return undefined
 
-      const targetStatus = getBlockExecutionStatus(edge.target)
-      if (!targetStatus?.executed) return 'not-executed'
-
       const sourceStatus = getBlockExecutionStatus(edge.source)
-      const { sourceHandle } = edge
+      if (!sourceStatus?.executed) return 'not-executed'
 
-      if (sourceHandle === 'error') {
-        return sourceStatus?.status === 'error' ? 'success' : 'not-executed'
+      const handle = edge.sourceHandle
+      if (!handle) {
+        return sourceStatus.status === 'success' ? 'success' : 'not-executed'
       }
 
-      if (sourceHandle === 'loop-start-source' || sourceHandle === 'parallel-start-source') {
-        return 'success'
+      const sourceOutput = blockExecutionMap.get(edge.source)?.output as
+        | Record<string, any>
+        | undefined
+
+      if (handle.startsWith('condition-')) {
+        const conditionValue = handle.substring('condition-'.length)
+        return sourceOutput?.selectedOption === conditionValue ? 'success' : 'not-executed'
       }
 
-      return sourceStatus?.status === 'success' ? 'success' : 'not-executed'
+      if (handle.startsWith('router-')) {
+        const routeId = handle.substring('router-'.length)
+        return sourceOutput?.selectedRoute === routeId ? 'success' : 'not-executed'
+      }
+
+      switch (handle) {
+        case 'error':
+          return sourceStatus.status === 'error' ? 'error' : 'not-executed'
+        case 'source':
+          return sourceStatus.status === 'success' ? 'success' : 'not-executed'
+        case 'loop-start-source':
+        case 'loop-end-source':
+        case 'parallel-start-source':
+        case 'parallel-end-source':
+          return 'success'
+        default:
+          return sourceStatus.status === 'success' ? 'success' : 'not-executed'
+      }
     }
 
     return (workflowState.edges || []).map((edge) => {

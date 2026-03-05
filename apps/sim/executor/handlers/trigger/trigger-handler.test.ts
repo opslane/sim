@@ -22,6 +22,7 @@ describe('TriggerBlockHandler', () => {
       loopExecutions: new Map(),
       executedBlocks: new Set(),
       activeExecutionPath: new Set(),
+      activatedEdges: new Map(),
       completedLoops: new Set(),
     }
   })
