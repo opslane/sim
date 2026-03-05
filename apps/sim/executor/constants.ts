@@ -24,6 +24,7 @@ export enum BlockType {
   TRIGGER = 'trigger',
 
   FUNCTION = 'function',
+  EXECUTE_COMMAND = 'execute_command',
   AGENT = 'agent',
   API = 'api',
   EVALUATOR = 'evaluator',

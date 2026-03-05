@@ -206,6 +206,10 @@ app:
     DISABLE_PUBLIC_API: ""                               # Set to "true" to disable public API toggle globally
     NEXT_PUBLIC_DISABLE_PUBLIC_API: ""                   # Set to "true" to hide public API toggle in UI
 
+    # Execute Command (Self-Hosted Only - runs shell commands on host machine)
+    EXECUTE_COMMAND_ENABLED: ""                          # Set to "true" to enable shell command execution in workflows (self-hosted only)
+    NEXT_PUBLIC_EXECUTE_COMMAND_ENABLED: ""              # Set to "true" to show Execute Command block in UI
+
     # SSO Configuration (Enterprise Single Sign-On)
     # Set to "true" AFTER running the SSO registration script
     SSO_ENABLED: ""                                       # Enable SSO authentication ("true" to enable)

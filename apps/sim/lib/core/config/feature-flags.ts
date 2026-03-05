@@ -106,6 +106,31 @@ export const isOrganizationsEnabled =
 export const isE2bEnabled = isTruthy(env.E2B_ENABLED)
 
 /**
+ * Is Execute Command enabled for running shell commands on the host machine.
+ * Only available for self-hosted deployments. Blocked on hosted environments.
+ */
+export const isExecuteCommandEnabled = isTruthy(env.EXECUTE_COMMAND_ENABLED) && !isHosted
+
+if (isTruthy(env.EXECUTE_COMMAND_ENABLED)) {
+  import('@sim/logger')
+    .then(({ createLogger }) => {
+      const logger = createLogger('FeatureFlags')
+      if (isHosted) {
+        logger.error(
+          'EXECUTE_COMMAND_ENABLED is set but ignored on hosted environment. Shell command execution is not available on hosted instances for security.'
+        )
+      } else {
+        logger.warn(
+          'EXECUTE_COMMAND_ENABLED is enabled. Workflows can execute arbitrary shell commands on the host machine. Only use this in trusted environments.'
+        )
+      }
+    })
+    .catch(() => {
+      // Fallback during config compilation when logger is unavailable
+    })
+}
+
+/**
  * Are invitations disabled globally
  * When true, workspace invitations are disabled for all users
  */

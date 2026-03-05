@@ -1,0 +1,53 @@
+import { TerminalIcon } from '@/components/icons'
+import { isTruthy } from '@/lib/core/config/env'
+import type { BlockConfig } from '@/blocks/types'
+import type { ExecuteCommandOutput } from '@/tools/execute-command/types'
+
+export const ExecuteCommandBlock: BlockConfig<ExecuteCommandOutput> = {
+  type: 'execute_command',
+  name: 'Execute Command',
+  description: 'Run shell commands',
+  hideFromToolbar: !isTruthy(process.env.NEXT_PUBLIC_EXECUTE_COMMAND_ENABLED),
+  longDescription:
+    'Execute shell commands on the host machine. Only available for self-hosted deployments with EXECUTE_COMMAND_ENABLED=true. Commands run in the default shell of the host OS.',
+  bestPractices: `
+  - Commands execute in the default shell of the host machine (bash, zsh, cmd, PowerShell).
+  - Chain multiple commands with && to run them sequentially.
+  - Use <blockName.output> syntax to reference outputs from other blocks.
+  - Use {{ENV_VAR}} syntax to reference environment variables.
+  - The working directory defaults to the server process directory if not specified.
+  - A non-zero exit code is treated as an error. Use || true to suppress errors if needed.
+  `,
+  docsLink: 'https://docs.sim.ai/blocks/execute-command',
+  category: 'blocks',
+  bgColor: '#1E1E1E',
+  icon: TerminalIcon,
+  subBlocks: [
+    {
+      id: 'command',
+      title: 'Command',
+      type: 'long-input',
+      required: true,
+      placeholder: 'echo "Hello, World!"',
+    },
+    {
+      id: 'workingDirectory',
+      title: 'Working Directory',
+      type: 'short-input',
+      required: false,
+      placeholder: '/path/to/directory',
+    },
+  ],
+  tools: {
+    access: ['execute_command_run'],
+  },
+  inputs: {
+    command: { type: 'string', description: 'Shell command to execute' },
+    workingDirectory: { type: 'string', description: 'Working directory for the command' },
+  },
+  outputs: {
+    stdout: { type: 'string', description: 'Standard output from the command' },
+    stderr: { type: 'string', description: 'Standard error output from the command' },
+    exitCode: { type: 'number', description: 'Exit code of the command (0 = success)' },
+  },
+}

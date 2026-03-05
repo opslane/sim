@@ -39,6 +39,7 @@ import { ElevenLabsBlock } from '@/blocks/blocks/elevenlabs'
 import { EnrichBlock } from '@/blocks/blocks/enrich'
 import { EvaluatorBlock } from '@/blocks/blocks/evaluator'
 import { ExaBlock } from '@/blocks/blocks/exa'
+import { ExecuteCommandBlock } from '@/blocks/blocks/execute-command'
 import { FileBlock, FileV2Block, FileV3Block } from '@/blocks/blocks/file'
 import { FirecrawlBlock } from '@/blocks/blocks/firecrawl'
 import { FirefliesBlock, FirefliesV2Block } from '@/blocks/blocks/fireflies'
@@ -235,6 +236,7 @@ export const registry: Record<string, BlockConfig> = {
   elevenlabs: ElevenLabsBlock,
   enrich: EnrichBlock,
   evaluator: EvaluatorBlock,
+  execute_command: ExecuteCommandBlock,
   exa: ExaBlock,
   file: FileBlock,
   file_v2: FileV2Block,

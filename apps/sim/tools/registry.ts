@@ -433,6 +433,7 @@ import {
   exaResearchTool,
   exaSearchTool,
 } from '@/tools/exa'
+import { executeCommandRunTool } from '@/tools/execute-command'
 import { fileParserV2Tool, fileParserV3Tool, fileParseTool } from '@/tools/file'
 import {
   firecrawlAgentTool,
@@ -2337,6 +2338,7 @@ export const tools: Record<string, ToolConfig> = {
   webhook_request: webhookRequestTool,
   huggingface_chat: huggingfaceChatTool,
   llm_chat: llmChatTool,
+  execute_command_run: executeCommandRunTool,
   function_execute: functionExecuteTool,
   gamma_generate: gammaGenerateTool,
   gamma_generate_from_template: gammaGenerateFromTemplateTool,

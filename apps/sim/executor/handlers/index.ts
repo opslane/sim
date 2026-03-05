@@ -2,6 +2,7 @@ import { AgentBlockHandler } from '@/executor/handlers/agent/agent-handler'
 import { ApiBlockHandler } from '@/executor/handlers/api/api-handler'
 import { ConditionBlockHandler } from '@/executor/handlers/condition/condition-handler'
 import { EvaluatorBlockHandler } from '@/executor/handlers/evaluator/evaluator-handler'
+import { ExecuteCommandBlockHandler } from '@/executor/handlers/execute-command/execute-command-handler'
 import { FunctionBlockHandler } from '@/executor/handlers/function/function-handler'
 import { GenericBlockHandler } from '@/executor/handlers/generic/generic-handler'
 import { HumanInTheLoopBlockHandler } from '@/executor/handlers/human-in-the-loop/human-in-the-loop-handler'
@@ -17,6 +18,7 @@ export {
   ApiBlockHandler,
   ConditionBlockHandler,
   EvaluatorBlockHandler,
+  ExecuteCommandBlockHandler,
   FunctionBlockHandler,
   GenericBlockHandler,
   ResponseBlockHandler,
