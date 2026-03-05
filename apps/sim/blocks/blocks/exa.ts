@@ -309,7 +309,7 @@ export const ExaBlock: BlockConfig<ExaResponse> = {
       value: () => 'exa-research',
       condition: { field: 'operation', value: 'exa_research' },
     },
-    // API Key (common)
+    // API Key — hidden when hosted for operations with hosted key support
     {
       id: 'apiKey',
       title: 'API Key',
@@ -318,6 +318,17 @@ export const ExaBlock: BlockConfig<ExaResponse> = {
       password: true,
       required: true,
       hideWhenHosted: true,
+      condition: { field: 'operation', value: 'exa_research', not: true },
+    },
+    // API Key — always visible for research (no hosted key support)
+    {
+      id: 'apiKey',
+      title: 'API Key',
+      type: 'short-input',
+      placeholder: 'Enter your Exa API key',
+      password: true,
+      required: true,
+      condition: { field: 'operation', value: 'exa_research' },
     },
   ],
   tools: {

@@ -1297,7 +1297,7 @@ describe('Hosted Key Injection', () => {
         },
         rateLimit: {
           mode: 'per_request' as const,
-          userRequestsPerMinute: 100,
+          requestsPerMinute: 100,
         },
       },
       request: {
@@ -1357,7 +1357,7 @@ describe('Hosted Key Injection', () => {
         },
         rateLimit: {
           mode: 'per_request' as const,
-          userRequestsPerMinute: 100,
+          requestsPerMinute: 100,
         },
       },
       request: {
@@ -1400,7 +1400,7 @@ describe('Hosted Key Injection', () => {
         },
         rateLimit: {
           mode: 'per_request' as const,
-          userRequestsPerMinute: 100,
+          requestsPerMinute: 100,
         },
       },
       request: {
@@ -1447,7 +1447,7 @@ describe('Hosted Key Injection', () => {
         },
         rateLimit: {
           mode: 'per_request' as const,
-          userRequestsPerMinute: 100,
+          requestsPerMinute: 100,
         },
       },
       request: {
@@ -1516,7 +1516,7 @@ describe('Rate Limiting and Retry Logic', () => {
         },
         rateLimit: {
           mode: 'per_request' as const,
-          userRequestsPerMinute: 100,
+          requestsPerMinute: 100,
         },
       },
       request: {
@@ -1586,7 +1586,7 @@ describe('Rate Limiting and Retry Logic', () => {
         },
         rateLimit: {
           mode: 'per_request' as const,
-          userRequestsPerMinute: 100,
+          requestsPerMinute: 100,
         },
       },
       request: {
@@ -1644,7 +1644,7 @@ describe('Rate Limiting and Retry Logic', () => {
         },
         rateLimit: {
           mode: 'per_request' as const,
-          userRequestsPerMinute: 100,
+          requestsPerMinute: 100,
         },
       },
       request: {
@@ -1733,7 +1733,7 @@ describe('Cost Field Handling', () => {
         },
         rateLimit: {
           mode: 'per_request' as const,
-          userRequestsPerMinute: 100,
+          requestsPerMinute: 100,
         },
       },
       request: {
@@ -1804,7 +1804,7 @@ describe('Cost Field Handling', () => {
         },
         rateLimit: {
           mode: 'per_request' as const,
-          userRequestsPerMinute: 100,
+          requestsPerMinute: 100,
         },
       },
       request: {
@@ -1873,7 +1873,7 @@ describe('Cost Field Handling', () => {
         },
         rateLimit: {
           mode: 'per_request' as const,
-          userRequestsPerMinute: 100,
+          requestsPerMinute: 100,
         },
       },
       request: {

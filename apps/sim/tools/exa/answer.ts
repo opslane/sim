@@ -49,7 +49,7 @@ export const answerTool: ToolConfig<ExaAnswerParams, ExaAnswerResponse> = {
     },
     rateLimit: {
       mode: 'per_request',
-      userRequestsPerMinute: 10,
+      requestsPerMinute: 10,
     },
   },
 

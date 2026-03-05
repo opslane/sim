@@ -1,6 +1,6 @@
 import { loggerMock } from '@sim/testing'
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest'
-import { HostedKeyRateLimiter } from './rate-limiter'
+import { HostedKeyRateLimiter } from './hosted-key-rate-limiter'
 import type { CustomRateLimit, PerRequestRateLimit } from './types'
 import type {
   ConsumeResult,
@@ -31,7 +31,7 @@ describe('HostedKeyRateLimiter', () => {
 
   const perRequestRateLimit: PerRequestRateLimit = {
     mode: 'per_request',
-    userRequestsPerMinute: 10,
+    requestsPerMinute: 10,
   }
 
   beforeEach(() => {
@@ -61,7 +61,7 @@ describe('HostedKeyRateLimiter', () => {
       expect(result.error).toContain('No hosted keys configured')
     })
 
-    it('should rate limit user when they exceed their limit', async () => {
+    it('should rate limit billing actor when they exceed their limit', async () => {
       const rateLimitedResult: ConsumeResult = {
         allowed: false,
         tokensRemaining: 0,
@@ -69,15 +69,20 @@ describe('HostedKeyRateLimiter', () => {
       }
       mockAdapter.consumeTokens.mockResolvedValue(rateLimitedResult)
 
-      const result = await rateLimiter.acquireKey(testProvider, envKeys, perRequestRateLimit, 'user-123')
+      const result = await rateLimiter.acquireKey(
+        testProvider,
+        envKeys,
+        perRequestRateLimit,
+        'workspace-123'
+      )
 
       expect(result.success).toBe(false)
-      expect(result.userRateLimited).toBe(true)
+      expect(result.billingActorRateLimited).toBe(true)
       expect(result.retryAfterMs).toBeDefined()
       expect(result.error).toContain('Rate limit exceeded')
     })
 
-    it('should allow user within their rate limit', async () => {
+    it('should allow billing actor within their rate limit', async () => {
       const allowedResult: ConsumeResult = {
         allowed: true,
         tokensRemaining: 9,
@@ -85,10 +90,15 @@ describe('HostedKeyRateLimiter', () => {
       }
       mockAdapter.consumeTokens.mockResolvedValue(allowedResult)
 
-      const result = await rateLimiter.acquireKey(testProvider, envKeys, perRequestRateLimit, 'user-123')
+      const result = await rateLimiter.acquireKey(
+        testProvider,
+        envKeys,
+        perRequestRateLimit,
+        'workspace-123'
+      )
 
       expect(result.success).toBe(true)
-      expect(result.userRateLimited).toBeUndefined()
+      expect(result.billingActorRateLimited).toBeUndefined()
       expect(result.key).toBe('test-key-1')
     })
 
@@ -100,10 +110,30 @@ describe('HostedKeyRateLimiter', () => {
       }
       mockAdapter.consumeTokens.mockResolvedValue(allowedResult)
 
-      const r1 = await rateLimiter.acquireKey(testProvider, envKeys, perRequestRateLimit, 'user-1')
-      const r2 = await rateLimiter.acquireKey(testProvider, envKeys, perRequestRateLimit, 'user-2')
-      const r3 = await rateLimiter.acquireKey(testProvider, envKeys, perRequestRateLimit, 'user-3')
-      const r4 = await rateLimiter.acquireKey(testProvider, envKeys, perRequestRateLimit, 'user-4')
+      const r1 = await rateLimiter.acquireKey(
+        testProvider,
+        envKeys,
+        perRequestRateLimit,
+        'workspace-1'
+      )
+      const r2 = await rateLimiter.acquireKey(
+        testProvider,
+        envKeys,
+        perRequestRateLimit,
+        'workspace-2'
+      )
+      const r3 = await rateLimiter.acquireKey(
+        testProvider,
+        envKeys,
+        perRequestRateLimit,
+        'workspace-3'
+      )
+      const r4 = await rateLimiter.acquireKey(
+        testProvider,
+        envKeys,
+        perRequestRateLimit,
+        'workspace-4'
+      )
 
       expect(r1.keyIndex).toBe(0)
       expect(r2.keyIndex).toBe(1)
@@ -111,7 +141,7 @@ describe('HostedKeyRateLimiter', () => {
       expect(r4.keyIndex).toBe(0) // Wraps back
     })
 
-    it('should work without userId (no per-user rate limiting)', async () => {
+    it('should work without billingActorId (no rate limiting)', async () => {
       const result = await rateLimiter.acquireKey(testProvider, envKeys, perRequestRateLimit)
 
       expect(result.success).toBe(true)
@@ -137,7 +167,7 @@ describe('HostedKeyRateLimiter', () => {
   describe('acquireKey with custom rate limit', () => {
     const customRateLimit: CustomRateLimit = {
       mode: 'custom',
-      userRequestsPerMinute: 5,
+      requestsPerMinute: 5,
       dimensions: [
         {
           name: 'tokens',
@@ -147,7 +177,7 @@ describe('HostedKeyRateLimiter', () => {
       ],
     }
 
-    it('should enforce userRequestsPerMinute for custom mode', async () => {
+    it('should enforce requestsPerMinute for custom mode', async () => {
       const rateLimitedResult: ConsumeResult = {
         allowed: false,
         tokensRemaining: 0,
@@ -155,14 +185,19 @@ describe('HostedKeyRateLimiter', () => {
       }
       mockAdapter.consumeTokens.mockResolvedValue(rateLimitedResult)
 
-      const result = await rateLimiter.acquireKey(testProvider, envKeys, customRateLimit, 'user-1')
+      const result = await rateLimiter.acquireKey(
+        testProvider,
+        envKeys,
+        customRateLimit,
+        'workspace-1'
+      )
 
       expect(result.success).toBe(false)
-      expect(result.userRateLimited).toBe(true)
+      expect(result.billingActorRateLimited).toBe(true)
       expect(result.error).toContain('Rate limit exceeded')
     })
 
-    it('should allow request when user request limit and dimensions have budget', async () => {
+    it('should allow request when actor request limit and dimensions have budget', async () => {
       const allowedConsume: ConsumeResult = {
         allowed: true,
         tokensRemaining: 4,
@@ -178,7 +213,12 @@ describe('HostedKeyRateLimiter', () => {
       }
       mockAdapter.getTokenStatus.mockResolvedValue(budgetAvailable)
 
-      const result = await rateLimiter.acquireKey(testProvider, envKeys, customRateLimit, 'user-1')
+      const result = await rateLimiter.acquireKey(
+        testProvider,
+        envKeys,
+        customRateLimit,
+        'workspace-1'
+      )
 
       expect(result.success).toBe(true)
       expect(result.key).toBe('test-key-1')
@@ -202,14 +242,19 @@ describe('HostedKeyRateLimiter', () => {
       }
       mockAdapter.getTokenStatus.mockResolvedValue(depleted)
 
-      const result = await rateLimiter.acquireKey(testProvider, envKeys, customRateLimit, 'user-1')
+      const result = await rateLimiter.acquireKey(
+        testProvider,
+        envKeys,
+        customRateLimit,
+        'workspace-1'
+      )
 
       expect(result.success).toBe(false)
-      expect(result.userRateLimited).toBe(true)
+      expect(result.billingActorRateLimited).toBe(true)
       expect(result.error).toContain('tokens')
     })
 
-    it('should skip dimension pre-check without userId', async () => {
+    it('should skip dimension pre-check without billingActorId', async () => {
       const result = await rateLimiter.acquireKey(testProvider, envKeys, customRateLimit)
 
       expect(result.success).toBe(true)
@@ -220,7 +265,7 @@ describe('HostedKeyRateLimiter', () => {
     it('should pre-check all dimensions and block on first depleted one', async () => {
       const multiDimensionConfig: CustomRateLimit = {
         mode: 'custom',
-        userRequestsPerMinute: 10,
+        requestsPerMinute: 10,
         dimensions: [
           {
             name: 'tokens',
@@ -262,11 +307,11 @@ describe('HostedKeyRateLimiter', () => {
         testProvider,
         envKeys,
         multiDimensionConfig,
-        'user-1'
+        'workspace-1'
       )
 
       expect(result.success).toBe(false)
-      expect(result.userRateLimited).toBe(true)
+      expect(result.billingActorRateLimited).toBe(true)
       expect(result.error).toContain('search_units')
     })
   })
@@ -274,7 +319,7 @@ describe('HostedKeyRateLimiter', () => {
   describe('reportUsage', () => {
     const customConfig: CustomRateLimit = {
       mode: 'custom',
-      userRequestsPerMinute: 5,
+      requestsPerMinute: 5,
       dimensions: [
         {
           name: 'tokens',
@@ -294,7 +339,7 @@ describe('HostedKeyRateLimiter', () => {
 
       const result = await rateLimiter.reportUsage(
         testProvider,
-        'user-1',
+        'workspace-1',
         customConfig,
         {},
         { tokenCount: 150 }
@@ -307,7 +352,7 @@ describe('HostedKeyRateLimiter', () => {
       expect(result.dimensions[0].tokensRemaining).toBe(850)
 
       expect(mockAdapter.consumeTokens).toHaveBeenCalledWith(
-        'hosted:exa:user:user-1:tokens',
+        'hosted:exa:actor:workspace-1:tokens',
         150,
         expect.objectContaining({ maxTokens: 2000, refillRate: 1000 })
       )
@@ -323,7 +368,7 @@ describe('HostedKeyRateLimiter', () => {
 
       const result = await rateLimiter.reportUsage(
         testProvider,
-        'user-1',
+        'workspace-1',
         customConfig,
         {},
         { tokenCount: 500 }
@@ -336,7 +381,7 @@ describe('HostedKeyRateLimiter', () => {
     it('should skip consumption when extractUsage returns 0', async () => {
       const result = await rateLimiter.reportUsage(
         testProvider,
-        'user-1',
+        'workspace-1',
         customConfig,
         {},
         { tokenCount: 0 }
@@ -350,7 +395,7 @@ describe('HostedKeyRateLimiter', () => {
     it('should handle multiple dimensions independently', async () => {
       const multiConfig: CustomRateLimit = {
         mode: 'custom',
-        userRequestsPerMinute: 10,
+        requestsPerMinute: 10,
         dimensions: [
           {
             name: 'tokens',
@@ -381,7 +426,7 @@ describe('HostedKeyRateLimiter', () => {
 
       const result = await rateLimiter.reportUsage(
         testProvider,
-        'user-1',
+        'workspace-1',
         multiConfig,
         {},
         { tokenCount: 200, searchUnits: 3 }
@@ -407,7 +452,7 @@ describe('HostedKeyRateLimiter', () => {
     it('should continue with remaining dimensions if extractUsage throws', async () => {
       const throwingConfig: CustomRateLimit = {
         mode: 'custom',
-        userRequestsPerMinute: 10,
+        requestsPerMinute: 10,
         dimensions: [
           {
             name: 'broken',
@@ -433,7 +478,7 @@ describe('HostedKeyRateLimiter', () => {
 
       const result = await rateLimiter.reportUsage(
         testProvider,
-        'user-1',
+        'workspace-1',
         throwingConfig,
         {},
         { tokenCount: 100 }
@@ -449,7 +494,7 @@ describe('HostedKeyRateLimiter', () => {
 
       const result = await rateLimiter.reportUsage(
         testProvider,
-        'user-1',
+        'workspace-1',
         customConfig,
         {},
         { tokenCount: 100 }

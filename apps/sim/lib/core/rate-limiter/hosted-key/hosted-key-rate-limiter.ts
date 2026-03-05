@@ -16,8 +16,8 @@ import {
 
 const logger = createLogger('HostedKeyRateLimiter')
 
-/** Dimension name for per-user rate limiting */
-const USER_REQUESTS_DIMENSION = 'user_requests'
+/** Dimension name for per-billing-actor request rate limiting */
+const ACTOR_REQUESTS_DIMENSION = 'actor_requests'
 
 /**
  * Information about an available hosted key
@@ -30,9 +30,12 @@ interface AvailableKey {
 
 /**
  * HostedKeyRateLimiter provides:
- * 1. Per-user rate limiting (enforced - blocks users who exceed their limit)
+ * 1. Per-billing-actor rate limiting (enforced - blocks actors who exceed their limit)
  * 2. Least-loaded key selection (distributes requests evenly across keys)
  * 3. Post-execution dimension usage tracking for custom rate limits
+ *
+ * The billing actor is typically a workspace ID, meaning rate limits are shared
+ * across all users within the same workspace.
  */
 export class HostedKeyRateLimiter {
   private storage: RateLimitStorageAdapter
@@ -43,16 +46,16 @@ export class HostedKeyRateLimiter {
     this.storage = storage ?? createStorageAdapter()
   }
 
-  private buildUserStorageKey(provider: string, userId: string): string {
-    return `hosted:${provider}:user:${userId}:${USER_REQUESTS_DIMENSION}`
+  private buildActorStorageKey(provider: string, billingActorId: string): string {
+    return `hosted:${provider}:actor:${billingActorId}:${ACTOR_REQUESTS_DIMENSION}`
   }
 
   private buildDimensionStorageKey(
     provider: string,
-    userId: string,
+    billingActorId: string,
     dimensionName: string
   ): string {
-    return `hosted:${provider}:user:${userId}:${dimensionName}`
+    return `hosted:${provider}:actor:${billingActorId}:${dimensionName}`
   }
 
   private getAvailableKeys(envKeys: string[]): AvailableKey[] {
@@ -68,38 +71,38 @@ export class HostedKeyRateLimiter {
   }
 
   /**
-   * Build a token bucket config for the per-user request rate limit.
-   * Works for both `per_request` and `custom` modes since both define `userRequestsPerMinute`.
+   * Build a token bucket config for the per-billing-actor request rate limit.
+   * Works for both `per_request` and `custom` modes since both define `requestsPerMinute`.
    */
-  private getUserRateLimitConfig(config: HostedKeyRateLimitConfig): TokenBucketConfig | null {
-    if (!config.userRequestsPerMinute) return null
+  private getActorRateLimitConfig(config: HostedKeyRateLimitConfig): TokenBucketConfig | null {
+    if (!config.requestsPerMinute) return null
     return toTokenBucketConfig(
-      config.userRequestsPerMinute,
+      config.requestsPerMinute,
       config.burstMultiplier ?? DEFAULT_BURST_MULTIPLIER,
       DEFAULT_WINDOW_MS
     )
   }
 
   /**
-   * Check and consume user request rate limit. Returns null if allowed, or retry info if blocked.
+   * Check and consume billing actor request rate limit. Returns null if allowed, or retry info if blocked.
    */
-  private async checkUserRateLimit(
+  private async checkActorRateLimit(
     provider: string,
-    userId: string,
+    billingActorId: string,
     config: HostedKeyRateLimitConfig
   ): Promise<{ rateLimited: true; retryAfterMs: number } | null> {
-    const bucketConfig = this.getUserRateLimitConfig(config)
+    const bucketConfig = this.getActorRateLimitConfig(config)
     if (!bucketConfig) return null
 
-    const storageKey = this.buildUserStorageKey(provider, userId)
+    const storageKey = this.buildActorStorageKey(provider, billingActorId)
 
     try {
       const result = await this.storage.consumeTokens(storageKey, 1, bucketConfig)
       if (!result.allowed) {
         const retryAfterMs = Math.max(0, result.resetAt.getTime() - Date.now())
-        logger.info(`User ${userId} rate limited for ${provider}`, {
+        logger.info(`Billing actor ${billingActorId} rate limited for ${provider}`, {
           provider,
-          userId,
+          billingActorId,
           retryAfterMs,
           tokensRemaining: result.tokensRemaining,
         })
@@ -107,23 +110,26 @@ export class HostedKeyRateLimiter {
       }
       return null
     } catch (error) {
-      logger.error(`Error checking user rate limit for ${provider}`, { error, userId })
+      logger.error(`Error checking billing actor rate limit for ${provider}`, {
+        error,
+        billingActorId,
+      })
       return null
     }
   }
 
   /**
-   * Pre-check that the user has available budget in all custom dimensions.
-   * Does NOT consume tokens -- just verifies the user isn't already depleted.
+   * Pre-check that the billing actor has available budget in all custom dimensions.
+   * Does NOT consume tokens -- just verifies the actor isn't already depleted.
    * Returns retry info for the most restrictive exhausted dimension, or null if all pass.
    */
   private async preCheckDimensions(
     provider: string,
-    userId: string,
+    billingActorId: string,
     config: CustomRateLimit
   ): Promise<{ rateLimited: true; retryAfterMs: number; dimension: string } | null> {
     for (const dimension of config.dimensions) {
-      const storageKey = this.buildDimensionStorageKey(provider, userId, dimension.name)
+      const storageKey = this.buildDimensionStorageKey(provider, billingActorId, dimension.name)
       const bucketConfig = toTokenBucketConfig(
         dimension.limitPerMinute,
         dimension.burstMultiplier ?? DEFAULT_BURST_MULTIPLIER,
@@ -134,19 +140,22 @@ export class HostedKeyRateLimiter {
         const status = await this.storage.getTokenStatus(storageKey, bucketConfig)
         if (status.tokensAvailable < 1) {
           const retryAfterMs = Math.max(0, status.nextRefillAt.getTime() - Date.now())
-          logger.info(`User ${userId} exhausted dimension ${dimension.name} for ${provider}`, {
-            provider,
-            userId,
-            dimension: dimension.name,
-            tokensAvailable: status.tokensAvailable,
-            retryAfterMs,
-          })
+          logger.info(
+            `Billing actor ${billingActorId} exhausted dimension ${dimension.name} for ${provider}`,
+            {
+              provider,
+              billingActorId,
+              dimension: dimension.name,
+              tokensAvailable: status.tokensAvailable,
+              retryAfterMs,
+            }
+          )
           return { rateLimited: true, retryAfterMs, dimension: dimension.name }
         }
       } catch (error) {
         logger.error(`Error pre-checking dimension ${dimension.name} for ${provider}`, {
           error,
-          userId,
+          billingActorId,
         })
       }
     }
@@ -157,38 +166,40 @@ export class HostedKeyRateLimiter {
    * Acquire the best available key.
    *
    * For both modes:
-   *   1. Per-user request rate limiting (enforced): blocks users who exceed their request limit
+   *   1. Per-billing-actor request rate limiting (enforced): blocks actors who exceed their request limit
    *   2. Least-loaded key selection: picks the key with fewest in-flight requests
    *
    * For `custom` mode additionally:
    *   3. Pre-checks dimension budgets: blocks if any dimension is already depleted
+   *
+   * @param billingActorId - The billing actor (typically workspace ID) to rate limit against
    */
   async acquireKey(
     provider: string,
     envKeys: string[],
     config: HostedKeyRateLimitConfig,
-    userId?: string
+    billingActorId?: string
   ): Promise<AcquireKeyResult> {
-    if (userId && config.userRequestsPerMinute) {
-      const userRateLimitResult = await this.checkUserRateLimit(provider, userId, config)
-      if (userRateLimitResult) {
+    if (billingActorId && config.requestsPerMinute) {
+      const rateLimitResult = await this.checkActorRateLimit(provider, billingActorId, config)
+      if (rateLimitResult) {
         return {
           success: false,
-          userRateLimited: true,
-          retryAfterMs: userRateLimitResult.retryAfterMs,
-          error: `Rate limit exceeded. Please wait ${Math.ceil(userRateLimitResult.retryAfterMs / 1000)} seconds.`,
+          billingActorRateLimited: true,
+          retryAfterMs: rateLimitResult.retryAfterMs,
+          error: `Rate limit exceeded. Please wait ${Math.ceil(rateLimitResult.retryAfterMs / 1000)} seconds. If you're getting throttled frequently, consider adding your own API key under Settings > BYOK to avoid shared rate limits.`,
         }
       }
     }
 
-    if (userId && config.mode === 'custom' && config.dimensions.length > 0) {
-      const dimensionResult = await this.preCheckDimensions(provider, userId, config)
+    if (billingActorId && config.mode === 'custom' && config.dimensions.length > 0) {
+      const dimensionResult = await this.preCheckDimensions(provider, billingActorId, config)
       if (dimensionResult) {
         return {
           success: false,
-          userRateLimited: true,
+          billingActorRateLimited: true,
           retryAfterMs: dimensionResult.retryAfterMs,
-          error: `Rate limit exceeded for ${dimensionResult.dimension}. Please wait ${Math.ceil(dimensionResult.retryAfterMs / 1000)} seconds.`,
+          error: `Rate limit exceeded for ${dimensionResult.dimension}. Please wait ${Math.ceil(dimensionResult.retryAfterMs / 1000)} seconds. If you're getting throttled frequently, consider adding your own API key under Settings > BYOK to avoid shared rate limits.`,
         }
       }
     }
@@ -238,7 +249,7 @@ export class HostedKeyRateLimiter {
    */
   async reportUsage(
     provider: string,
-    userId: string,
+    billingActorId: string,
     config: CustomRateLimit,
     params: Record<string, unknown>,
     response: Record<string, unknown>
@@ -252,7 +263,7 @@ export class HostedKeyRateLimiter {
       } catch (error) {
         logger.error(`Failed to extract usage for dimension ${dimension.name}`, {
           provider,
-          userId,
+          billingActorId,
           error,
         })
         continue
@@ -268,7 +279,7 @@ export class HostedKeyRateLimiter {
         continue
       }
 
-      const storageKey = this.buildDimensionStorageKey(provider, userId, dimension.name)
+      const storageKey = this.buildDimensionStorageKey(provider, billingActorId, dimension.name)
       const bucketConfig = toTokenBucketConfig(
         dimension.limitPerMinute,
         dimension.burstMultiplier ?? DEFAULT_BURST_MULTIPLIER,
@@ -288,13 +299,13 @@ export class HostedKeyRateLimiter {
         if (!consumeResult.allowed) {
           logger.warn(
             `Dimension ${dimension.name} overdrawn for ${provider} (optimistic concurrency)`,
-            { provider, userId, usage, tokensRemaining: consumeResult.tokensRemaining }
+            { provider, billingActorId, usage, tokensRemaining: consumeResult.tokensRemaining }
           )
         }
 
         logger.debug(`Consumed ${usage} from dimension ${dimension.name} for ${provider}`, {
           provider,
-          userId,
+          billingActorId,
           usage,
           allowed: consumeResult.allowed,
           tokensRemaining: consumeResult.tokensRemaining,
@@ -302,7 +313,7 @@ export class HostedKeyRateLimiter {
       } catch (error) {
         logger.error(`Failed to consume tokens for dimension ${dimension.name}`, {
           provider,
-          userId,
+          billingActorId,
           usage,
           error,
         })

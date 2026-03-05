@@ -4,12 +4,12 @@ export type HostedKeyRateLimitMode = 'per_request' | 'custom'
 
 /**
  * Simple per-request rate limit configuration.
- * Enforces per-user rate limiting and distributes requests across keys.
+ * Enforces per-billing-actor rate limiting and distributes requests across keys.
  */
 export interface PerRequestRateLimit {
   mode: 'per_request'
-  /** Maximum requests per minute per user (enforced - blocks if exceeded) */
-  userRequestsPerMinute: number
+  /** Maximum requests per minute per billing actor (enforced - blocks if exceeded) */
+  requestsPerMinute: number
   /** Burst multiplier for token bucket max capacity. Default: 2 */
   burstMultiplier?: number
 }
@@ -20,8 +20,8 @@ export interface PerRequestRateLimit {
  */
 export interface CustomRateLimit {
   mode: 'custom'
-  /** Maximum requests per minute per user (enforced - blocks if exceeded) */
-  userRequestsPerMinute: number
+  /** Maximum requests per minute per billing actor (enforced - blocks if exceeded) */
+  requestsPerMinute: number
   /** Multiple dimensions to track */
   dimensions: RateLimitDimension[]
   /** Burst multiplier for token bucket max capacity. Default: 2 */
@@ -63,9 +63,9 @@ export interface AcquireKeyResult {
   envVarName?: string
   /** Error message if no key available */
   error?: string
-  /** Whether the user was rate limited (exceeded their per-user limit) */
-  userRateLimited?: boolean
-  /** Milliseconds until user's rate limit resets (if userRateLimited=true) */
+  /** Whether the billing actor was rate limited (exceeded their limit) */
+  billingActorRateLimited?: boolean
+  /** Milliseconds until the billing actor's rate limit resets (if billingActorRateLimited=true) */
   retryAfterMs?: number
 }
 

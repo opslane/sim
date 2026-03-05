@@ -78,24 +78,23 @@ async function injectHostedKeyIfNeeded(
 
   const rateLimiter = getHostedKeyRateLimiter()
   const provider = byokProviderId || tool.id
-  const userId = executionContext?.userId
+  const billingActorId = executionContext?.workspaceId
 
-  const acquireResult = await rateLimiter.acquireKey(provider, envKeys, rateLimit, userId)
+  const acquireResult = await rateLimiter.acquireKey(provider, envKeys, rateLimit, billingActorId)
 
-  // Handle per-user rate limiting (enforced - blocks the user)
-  if (!acquireResult.success && acquireResult.userRateLimited) {
-    logger.warn(`[${requestId}] User ${userId} rate limited for ${tool.id}`, {
+  if (!acquireResult.success && acquireResult.billingActorRateLimited) {
+    logger.warn(`[${requestId}] Billing actor ${billingActorId} rate limited for ${tool.id}`, {
       provider,
       retryAfterMs: acquireResult.retryAfterMs,
     })
 
     PlatformEvents.hostedKeyRateLimited({
       toolId: tool.id,
-      envVarName: 'user_rate_limited',
+      envVarName: 'billing_actor_rate_limited',
       attempt: 0,
       maxRetries: 0,
       delayMs: acquireResult.retryAfterMs ?? 0,
-      userId,
+      userId: executionContext?.userId,
       workspaceId: executionContext?.workspaceId,
       workflowId: executionContext?.workflowId,
     })
@@ -288,8 +287,8 @@ async function reportCustomDimensionUsage(
   requestId: string
 ): Promise<void> {
   if (tool.hosting?.rateLimit.mode !== 'custom') return
-  const userId = executionContext?.userId
-  if (!userId) return
+  const billingActorId = executionContext?.workspaceId
+  if (!billingActorId) return
 
   const rateLimiter = getHostedKeyRateLimiter()
   const provider = tool.hosting.byokProviderId || tool.id
@@ -297,7 +296,7 @@ async function reportCustomDimensionUsage(
   try {
     const result = await rateLimiter.reportUsage(
       provider,
-      userId,
+      billingActorId,
       tool.hosting.rateLimit,
       params,
       response

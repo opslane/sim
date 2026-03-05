@@ -84,7 +84,7 @@ export const getContentsTool: ToolConfig<ExaGetContentsParams, ExaGetContentsRes
     },
     rateLimit: {
       mode: 'per_request',
-      userRequestsPerMinute: 10,
+      requestsPerMinute: 10,
     },
   },
 

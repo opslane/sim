@@ -115,7 +115,7 @@ export const searchTool: ToolConfig<ExaSearchParams, ExaSearchResponse> = {
     },
     rateLimit: {
       mode: 'per_request',
-      userRequestsPerMinute: 2, // Per-user limit (enforced)
+      requestsPerMinute: 2,
     },
   },
 

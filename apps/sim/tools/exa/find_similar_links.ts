@@ -100,7 +100,7 @@ export const findSimilarLinksTool: ToolConfig<
     },
     rateLimit: {
       mode: 'per_request',
-      userRequestsPerMinute: 10,
+      requestsPerMinute: 10,
     },
   },
 
