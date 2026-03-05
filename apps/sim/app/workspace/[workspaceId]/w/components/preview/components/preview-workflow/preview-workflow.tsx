@@ -458,6 +458,9 @@ export function PreviewWorkflow({
     }): ExecutionStatus | undefined => {
       if (blockExecutionMap.size === 0) return undefined
 
+      const targetStatus = getBlockExecutionStatus(edge.target)
+      if (!targetStatus?.executed) return 'not-executed'
+
       const sourceStatus = getBlockExecutionStatus(edge.source)
       if (!sourceStatus?.executed) return 'not-executed'
 
