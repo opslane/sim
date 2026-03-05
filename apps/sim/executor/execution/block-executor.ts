@@ -672,7 +672,7 @@ export class BlockExecutor {
       logger.error('Error reading executor stream for block', { blockId, error })
     } finally {
       try {
-        reader.cancel().catch(() => {})
+        await reader.cancel().catch(() => {})
       } catch {}
     }
 

@@ -30,7 +30,7 @@ export function startMemoryTelemetry(intervalMs = 60_000) {
       | { gc?: (force: boolean) => void }
       | undefined
     if (typeof bunGlobal?.gc === 'function') {
-      bunGlobal.gc(true)
+      bunGlobal.gc(false)
     }
 
     const mem = process.memoryUsage()
