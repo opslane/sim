@@ -20,7 +20,7 @@ import { ChildWorkflowError } from '@/executor/errors/child-workflow-error'
 import type {
   BlockStateWriter,
   ContextExtensions,
-  IterationContext,
+  WorkflowNodeMetadata,
 } from '@/executor/execution/types'
 import {
   generatePauseContextId,
@@ -36,11 +36,14 @@ import {
 } from '@/executor/types'
 import { streamingResponseFormatProcessor } from '@/executor/utils'
 import { buildBlockExecutionError, normalizeError } from '@/executor/utils/errors'
+import {
+  buildUnifiedParentIterations,
+  getIterationContext,
+} from '@/executor/utils/iteration-context'
 import { isJSONString } from '@/executor/utils/json'
 import { filterOutputForLog } from '@/executor/utils/output-filter'
 import type { VariableResolver } from '@/executor/variables/resolver'
 import type { SerializedBlock } from '@/serializer/types'
-import type { SubflowType } from '@/stores/workflows/workflow/types'
 import { SYSTEM_SUBBLOCK_IDS } from '@/triggers/constants'
 
 const logger = createLogger('BlockExecutor')
@@ -80,7 +83,10 @@ export class BlockExecutor {
     const startTime = performance.now()
     let resolvedInputs: Record<string, any> = {}
 
-    const nodeMetadata = this.buildNodeMetadata(node)
+    const nodeMetadata = {
+      ...this.buildNodeMetadata(node),
+      executionOrder: blockLog?.executionOrder,
+    }
     let cleanupSelfReference: (() => void) | undefined
 
     if (block.metadata?.id === BlockType.HUMAN_IN_THE_LOOP) {
@@ -166,6 +172,10 @@ export class BlockExecutor {
       this.state.setBlockOutput(node.id, normalizedOutput, duration)
 
       if (!isSentinel && blockLog) {
+        const childWorkflowInstanceId =
+          typeof normalizedOutput._childWorkflowInstanceId === 'string'
+            ? normalizedOutput._childWorkflowInstanceId
+            : undefined
         const displayOutput = filterOutputForLog(block.metadata?.id || '', normalizedOutput, {
           block,
         })
@@ -178,7 +188,8 @@ export class BlockExecutor {
           duration,
           blockLog.startedAt,
           blockLog.executionOrder,
-          blockLog.endedAt
+          blockLog.endedAt,
+          childWorkflowInstanceId
         )
       }
 
@@ -198,13 +209,7 @@ export class BlockExecutor {
     }
   }
 
-  private buildNodeMetadata(node: DAGNode): {
-    nodeId: string
-    loopId?: string
-    parallelId?: string
-    branchIndex?: number
-    branchTotal?: number
-  } {
+  private buildNodeMetadata(node: DAGNode): WorkflowNodeMetadata {
     const metadata = node?.metadata ?? {}
     return {
       nodeId: node.id,
@@ -212,6 +217,8 @@ export class BlockExecutor {
       parallelId: metadata.parallelId,
       branchIndex: metadata.branchIndex,
       branchTotal: metadata.branchTotal,
+      originalBlockId: metadata.originalBlockId,
+      isLoopNode: metadata.isLoopNode,
     }
   }
 
@@ -276,6 +283,9 @@ export class BlockExecutor {
     )
 
     if (!isSentinel && blockLog) {
+      const childWorkflowInstanceId = ChildWorkflowError.isChildWorkflowError(error)
+        ? error.childWorkflowInstanceId
+        : undefined
       const displayOutput = filterOutputForLog(block.metadata?.id || '', errorOutput, { block })
       this.callOnBlockComplete(
         ctx,
@@ -286,7 +296,8 @@ export class BlockExecutor {
         duration,
         blockLog.startedAt,
         blockLog.executionOrder,
-        blockLog.endedAt
+        blockLog.endedAt,
+        childWorkflowInstanceId
       )
     }
 
@@ -352,6 +363,11 @@ export class BlockExecutor {
       }
     }
 
+    const containerId = parallelId ?? loopId
+    const parentIterations = containerId
+      ? buildUnifiedParentIterations(ctx, containerId)
+      : undefined
+
     return {
       blockId,
       blockName,
@@ -364,6 +380,7 @@ export class BlockExecutor {
       loopId,
       parallelId,
       iterationIndex,
+      ...(parentIterations?.length && { parentIterations }),
     }
   }
 
@@ -428,11 +445,11 @@ export class BlockExecutor {
     block: SerializedBlock,
     executionOrder: number
   ): void {
-    const blockId = node.id
+    const blockId = node.metadata?.originalBlockId ?? node.id
     const blockName = block.metadata?.name ?? blockId
     const blockType = block.metadata?.id ?? DEFAULTS.BLOCK_TYPE
 
-    const iterationContext = this.getIterationContext(ctx, node)
+    const iterationContext = getIterationContext(ctx, node?.metadata)
 
     if (this.contextExtensions.onBlockStart) {
       this.contextExtensions.onBlockStart(
@@ -440,7 +457,8 @@ export class BlockExecutor {
         blockName,
         blockType,
         executionOrder,
-        iterationContext
+        iterationContext,
+        ctx.childWorkflowContext
       )
     }
   }
@@ -454,13 +472,14 @@ export class BlockExecutor {
     duration: number,
     startedAt: string,
     executionOrder: number,
-    endedAt: string
+    endedAt: string,
+    childWorkflowInstanceId?: string
   ): void {
-    const blockId = node.id
+    const blockId = node.metadata?.originalBlockId ?? node.id
     const blockName = block.metadata?.name ?? blockId
     const blockType = block.metadata?.id ?? DEFAULTS.BLOCK_TYPE
 
-    const iterationContext = this.getIterationContext(ctx, node)
+    const iterationContext = getIterationContext(ctx, node?.metadata)
 
     if (this.contextExtensions.onBlockComplete) {
       this.contextExtensions.onBlockComplete(
@@ -474,51 +493,12 @@ export class BlockExecutor {
           startedAt,
           executionOrder,
           endedAt,
+          childWorkflowInstanceId,
         },
-        iterationContext
+        iterationContext,
+        ctx.childWorkflowContext
       )
     }
-  }
-
-  private createIterationContext(
-    iterationCurrent: number,
-    iterationType: SubflowType,
-    iterationContainerId?: string,
-    iterationTotal?: number
-  ): IterationContext {
-    return {
-      iterationCurrent,
-      iterationTotal,
-      iterationType,
-      iterationContainerId,
-    }
-  }
-
-  private getIterationContext(ctx: ExecutionContext, node: DAGNode): IterationContext | undefined {
-    if (!node?.metadata) return undefined
-
-    if (node.metadata.branchIndex !== undefined && node.metadata.branchTotal !== undefined) {
-      return this.createIterationContext(
-        node.metadata.branchIndex,
-        'parallel',
-        node.metadata.parallelId,
-        node.metadata.branchTotal
-      )
-    }
-
-    if (node.metadata.isLoopNode && node.metadata.loopId) {
-      const loopScope = ctx.loopExecutions?.get(node.metadata.loopId)
-      if (loopScope && loopScope.iteration !== undefined) {
-        return this.createIterationContext(
-          loopScope.iteration,
-          'loop',
-          node.metadata.loopId,
-          loopScope.maxIterations
-        )
-      }
-    }
-
-    return undefined
   }
 
   private preparePauseResumeSelfReference(
@@ -638,6 +618,8 @@ export class BlockExecutor {
         await ctx.onStream?.(clientStreamingExec)
       } catch (error) {
         logger.error('Error in onStream callback', { blockId, error })
+        // Cancel the client stream to release the tee'd buffer
+        await processedClientStream.cancel().catch(() => {})
       }
     })()
 
@@ -666,6 +648,7 @@ export class BlockExecutor {
       })
     } catch (error) {
       logger.error('Error in onStream callback', { blockId, error })
+      await processedStream.cancel().catch(() => {})
     }
   }
 
@@ -677,22 +660,25 @@ export class BlockExecutor {
   ): Promise<void> {
     const reader = stream.getReader()
     const decoder = new TextDecoder()
-    let fullContent = ''
+    const chunks: string[] = []
 
     try {
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        fullContent += decoder.decode(value, { stream: true })
+        chunks.push(decoder.decode(value, { stream: true }))
       }
+      const tail = decoder.decode()
+      if (tail) chunks.push(tail)
     } catch (error) {
       logger.error('Error reading executor stream for block', { blockId, error })
     } finally {
       try {
-        reader.releaseLock()
+        await reader.cancel().catch(() => {})
       } catch {}
     }
 
+    const fullContent = chunks.join('')
     if (!fullContent) {
       return
     }

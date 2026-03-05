@@ -20,6 +20,7 @@ import { updateWorkflowRunCounts } from '@/lib/workflows/utils'
 import { Executor } from '@/executor'
 import type { ExecutionSnapshot } from '@/executor/execution/snapshot'
 import type {
+  ChildWorkflowContext,
   ContextExtensions,
   ExecutionCallbacks,
   IterationContext,
@@ -128,7 +129,7 @@ export async function executeWorkflowCore(
   const { metadata, workflow, input, workflowVariables, selectedOutputs } = snapshot
   const { requestId, workflowId, userId, triggerType, executionId, triggerBlockId, useDraftState } =
     metadata
-  const { onBlockStart, onBlockComplete, onStream } = callbacks
+  const { onBlockStart, onBlockComplete, onStream, onChildWorkflowInstanceReady } = callbacks
 
   const providedWorkspaceId = metadata.workspaceId
   if (!providedWorkspaceId) {
@@ -287,11 +288,19 @@ export async function executeWorkflowCore(
         startedAt: string
         endedAt: string
       },
-      iterationContext?: IterationContext
+      iterationContext?: IterationContext,
+      childWorkflowContext?: ChildWorkflowContext
     ) => {
       await loggingSession.onBlockComplete(blockId, blockName, blockType, output)
       if (onBlockComplete) {
-        await onBlockComplete(blockId, blockName, blockType, output, iterationContext)
+        await onBlockComplete(
+          blockId,
+          blockName,
+          blockType,
+          output,
+          iterationContext,
+          childWorkflowContext
+        )
       }
     }
 
@@ -302,6 +311,7 @@ export async function executeWorkflowCore(
       workspaceId: providedWorkspaceId,
       userId,
       isDeployedContext: !metadata.isClientSession,
+      enforceCredentialAccess: metadata.enforceCredentialAccess ?? false,
       onBlockStart,
       onBlockComplete: wrappedOnBlockComplete,
       onStream,
@@ -320,6 +330,8 @@ export async function executeWorkflowCore(
       includeFileBase64,
       base64MaxBytes,
       stopAfterBlockId: resolvedStopAfterBlockId,
+      onChildWorkflowInstanceReady,
+      callChain: metadata.callChain,
     }
 
     const executorInstance = new Executor({
@@ -329,8 +341,6 @@ export async function executeWorkflowCore(
       workflowVariables,
       contextExtensions,
     })
-
-    loggingSession.setupExecutor(executorInstance)
 
     // Convert initial workflow variables to their native types
     if (workflowVariables) {
@@ -350,60 +360,52 @@ export async function executeWorkflowCore(
         )) as ExecutionResult)
       : ((await executorInstance.execute(workflowId, resolvedTriggerBlockId)) as ExecutionResult)
 
-    // Build trace spans for logging from the full execution result
-    const { traceSpans, totalDuration } = buildTraceSpans(result)
+    // Fire-and-forget: post-execution logging, billing, and cleanup
+    void (async () => {
+      try {
+        const { traceSpans, totalDuration } = buildTraceSpans(result)
 
-    // Update workflow run counts
-    if (result.success && result.status !== 'paused') {
-      await updateWorkflowRunCounts(workflowId)
-    }
+        if (result.success && result.status !== 'paused') {
+          try {
+            await updateWorkflowRunCounts(workflowId)
+          } catch (runCountError) {
+            logger.error(`[${requestId}] Failed to update run counts`, { error: runCountError })
+          }
+        }
 
-    if (result.status === 'cancelled') {
-      await loggingSession.safeCompleteWithCancellation({
-        endedAt: new Date().toISOString(),
-        totalDurationMs: totalDuration || 0,
-        traceSpans: traceSpans || [],
-      })
+        if (result.status === 'cancelled') {
+          await loggingSession.safeCompleteWithCancellation({
+            endedAt: new Date().toISOString(),
+            totalDurationMs: totalDuration || 0,
+            traceSpans: traceSpans || [],
+          })
+        } else if (result.status === 'paused') {
+          await loggingSession.safeCompleteWithPause({
+            endedAt: new Date().toISOString(),
+            totalDurationMs: totalDuration || 0,
+            traceSpans: traceSpans || [],
+            workflowInput: processedInput,
+          })
+        } else {
+          await loggingSession.safeComplete({
+            endedAt: new Date().toISOString(),
+            totalDurationMs: totalDuration || 0,
+            finalOutput: result.output || {},
+            traceSpans: traceSpans || [],
+            workflowInput: processedInput,
+            executionState: result.executionState,
+          })
+        }
 
-      await clearExecutionCancellation(executionId)
-
-      logger.info(`[${requestId}] Workflow execution cancelled`, {
-        duration: result.metadata?.duration,
-      })
-
-      return result
-    }
-
-    if (result.status === 'paused') {
-      await loggingSession.safeCompleteWithPause({
-        endedAt: new Date().toISOString(),
-        totalDurationMs: totalDuration || 0,
-        traceSpans: traceSpans || [],
-        workflowInput: processedInput,
-      })
-
-      await clearExecutionCancellation(executionId)
-
-      logger.info(`[${requestId}] Workflow execution paused`, {
-        duration: result.metadata?.duration,
-      })
-
-      return result
-    }
-
-    await loggingSession.safeComplete({
-      endedAt: new Date().toISOString(),
-      totalDurationMs: totalDuration || 0,
-      finalOutput: result.output || {},
-      traceSpans: traceSpans || [],
-      workflowInput: processedInput,
-      executionState: result.executionState,
-    })
-
-    await clearExecutionCancellation(executionId)
+        await clearExecutionCancellation(executionId)
+      } catch (postExecError) {
+        logger.error(`[${requestId}] Post-execution logging failed`, { error: postExecError })
+      }
+    })()
 
     logger.info(`[${requestId}] Workflow execution completed`, {
       success: result.success,
+      status: result.status,
       duration: result.metadata?.duration,
     })
 
@@ -411,20 +413,31 @@ export async function executeWorkflowCore(
   } catch (error: unknown) {
     logger.error(`[${requestId}] Execution failed:`, error)
 
-    const executionResult = hasExecutionResult(error) ? error.executionResult : undefined
-    const { traceSpans } = executionResult ? buildTraceSpans(executionResult) : { traceSpans: [] }
+    // Fire-and-forget: error logging and cleanup
+    void (async () => {
+      try {
+        const executionResult = hasExecutionResult(error) ? error.executionResult : undefined
+        const { traceSpans } = executionResult
+          ? buildTraceSpans(executionResult)
+          : { traceSpans: [] }
 
-    await loggingSession.safeCompleteWithError({
-      endedAt: new Date().toISOString(),
-      totalDurationMs: executionResult?.metadata?.duration || 0,
-      error: {
-        message: error instanceof Error ? error.message : 'Execution failed',
-        stackTrace: error instanceof Error ? error.stack : undefined,
-      },
-      traceSpans,
-    })
+        await loggingSession.safeCompleteWithError({
+          endedAt: new Date().toISOString(),
+          totalDurationMs: executionResult?.metadata?.duration || 0,
+          error: {
+            message: error instanceof Error ? error.message : 'Execution failed',
+            stackTrace: error instanceof Error ? error.stack : undefined,
+          },
+          traceSpans,
+        })
 
-    await clearExecutionCancellation(executionId)
+        await clearExecutionCancellation(executionId)
+      } catch (postExecError) {
+        logger.error(`[${requestId}] Post-execution error logging failed`, {
+          error: postExecError,
+        })
+      }
+    })()
 
     throw error
   }

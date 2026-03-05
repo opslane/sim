@@ -3,50 +3,63 @@
  *
  * @vitest-environment node
  */
-import { createMockLogger, createMockRequest } from '@sim/testing'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createMockRequest } from '@sim/testing'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const {
+  mockGetUserId,
+  mockGetCredential,
+  mockRefreshTokenIfNeeded,
+  mockGetOAuthToken,
+  mockAuthorizeCredentialUse,
+  mockCheckSessionOrInternalAuth,
+  mockLogger,
+} = vi.hoisted(() => {
+  const logger = {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+    child: vi.fn(),
+  }
+  return {
+    mockGetUserId: vi.fn(),
+    mockGetCredential: vi.fn(),
+    mockRefreshTokenIfNeeded: vi.fn(),
+    mockGetOAuthToken: vi.fn(),
+    mockAuthorizeCredentialUse: vi.fn(),
+    mockCheckSessionOrInternalAuth: vi.fn(),
+    mockLogger: logger,
+  }
+})
+
+vi.mock('@/app/api/auth/oauth/utils', () => ({
+  getUserId: mockGetUserId,
+  getCredential: mockGetCredential,
+  refreshTokenIfNeeded: mockRefreshTokenIfNeeded,
+  getOAuthToken: mockGetOAuthToken,
+}))
+
+vi.mock('@sim/logger', () => ({
+  createLogger: vi.fn().mockReturnValue(mockLogger),
+}))
+
+vi.mock('@/lib/auth/credential-access', () => ({
+  authorizeCredentialUse: mockAuthorizeCredentialUse,
+}))
+
+vi.mock('@/lib/auth/hybrid', () => ({
+  checkHybridAuth: vi.fn(),
+  checkSessionOrInternalAuth: mockCheckSessionOrInternalAuth,
+  checkInternalAuth: vi.fn(),
+}))
+
+import { GET, POST } from '@/app/api/auth/oauth/token/route'
 
 describe('OAuth Token API Routes', () => {
-  const mockGetUserId = vi.fn()
-  const mockGetCredential = vi.fn()
-  const mockRefreshTokenIfNeeded = vi.fn()
-  const mockGetOAuthToken = vi.fn()
-  const mockAuthorizeCredentialUse = vi.fn()
-  const mockCheckSessionOrInternalAuth = vi.fn()
-
-  const mockLogger = createMockLogger()
-
-  const mockUUID = 'mock-uuid-12345678-90ab-cdef-1234-567890abcdef'
-  const mockRequestId = mockUUID.slice(0, 8)
-
   beforeEach(() => {
-    vi.resetModules()
-
-    vi.stubGlobal('crypto', {
-      randomUUID: vi.fn().mockReturnValue(mockUUID),
-    })
-
-    vi.doMock('@/app/api/auth/oauth/utils', () => ({
-      getUserId: mockGetUserId,
-      getCredential: mockGetCredential,
-      refreshTokenIfNeeded: mockRefreshTokenIfNeeded,
-      getOAuthToken: mockGetOAuthToken,
-    }))
-
-    vi.doMock('@sim/logger', () => ({
-      createLogger: vi.fn().mockReturnValue(mockLogger),
-    }))
-
-    vi.doMock('@/lib/auth/credential-access', () => ({
-      authorizeCredentialUse: mockAuthorizeCredentialUse,
-    }))
-
-    vi.doMock('@/lib/auth/hybrid', () => ({
-      checkSessionOrInternalAuth: mockCheckSessionOrInternalAuth,
-    }))
-  })
-
-  afterEach(() => {
     vi.clearAllMocks()
   })
 
@@ -73,23 +86,16 @@ describe('OAuth Token API Routes', () => {
         refreshed: false,
       })
 
-      // Create mock request
       const req = createMockRequest('POST', {
         credentialId: 'credential-id',
       })
 
-      // Import handler after setting up mocks
-      const { POST } = await import('@/app/api/auth/oauth/token/route')
-
-      // Call handler
       const response = await POST(req)
       const data = await response.json()
 
-      // Verify request was handled correctly
       expect(response.status).toBe(200)
       expect(data).toHaveProperty('accessToken', 'fresh-token')
 
-      // Verify mocks were called correctly
       expect(mockAuthorizeCredentialUse).toHaveBeenCalled()
       expect(mockGetCredential).toHaveBeenCalled()
       expect(mockRefreshTokenIfNeeded).toHaveBeenCalled()
@@ -119,8 +125,6 @@ describe('OAuth Token API Routes', () => {
         workflowId: 'workflow-id',
       })
 
-      const { POST } = await import('@/app/api/auth/oauth/token/route')
-
       const response = await POST(req)
       const data = await response.json()
 
@@ -133,8 +137,6 @@ describe('OAuth Token API Routes', () => {
 
     it('should handle missing credentialId', async () => {
       const req = createMockRequest('POST', {})
-
-      const { POST } = await import('@/app/api/auth/oauth/token/route')
 
       const response = await POST(req)
       const data = await response.json()
@@ -157,8 +159,6 @@ describe('OAuth Token API Routes', () => {
         credentialId: 'credential-id',
       })
 
-      const { POST } = await import('@/app/api/auth/oauth/token/route')
-
       const response = await POST(req)
       const data = await response.json()
 
@@ -173,8 +173,6 @@ describe('OAuth Token API Routes', () => {
         credentialId: 'credential-id',
         workflowId: 'nonexistent-workflow-id',
       })
-
-      const { POST } = await import('@/app/api/auth/oauth/token/route')
 
       const response = await POST(req)
       const data = await response.json()
@@ -194,8 +192,6 @@ describe('OAuth Token API Routes', () => {
       const req = createMockRequest('POST', {
         credentialId: 'nonexistent-credential-id',
       })
-
-      const { POST } = await import('@/app/api/auth/oauth/token/route')
 
       const response = await POST(req)
       const data = await response.json()
@@ -224,8 +220,6 @@ describe('OAuth Token API Routes', () => {
         credentialId: 'credential-id',
       })
 
-      const { POST } = await import('@/app/api/auth/oauth/token/route')
-
       const response = await POST(req)
       const data = await response.json()
 
@@ -244,8 +238,6 @@ describe('OAuth Token API Routes', () => {
           credentialAccountUserId: 'target-user-id',
           providerId: 'google',
         })
-
-        const { POST } = await import('@/app/api/auth/oauth/token/route')
 
         const response = await POST(req)
         const data = await response.json()
@@ -267,8 +259,6 @@ describe('OAuth Token API Routes', () => {
           providerId: 'google',
         })
 
-        const { POST } = await import('@/app/api/auth/oauth/token/route')
-
         const response = await POST(req)
         const data = await response.json()
 
@@ -288,8 +278,6 @@ describe('OAuth Token API Routes', () => {
           credentialAccountUserId: 'victim-user-id',
           providerId: 'google',
         })
-
-        const { POST } = await import('@/app/api/auth/oauth/token/route')
 
         const response = await POST(req)
         const data = await response.json()
@@ -312,8 +300,6 @@ describe('OAuth Token API Routes', () => {
           providerId: 'google',
         })
 
-        const { POST } = await import('@/app/api/auth/oauth/token/route')
-
         const response = await POST(req)
         const data = await response.json()
 
@@ -335,8 +321,6 @@ describe('OAuth Token API Routes', () => {
           providerId: 'nonexistent-provider',
         })
 
-        const { POST } = await import('@/app/api/auth/oauth/token/route')
-
         const response = await POST(req)
         const data = await response.json()
 
@@ -351,10 +335,11 @@ describe('OAuth Token API Routes', () => {
    */
   describe('GET handler', () => {
     it('should return access token successfully', async () => {
-      mockCheckSessionOrInternalAuth.mockResolvedValueOnce({
-        success: true,
+      mockAuthorizeCredentialUse.mockResolvedValueOnce({
+        ok: true,
         authType: 'session',
-        userId: 'test-user-id',
+        requesterUserId: 'test-user-id',
+        credentialOwnerUserId: 'test-user-id',
       })
       mockGetCredential.mockResolvedValueOnce({
         id: 'credential-id',
@@ -372,23 +357,19 @@ describe('OAuth Token API Routes', () => {
         'http://localhost:3000/api/auth/oauth/token?credentialId=credential-id'
       )
 
-      const { GET } = await import('@/app/api/auth/oauth/token/route')
-
       const response = await GET(req as any)
       const data = await response.json()
 
       expect(response.status).toBe(200)
       expect(data).toHaveProperty('accessToken', 'fresh-token')
 
-      expect(mockCheckSessionOrInternalAuth).toHaveBeenCalled()
-      expect(mockGetCredential).toHaveBeenCalledWith(mockRequestId, 'credential-id', 'test-user-id')
+      expect(mockAuthorizeCredentialUse).toHaveBeenCalled()
+      expect(mockGetCredential).toHaveBeenCalled()
       expect(mockRefreshTokenIfNeeded).toHaveBeenCalled()
     })
 
     it('should handle missing credentialId', async () => {
       const req = new Request('http://localhost:3000/api/auth/oauth/token')
-
-      const { GET } = await import('@/app/api/auth/oauth/token/route')
 
       const response = await GET(req as any)
       const data = await response.json()
@@ -399,8 +380,8 @@ describe('OAuth Token API Routes', () => {
     })
 
     it('should handle authentication failure', async () => {
-      mockCheckSessionOrInternalAuth.mockResolvedValueOnce({
-        success: false,
+      mockAuthorizeCredentialUse.mockResolvedValueOnce({
+        ok: false,
         error: 'Authentication required',
       })
 
@@ -408,28 +389,25 @@ describe('OAuth Token API Routes', () => {
         'http://localhost:3000/api/auth/oauth/token?credentialId=credential-id'
       )
 
-      const { GET } = await import('@/app/api/auth/oauth/token/route')
-
       const response = await GET(req as any)
       const data = await response.json()
 
-      expect(response.status).toBe(401)
+      expect(response.status).toBe(403)
       expect(data).toHaveProperty('error')
     })
 
     it('should handle credential not found', async () => {
-      mockCheckSessionOrInternalAuth.mockResolvedValueOnce({
-        success: true,
+      mockAuthorizeCredentialUse.mockResolvedValueOnce({
+        ok: true,
         authType: 'session',
-        userId: 'test-user-id',
+        requesterUserId: 'test-user-id',
+        credentialOwnerUserId: 'test-user-id',
       })
       mockGetCredential.mockResolvedValueOnce(undefined)
 
       const req = new Request(
         'http://localhost:3000/api/auth/oauth/token?credentialId=nonexistent-credential-id'
       )
-
-      const { GET } = await import('@/app/api/auth/oauth/token/route')
 
       const response = await GET(req as any)
       const data = await response.json()
@@ -439,10 +417,11 @@ describe('OAuth Token API Routes', () => {
     })
 
     it('should handle missing access token', async () => {
-      mockCheckSessionOrInternalAuth.mockResolvedValueOnce({
-        success: true,
+      mockAuthorizeCredentialUse.mockResolvedValueOnce({
+        ok: true,
         authType: 'session',
-        userId: 'test-user-id',
+        requesterUserId: 'test-user-id',
+        credentialOwnerUserId: 'test-user-id',
       })
       mockGetCredential.mockResolvedValueOnce({
         id: 'credential-id',
@@ -455,8 +434,6 @@ describe('OAuth Token API Routes', () => {
         'http://localhost:3000/api/auth/oauth/token?credentialId=credential-id'
       )
 
-      const { GET } = await import('@/app/api/auth/oauth/token/route')
-
       const response = await GET(req as any)
       const data = await response.json()
 
@@ -465,10 +442,11 @@ describe('OAuth Token API Routes', () => {
     })
 
     it('should handle token refresh failure', async () => {
-      mockCheckSessionOrInternalAuth.mockResolvedValueOnce({
-        success: true,
+      mockAuthorizeCredentialUse.mockResolvedValueOnce({
+        ok: true,
         authType: 'session',
-        userId: 'test-user-id',
+        requesterUserId: 'test-user-id',
+        credentialOwnerUserId: 'test-user-id',
       })
       mockGetCredential.mockResolvedValueOnce({
         id: 'credential-id',
@@ -482,8 +460,6 @@ describe('OAuth Token API Routes', () => {
       const req = new Request(
         'http://localhost:3000/api/auth/oauth/token?credentialId=credential-id'
       )
-
-      const { GET } = await import('@/app/api/auth/oauth/token/route')
 
       const response = await GET(req as any)
       const data = await response.json()

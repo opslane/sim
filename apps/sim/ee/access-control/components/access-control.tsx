@@ -296,6 +296,12 @@ export function AccessControl() {
         configKey: 'hideKnowledgeBaseTab' as const,
       },
       {
+        id: 'hide-tables',
+        label: 'Tables',
+        category: 'Sidebar',
+        configKey: 'hideTablesTab' as const,
+      },
+      {
         id: 'hide-templates',
         label: 'Templates',
         category: 'Sidebar',
@@ -384,6 +390,12 @@ export function AccessControl() {
         label: 'Invitations',
         category: 'Collaboration',
         configKey: 'disableInvitations' as const,
+      },
+      {
+        id: 'disable-public-api',
+        label: 'Public API',
+        category: 'Features',
+        configKey: 'disablePublicApi' as const,
       },
     ],
     []
@@ -949,6 +961,7 @@ export function AccessControl() {
                         onClick={() => {
                           const allVisible =
                             !editingConfig?.hideKnowledgeBaseTab &&
+                            !editingConfig?.hideTablesTab &&
                             !editingConfig?.hideTemplates &&
                             !editingConfig?.hideCopilot &&
                             !editingConfig?.hideApiKeysTab &&
@@ -959,6 +972,7 @@ export function AccessControl() {
                             !editingConfig?.disableSkills &&
                             !editingConfig?.hideTraceSpans &&
                             !editingConfig?.disableInvitations &&
+                            !editingConfig?.disablePublicApi &&
                             !editingConfig?.hideDeployApi &&
                             !editingConfig?.hideDeployMcp &&
                             !editingConfig?.hideDeployA2a &&
@@ -969,6 +983,7 @@ export function AccessControl() {
                               ? {
                                   ...prev,
                                   hideKnowledgeBaseTab: allVisible,
+                                  hideTablesTab: allVisible,
                                   hideTemplates: allVisible,
                                   hideCopilot: allVisible,
                                   hideApiKeysTab: allVisible,
@@ -979,6 +994,7 @@ export function AccessControl() {
                                   disableSkills: allVisible,
                                   hideTraceSpans: allVisible,
                                   disableInvitations: allVisible,
+                                  disablePublicApi: allVisible,
                                   hideDeployApi: allVisible,
                                   hideDeployMcp: allVisible,
                                   hideDeployA2a: allVisible,
@@ -990,6 +1006,7 @@ export function AccessControl() {
                         }}
                       >
                         {!editingConfig?.hideKnowledgeBaseTab &&
+                        !editingConfig?.hideTablesTab &&
                         !editingConfig?.hideTemplates &&
                         !editingConfig?.hideCopilot &&
                         !editingConfig?.hideApiKeysTab &&
@@ -1000,6 +1017,7 @@ export function AccessControl() {
                         !editingConfig?.disableSkills &&
                         !editingConfig?.hideTraceSpans &&
                         !editingConfig?.disableInvitations &&
+                        !editingConfig?.disablePublicApi &&
                         !editingConfig?.hideDeployApi &&
                         !editingConfig?.hideDeployMcp &&
                         !editingConfig?.hideDeployA2a &&

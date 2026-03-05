@@ -158,7 +158,9 @@ export const DEFAULTS = {
   MAX_LOOP_ITERATIONS: 1000,
   MAX_FOREACH_ITEMS: 1000,
   MAX_PARALLEL_BRANCHES: 20,
-  MAX_WORKFLOW_DEPTH: 10,
+  MAX_NESTING_DEPTH: 10,
+  /** Maximum child workflow depth for propagating SSE callbacks (block:started, block:completed). */
+  MAX_SSE_CHILD_DEPTH: 3,
   EXECUTION_TIME: 0,
   TOKENS: {
     PROMPT: 0,
@@ -203,10 +205,6 @@ export const MCP = {
 
 export const CREDENTIAL_SET = {
   PREFIX: 'credentialSet:',
-} as const
-
-export const CREDENTIAL = {
-  FOREIGN_LABEL: 'Saved by collaborator',
 } as const
 
 export function isCredentialSetValue(value: string | null | undefined): boolean {

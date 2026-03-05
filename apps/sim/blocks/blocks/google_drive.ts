@@ -44,6 +44,8 @@ export const GoogleDriveBlock: BlockConfig<GoogleDriveResponse> = {
       id: 'credential',
       title: 'Google Drive Account',
       type: 'oauth-input',
+      canonicalParamId: 'oauthCredential',
+      mode: 'basic',
       required: true,
       serviceId: 'google-drive',
       requiredScopes: [
@@ -51,6 +53,15 @@ export const GoogleDriveBlock: BlockConfig<GoogleDriveResponse> = {
         'https://www.googleapis.com/auth/drive',
       ],
       placeholder: 'Select Google Drive account',
+    },
+    {
+      id: 'manualCredential',
+      title: 'Google Drive Account',
+      type: 'short-input',
+      canonicalParamId: 'oauthCredential',
+      mode: 'advanced',
+      placeholder: 'Enter credential ID',
+      required: true,
     },
     // Create/Upload File Fields
     {
@@ -126,6 +137,7 @@ Return ONLY the file content - no explanations, no markdown code blocks, no extr
       type: 'file-selector',
       canonicalParamId: 'uploadFolderId',
       serviceId: 'google-drive',
+      selectorKey: 'google.drive',
       requiredScopes: [
         'https://www.googleapis.com/auth/drive.file',
         'https://www.googleapis.com/auth/drive',
@@ -198,6 +210,7 @@ Return ONLY the file content - no explanations, no markdown code blocks, no extr
       type: 'file-selector',
       canonicalParamId: 'createFolderParentId',
       serviceId: 'google-drive',
+      selectorKey: 'google.drive',
       requiredScopes: [
         'https://www.googleapis.com/auth/drive.file',
         'https://www.googleapis.com/auth/drive',
@@ -225,6 +238,7 @@ Return ONLY the file content - no explanations, no markdown code blocks, no extr
       type: 'file-selector',
       canonicalParamId: 'listFolderId',
       serviceId: 'google-drive',
+      selectorKey: 'google.drive',
       requiredScopes: [
         'https://www.googleapis.com/auth/drive.file',
         'https://www.googleapis.com/auth/drive',
@@ -284,6 +298,7 @@ Return ONLY the query string - no explanations, no quotes around the whole thing
       type: 'file-selector',
       canonicalParamId: 'downloadFileId',
       serviceId: 'google-drive',
+      selectorKey: 'google.drive',
       requiredScopes: [
         'https://www.googleapis.com/auth/drive.file',
         'https://www.googleapis.com/auth/drive',
@@ -345,6 +360,7 @@ Return ONLY the query string - no explanations, no quotes around the whole thing
       type: 'file-selector',
       canonicalParamId: 'getFileId',
       serviceId: 'google-drive',
+      selectorKey: 'google.drive',
       requiredScopes: [
         'https://www.googleapis.com/auth/drive.file',
         'https://www.googleapis.com/auth/drive',
@@ -372,6 +388,7 @@ Return ONLY the query string - no explanations, no quotes around the whole thing
       type: 'file-selector',
       canonicalParamId: 'copyFileId',
       serviceId: 'google-drive',
+      selectorKey: 'google.drive',
       requiredScopes: [
         'https://www.googleapis.com/auth/drive.file',
         'https://www.googleapis.com/auth/drive',
@@ -405,6 +422,7 @@ Return ONLY the query string - no explanations, no quotes around the whole thing
       type: 'file-selector',
       canonicalParamId: 'copyDestFolderId',
       serviceId: 'google-drive',
+      selectorKey: 'google.drive',
       requiredScopes: [
         'https://www.googleapis.com/auth/drive.file',
         'https://www.googleapis.com/auth/drive',
@@ -431,6 +449,7 @@ Return ONLY the query string - no explanations, no quotes around the whole thing
       type: 'file-selector',
       canonicalParamId: 'updateFileId',
       serviceId: 'google-drive',
+      selectorKey: 'google.drive',
       requiredScopes: [
         'https://www.googleapis.com/auth/drive.file',
         'https://www.googleapis.com/auth/drive',
@@ -509,6 +528,7 @@ Return ONLY the description text - no explanations, no quotes, no extra text.`,
       type: 'file-selector',
       canonicalParamId: 'trashFileId',
       serviceId: 'google-drive',
+      selectorKey: 'google.drive',
       requiredScopes: [
         'https://www.googleapis.com/auth/drive.file',
         'https://www.googleapis.com/auth/drive',
@@ -536,6 +556,7 @@ Return ONLY the description text - no explanations, no quotes, no extra text.`,
       type: 'file-selector',
       canonicalParamId: 'deleteFileId',
       serviceId: 'google-drive',
+      selectorKey: 'google.drive',
       requiredScopes: [
         'https://www.googleapis.com/auth/drive.file',
         'https://www.googleapis.com/auth/drive',
@@ -563,6 +584,7 @@ Return ONLY the description text - no explanations, no quotes, no extra text.`,
       type: 'file-selector',
       canonicalParamId: 'shareFileId',
       serviceId: 'google-drive',
+      selectorKey: 'google.drive',
       requiredScopes: [
         'https://www.googleapis.com/auth/drive.file',
         'https://www.googleapis.com/auth/drive',
@@ -677,6 +699,7 @@ Return ONLY the message text - no subject line, no greetings/signatures, no extr
       type: 'file-selector',
       canonicalParamId: 'unshareFileId',
       serviceId: 'google-drive',
+      selectorKey: 'google.drive',
       requiredScopes: [
         'https://www.googleapis.com/auth/drive.file',
         'https://www.googleapis.com/auth/drive',
@@ -712,6 +735,7 @@ Return ONLY the message text - no subject line, no greetings/signatures, no extr
       type: 'file-selector',
       canonicalParamId: 'listPermissionsFileId',
       serviceId: 'google-drive',
+      selectorKey: 'google.drive',
       requiredScopes: [
         'https://www.googleapis.com/auth/drive.file',
         'https://www.googleapis.com/auth/drive',
@@ -786,7 +810,7 @@ Return ONLY the message text - no subject line, no greetings/signatures, no extr
       },
       params: (params) => {
         const {
-          credential,
+          oauthCredential,
           // Folder canonical params (per-operation)
           uploadFolderId,
           createFolderParentId,
@@ -873,7 +897,7 @@ Return ONLY the message text - no subject line, no greetings/signatures, no extr
           sendNotification === 'true' ? true : sendNotification === 'false' ? false : undefined
 
         return {
-          credential,
+          oauthCredential,
           folderId: effectiveFolderId,
           fileId: effectiveFileId,
           destinationFolderId: effectiveDestinationFolderId,
@@ -891,7 +915,7 @@ Return ONLY the message text - no subject line, no greetings/signatures, no extr
   },
   inputs: {
     operation: { type: 'string', description: 'Operation to perform' },
-    credential: { type: 'string', description: 'Google Drive access token' },
+    oauthCredential: { type: 'string', description: 'Google Drive access token' },
     // Folder canonical params (per-operation)
     uploadFolderId: { type: 'string', description: 'Parent folder for upload/create' },
     createFolderParentId: { type: 'string', description: 'Parent folder for create folder' },

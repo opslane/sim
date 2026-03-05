@@ -30,6 +30,7 @@ import type {
   ProviderResponse,
   TimeSegment,
 } from '@/providers/types'
+import { ProviderError } from '@/providers/types'
 import {
   calculateCost,
   prepareToolExecution,
@@ -164,7 +165,10 @@ async function executeChatCompletionsRequest(
         stream: true,
         stream_options: { include_usage: true },
       }
-      const streamResponse = await azureOpenAI.chat.completions.create(streamingParams)
+      const streamResponse = await azureOpenAI.chat.completions.create(
+        streamingParams,
+        request.abortSignal ? { signal: request.abortSignal } : undefined
+      )
 
       const streamingResult = {
         stream: createReadableStreamFromAzureOpenAIStream(streamResponse, (content, usage) => {
@@ -242,7 +246,10 @@ async function executeChatCompletionsRequest(
     const forcedTools = preparedTools?.forcedTools || []
     let usedForcedTools: string[] = []
 
-    let currentResponse = (await azureOpenAI.chat.completions.create(payload)) as ChatCompletion
+    let currentResponse = (await azureOpenAI.chat.completions.create(
+      payload,
+      request.abortSignal ? { signal: request.abortSignal } : undefined
+    )) as ChatCompletion
     const firstResponseTime = Date.now() - initialCallTime
 
     let content = currentResponse.choices[0]?.message?.content || ''
@@ -251,7 +258,7 @@ async function executeChatCompletionsRequest(
       output: currentResponse.usage?.completion_tokens || 0,
       total: currentResponse.usage?.total_tokens || 0,
     }
-    const toolCalls: (FunctionCallResponse & { success: boolean })[] = []
+    const toolCalls: FunctionCallResponse[] = []
     const toolResults: Record<string, unknown>[] = []
     const currentMessages = [...allMessages]
     let iterationCount = 0
@@ -420,7 +427,10 @@ async function executeChatCompletionsRequest(
       }
 
       const nextModelStartTime = Date.now()
-      currentResponse = (await azureOpenAI.chat.completions.create(nextPayload)) as ChatCompletion
+      currentResponse = (await azureOpenAI.chat.completions.create(
+        nextPayload,
+        request.abortSignal ? { signal: request.abortSignal } : undefined
+      )) as ChatCompletion
 
       const nextCheckResult = checkForForcedToolUsage(
         currentResponse,
@@ -470,7 +480,10 @@ async function executeChatCompletionsRequest(
         stream: true,
         stream_options: { include_usage: true },
       }
-      const streamResponse = await azureOpenAI.chat.completions.create(streamingParams)
+      const streamResponse = await azureOpenAI.chat.completions.create(
+        streamingParams,
+        request.abortSignal ? { signal: request.abortSignal } : undefined
+      )
 
       const streamingResult = {
         stream: createReadableStreamFromAzureOpenAIStream(streamResponse, (content, usage) => {
@@ -577,15 +590,11 @@ async function executeChatCompletionsRequest(
       duration: totalDuration,
     })
 
-    const enhancedError = new Error(error instanceof Error ? error.message : String(error))
-    // @ts-ignore - Adding timing property to the error
-    enhancedError.timing = {
+    throw new ProviderError(error instanceof Error ? error.message : String(error), {
       startTime: providerStartTimeISO,
       endTime: providerEndTimeISO,
       duration: totalDuration,
-    }
-
-    throw enhancedError
+    })
   }
 }
 

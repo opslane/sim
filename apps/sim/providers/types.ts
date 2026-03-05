@@ -59,6 +59,7 @@ export interface FunctionCallResponse {
   result?: Record<string, any>
   output?: Record<string, any>
   input?: Record<string, any>
+  success?: boolean
 }
 
 export interface TimeSegment {
@@ -112,6 +113,8 @@ export interface ProviderToolConfig {
     required: string[]
   }
   usageControl?: ToolUsageControl
+  /** Block-level params transformer — converts SubBlock values to tool-ready params */
+  paramsTransform?: (params: Record<string, any>) => Record<string, any>
 }
 
 export interface Message {
@@ -171,8 +174,27 @@ export interface ProviderRequest {
   verbosity?: string
   thinkingLevel?: string
   isDeployedContext?: boolean
+  callChain?: string[]
   /** Previous interaction ID for multi-turn Interactions API requests (deep research follow-ups) */
   previousInteractionId?: string
+  abortSignal?: AbortSignal
+}
+
+/**
+ * Typed error class for provider failures that includes timing information.
+ */
+export class ProviderError extends Error {
+  timing: {
+    startTime: string
+    endTime: string
+    duration: number
+  }
+
+  constructor(message: string, timing: { startTime: string; endTime: string; duration: number }) {
+    super(message)
+    this.name = 'ProviderError'
+    this.timing = timing
+  }
 }
 
 export const providers: Record<string, ProviderConfig> = {}

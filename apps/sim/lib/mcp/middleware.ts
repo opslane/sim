@@ -11,6 +11,8 @@ export type McpPermissionLevel = 'read' | 'write' | 'admin'
 
 export interface McpAuthContext {
   userId: string
+  userName?: string | null
+  userEmail?: string | null
   workspaceId: string
   requestId: string
 }
@@ -69,9 +71,7 @@ async function validateMcpAuth(
           workspaceId = body.workspaceId
           ;(request as any)._parsedBody = body
         }
-      } catch (error) {
-        logger.debug(`[${requestId}] Could not parse request body for workspaceId extraction`)
-      }
+      } catch {}
     }
 
     if (!workspaceId) {
@@ -114,6 +114,8 @@ async function validateMcpAuth(
       success: true,
       context: {
         userId: auth.userId,
+        userName: auth.userName,
+        userEmail: auth.userEmail,
         workspaceId,
         requestId,
       },

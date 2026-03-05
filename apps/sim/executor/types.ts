@@ -1,9 +1,15 @@
 import type { TraceSpan } from '@/lib/logs/types'
 import type { PermissionGroupConfig } from '@/lib/permission-groups/types'
 import type { BlockOutput } from '@/blocks/types'
-import type { SerializableExecutionState } from '@/executor/execution/types'
+import type {
+  ChildWorkflowContext,
+  IterationContext,
+  ParentIteration,
+  SerializableExecutionState,
+} from '@/executor/execution/types'
 import type { RunFromBlockContext } from '@/executor/utils/run-from-block'
 import type { SerializedBlock, SerializedWorkflow } from '@/serializer/types'
+import type { SubflowType } from '@/stores/workflows/workflow/types'
 
 export interface UserFile {
   id: string
@@ -117,6 +123,8 @@ export interface BlockLog {
   loopId?: string
   parallelId?: string
   iterationIndex?: number
+  /** Full ancestor iteration chain for nested subflows (outermost → innermost). */
+  parentIterations?: ParentIteration[]
   /**
    * Monotonically increasing integer (1, 2, 3, ...) for accurate block ordering.
    * Generated via getNextExecutionOrder() to ensure deterministic sorting.
@@ -168,6 +176,7 @@ export interface ExecutionContext {
   executionId?: string
   userId?: string
   isDeployedContext?: boolean
+  enforceCredentialAccess?: boolean
 
   permissionConfig?: PermissionGroupConfig | null
   permissionConfigLoaded?: boolean
@@ -186,6 +195,17 @@ export interface ExecutionContext {
   }
 
   completedLoops: Set<string>
+
+  /**
+   * Unified parent map for subflow nesting (loop-in-loop, parallel-in-parallel,
+   * loop-in-parallel, parallel-in-loop). Maps any child subflow ID to its parent
+   * subflow ID and type, enabling the iteration context builder to walk the full
+   * ancestor chain regardless of subflow type.
+   */
+  subflowParentMap?: Map<
+    string,
+    { parentId: string; parentType: SubflowType; branchIndex?: number }
+  >
 
   loopExecutions?: Map<
     string,
@@ -239,14 +259,29 @@ export interface ExecutionContext {
     blockId: string,
     blockName: string,
     blockType: string,
-    executionOrder: number
+    executionOrder: number,
+    iterationContext?: IterationContext,
+    childWorkflowContext?: ChildWorkflowContext
   ) => Promise<void>
   onBlockComplete?: (
     blockId: string,
     blockName: string,
     blockType: string,
-    output: any
+    output: any,
+    iterationContext?: IterationContext,
+    childWorkflowContext?: ChildWorkflowContext
   ) => Promise<void>
+
+  /** Context identifying this execution as a child of a workflow block */
+  childWorkflowContext?: ChildWorkflowContext
+
+  /** Fires immediately after instanceId is generated, before child execution begins. */
+  onChildWorkflowInstanceReady?: (
+    blockId: string,
+    childWorkflowInstanceId: string,
+    iterationContext?: IterationContext,
+    executionOrder?: number
+  ) => void
 
   /**
    * AbortSignal for cancellation support.
@@ -281,6 +316,12 @@ export interface ExecutionContext {
    * Stop execution after this block completes. Used for "run until block" feature.
    */
   stopAfterBlockId?: string
+
+  /**
+   * Ordered list of workflow IDs in the current call chain, used for cycle detection.
+   * Passed to outgoing HTTP requests via the X-Sim-Via header.
+   */
+  callChain?: string[]
 
   /**
    * Counter for generating monotonically increasing execution order values.
@@ -350,6 +391,9 @@ export interface BlockHandler {
       parallelId?: string
       branchIndex?: number
       branchTotal?: number
+      originalBlockId?: string
+      isLoopNode?: boolean
+      executionOrder?: number
     }
   ) => Promise<BlockOutput | StreamingExecution>
 }

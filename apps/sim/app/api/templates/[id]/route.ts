@@ -4,6 +4,7 @@ import { createLogger } from '@sim/logger'
 import { eq, sql } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { AuditAction, AuditResourceType, recordAudit } from '@/lib/audit/log'
 import { getSession } from '@/lib/auth'
 import { generateRequestId } from '@/lib/core/utils/request'
 import {
@@ -22,8 +23,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   try {
     const session = await getSession()
-
-    logger.debug(`[${requestId}] Fetching template: ${id}`)
 
     const result = await db
       .select({
@@ -73,8 +72,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             views: sql`${templates.views} + 1`,
           })
           .where(eq(templates.id, id))
-
-        logger.debug(`[${requestId}] Incremented view count for template: ${id}`)
       } catch (viewError) {
         logger.warn(`[${requestId}] Failed to increment view count for template: ${id}`, viewError)
       }
@@ -247,6 +244,18 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     logger.info(`[${requestId}] Successfully updated template: ${id}`)
 
+    recordAudit({
+      actorId: session.user.id,
+      actorName: session.user.name,
+      actorEmail: session.user.email,
+      action: AuditAction.TEMPLATE_UPDATED,
+      resourceType: AuditResourceType.TEMPLATE,
+      resourceId: id,
+      resourceName: name ?? template.name,
+      description: `Updated template "${name ?? template.name}"`,
+      request,
+    })
+
     return NextResponse.json({
       data: updatedTemplate[0],
       message: 'Template updated successfully',
@@ -300,6 +309,19 @@ export async function DELETE(
     await db.delete(templates).where(eq(templates.id, id))
 
     logger.info(`[${requestId}] Deleted template: ${id}`)
+
+    recordAudit({
+      actorId: session.user.id,
+      actorName: session.user.name,
+      actorEmail: session.user.email,
+      action: AuditAction.TEMPLATE_DELETED,
+      resourceType: AuditResourceType.TEMPLATE,
+      resourceId: id,
+      resourceName: template.name,
+      description: `Deleted template "${template.name}"`,
+      request,
+    })
+
     return NextResponse.json({ success: true })
   } catch (error: any) {
     logger.error(`[${requestId}] Error deleting template: ${id}`, error)

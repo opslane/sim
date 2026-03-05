@@ -91,6 +91,13 @@ const matchesEntryForUpdate = (
     return false
   }
 
+  if (
+    update.childWorkflowBlockId !== undefined &&
+    entry.childWorkflowBlockId !== update.childWorkflowBlockId
+  ) {
+    return false
+  }
+
   return true
 }
 
@@ -418,6 +425,22 @@ export const useTerminalConsoleStore = create<ConsoleStore>()(
 
               if (update.iterationContainerId !== undefined) {
                 updatedEntry.iterationContainerId = update.iterationContainerId
+              }
+
+              if (update.parentIterations !== undefined) {
+                updatedEntry.parentIterations = update.parentIterations
+              }
+
+              if (update.childWorkflowBlockId !== undefined) {
+                updatedEntry.childWorkflowBlockId = update.childWorkflowBlockId
+              }
+
+              if (update.childWorkflowName !== undefined) {
+                updatedEntry.childWorkflowName = update.childWorkflowName
+              }
+
+              if (update.childWorkflowInstanceId !== undefined) {
+                updatedEntry.childWorkflowInstanceId = update.childWorkflowInstanceId
               }
 
               return updatedEntry

@@ -11,7 +11,8 @@ import {
 } from '@/lib/core/security/input-validation.server'
 import { PlatformEvents } from '@/lib/core/telemetry'
 import { generateRequestId } from '@/lib/core/utils/request'
-import { getBaseUrl } from '@/lib/core/utils/urls'
+import { getBaseUrl, getInternalApiBaseUrl } from '@/lib/core/utils/urls'
+import { SIM_VIA_HEADER, serializeCallChain } from '@/lib/execution/call-chain'
 import { parseMcpToolId } from '@/lib/mcp/utils'
 import { isCustomTool, isMcpTool } from '@/executor/constants'
 import { resolveSkillContent } from '@/executor/handlers/agent/skills-resolver'
@@ -24,6 +25,7 @@ import type {
   ToolConfig,
   ToolHostingPricing,
   ToolResponse,
+  ToolRetryConfig,
 } from '@/tools/types'
 import {
   formatRequestParams,
@@ -275,22 +277,41 @@ function stripInternalFields(output: Record<string, unknown>): Record<string, un
 }
 
 /**
- * Normalizes a tool ID by stripping resource ID suffix (UUID).
+ * Normalizes a tool ID by stripping resource ID suffix (UUID/tableId).
  * Workflow tools: 'workflow_executor_<uuid>' -> 'workflow_executor'
  * Knowledge tools: 'knowledge_search_<uuid>' -> 'knowledge_search'
+ * Table tools: 'table_query_rows_<tableId>' -> 'table_query_rows'
  */
 function normalizeToolId(toolId: string): string {
-  // Check for workflow_executor_<uuid> pattern
   if (toolId.startsWith('workflow_executor_') && toolId.length > 'workflow_executor_'.length) {
     return 'workflow_executor'
   }
-  // Check for knowledge_<operation>_<uuid> pattern
+
   const knowledgeOps = ['knowledge_search', 'knowledge_upload_chunk', 'knowledge_create_document']
   for (const op of knowledgeOps) {
     if (toolId.startsWith(`${op}_`) && toolId.length > op.length + 1) {
       return op
     }
   }
+
+  const tableOps = [
+    'table_query_rows',
+    'table_insert_row',
+    'table_batch_insert_rows',
+    'table_update_row',
+    'table_update_rows_by_filter',
+    'table_delete_rows_by_filter',
+    'table_upsert_row',
+    'table_get_row',
+    'table_delete_row',
+    'table_get_schema',
+  ]
+  for (const op of tableOps) {
+    if (toolId.startsWith(`${op}_`) && toolId.length > op.length + 1) {
+      return op
+    }
+  }
+
   return toolId
 }
 
@@ -539,12 +560,16 @@ export async function executeTool(
     )
 
     // If we have a credential parameter, fetch the access token
+    if (contextParams.oauthCredential) {
+      contextParams.credential = contextParams.oauthCredential
+    }
+
     if (contextParams.credential) {
       logger.info(
         `[${requestId}] Tool ${toolId} needs access token for credential: ${contextParams.credential}`
       )
       try {
-        const baseUrl = getBaseUrl()
+        const baseUrl = getInternalApiBaseUrl()
 
         const workflowId = contextParams._context?.workflowId
         const userId = contextParams._context?.userId
@@ -562,7 +587,7 @@ export async function executeTool(
         if (workflowId) {
           tokenUrlObj.searchParams.set('workflowId', workflowId)
         }
-        if (userId) {
+        if (userId && contextParams._context?.enforceCredentialAccess) {
           tokenUrlObj.searchParams.set('userId', userId)
         }
 
@@ -570,7 +595,7 @@ export async function executeTool(
         const tokenHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
         if (typeof window === 'undefined') {
           try {
-            const internalToken = await generateInternalToken()
+            const internalToken = await generateInternalToken(userId)
             tokenHeaders.Authorization = `Bearer ${internalToken}`
           } catch (_e) {
             // Swallow token generation errors; the request will fail and be reported upstream
@@ -589,7 +614,15 @@ export async function executeTool(
             status: response.status,
             error: errorText,
           })
-          throw new Error(`Failed to fetch access token: ${response.status} ${errorText}`)
+          let parsedError = errorText
+          try {
+            const parsed = JSON.parse(errorText)
+            if (parsed.error) parsedError = parsed.error
+          } catch {
+            // Use raw text
+          }
+          const toolLabel = tool?.name || toolId
+          throw new Error(`Failed to obtain credential for ${toolLabel}: ${parsedError}`)
         }
 
         const data = await response.json()
@@ -618,10 +651,7 @@ export async function executeTool(
         logger.error(`[${requestId}] Error fetching access token for ${toolId}:`, {
           error: error instanceof Error ? error.message : String(error),
         })
-        // Re-throw the error to fail the tool execution if token fetching fails
-        throw new Error(
-          `Failed to obtain credential for tool ${toolId}: ${error instanceof Error ? error.message : String(error)}`
-        )
+        throw error
       }
     }
 
@@ -868,6 +898,25 @@ function isErrorResponse(
 }
 
 /**
+ * Checks whether a fully resolved URL points back to this Sim instance.
+ * Used to propagate cycle-detection headers on API blocks that target
+ * the platform's own workflow execution endpoints via absolute URL.
+ */
+function isSelfOriginUrl(url: string): boolean {
+  try {
+    const targetOrigin = new URL(url).origin
+    const publicOrigin = new URL(getBaseUrl()).origin
+    if (targetOrigin === publicOrigin) return true
+
+    const internalOrigin = new URL(getInternalApiBaseUrl()).origin
+    if (targetOrigin === internalOrigin) return true
+  } catch {
+    return false
+  }
+  return false
+}
+
+/**
  * Add internal authentication token to headers if running on server
  * @param headers - Headers object to modify
  * @param isInternalRoute - Whether the target URL is an internal route
@@ -899,6 +948,68 @@ async function addInternalAuthIfNeeded(
   }
 }
 
+interface ResolvedRetryConfig {
+  maxRetries: number
+  initialDelayMs: number
+  maxDelayMs: number
+}
+
+function getRetryConfig(
+  retry: ToolRetryConfig | undefined,
+  params: Record<string, any>,
+  method: string
+): ResolvedRetryConfig | null {
+  if (!retry?.enabled) return null
+
+  const isIdempotent = ['GET', 'HEAD', 'PUT', 'DELETE'].includes(method.toUpperCase())
+  if (retry.retryIdempotentOnly && !isIdempotent && !params.retryNonIdempotent) {
+    return null
+  }
+
+  const maxRetries = Math.min(10, Math.max(0, Number(params.retries) || retry.maxRetries || 0))
+  if (maxRetries === 0) return null
+
+  return {
+    maxRetries,
+    initialDelayMs: Number(params.retryDelayMs) || retry.initialDelayMs || 500,
+    maxDelayMs: Number(params.retryMaxDelayMs) || retry.maxDelayMs || 30000,
+  }
+}
+
+function isRetryableFailure(error: unknown, status?: number): boolean {
+  if (status === 429 || (status && status >= 500 && status <= 599)) return true
+  if (error instanceof Error) {
+    const code = (error as NodeJS.ErrnoException).code
+    if (code === 'ETIMEDOUT' || code === 'ECONNRESET' || code === 'ECONNABORTED') {
+      return true
+    }
+    const msg = error.message.toLowerCase()
+    if (isBodySizeLimitError(msg)) return false
+    return msg.includes('timeout') || msg.includes('timed out')
+  }
+  return false
+}
+
+function calculateBackoff(attempt: number, initialDelayMs: number, maxDelayMs: number): number {
+  const base = Math.min(initialDelayMs * 2 ** attempt, maxDelayMs)
+  return Math.round(base / 2 + Math.random() * (base / 2))
+}
+
+function parseRetryAfterHeader(header: string | null): number {
+  if (!header) return 0
+  const trimmed = header.trim()
+  if (/^\d+$/.test(trimmed)) {
+    const seconds = Number.parseInt(trimmed, 10)
+    return seconds > 0 ? seconds * 1000 : 0
+  }
+  const date = new Date(trimmed)
+  if (!Number.isNaN(date.getTime())) {
+    const deltaMs = date.getTime() - Date.now()
+    return deltaMs > 0 ? deltaMs : 0
+  }
+  return 0
+}
+
 /**
  * Execute a tool request directly
  * Internal routes (/api/...) use regular fetch
@@ -914,12 +1025,12 @@ async function executeToolRequest(
   const requestParams = formatRequestParams(tool, params)
 
   try {
-    const baseUrl = getBaseUrl()
     const endpointUrl =
       typeof tool.request.url === 'function' ? tool.request.url(params) : tool.request.url
+    const isInternalRoute = endpointUrl.startsWith('/api/')
+    const baseUrl = isInternalRoute ? getInternalApiBaseUrl() : getBaseUrl()
 
     const fullUrlObj = new URL(endpointUrl, baseUrl)
-    const isInternalRoute = endpointUrl.startsWith('/api/')
 
     if (isInternalRoute) {
       const workflowId = params._context?.workflowId
@@ -964,6 +1075,14 @@ async function executeToolRequest(
     const headers = new Headers(requestParams.headers)
     await addInternalAuthIfNeeded(headers, isInternalRoute, requestId, toolId)
 
+    const shouldPropagateCallChain = isInternalRoute || isSelfOriginUrl(fullUrl)
+    if (shouldPropagateCallChain) {
+      const callChain = params._context?.callChain as string[] | undefined
+      if (callChain && callChain.length > 0) {
+        headers.set(SIM_VIA_HEADER, serializeCallChain(callChain))
+      }
+    }
+
     // Check request body size before sending to detect potential size limit issues
     validateRequestBodySize(requestParams.body, requestId, toolId)
 
@@ -973,59 +1092,123 @@ async function executeToolRequest(
       headersRecord[key] = value
     })
 
-    let response: Response
+    const retryConfig = getRetryConfig(tool.request.retry, params, requestParams.method)
+    const maxAttempts = retryConfig ? 1 + retryConfig.maxRetries : 1
 
-    if (isInternalRoute) {
-      const controller = new AbortController()
-      const timeout = requestParams.timeout || DEFAULT_EXECUTION_TIMEOUT_MS
-      const timeoutId = setTimeout(() => controller.abort(), timeout)
+    let response: Response | undefined
+    let lastError: unknown
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const isLastAttempt = attempt === maxAttempts - 1
 
       try {
-        response = await fetch(fullUrl, {
-          method: requestParams.method,
-          headers: headers,
-          body: requestParams.body,
-          signal: controller.signal,
-        })
-      } catch (error) {
-        // Convert AbortError to a timeout error message
-        if (error instanceof Error && error.name === 'AbortError') {
-          throw new Error(`Request timed out after ${timeout}ms`)
+        if (isInternalRoute) {
+          const controller = new AbortController()
+          const timeout = requestParams.timeout || DEFAULT_EXECUTION_TIMEOUT_MS
+          const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+          try {
+            response = await fetch(fullUrl, {
+              method: requestParams.method,
+              headers: headers,
+              body: requestParams.body,
+              signal: controller.signal,
+            })
+          } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') {
+              throw new Error(`Request timed out after ${timeout}ms`)
+            }
+            throw error
+          } finally {
+            clearTimeout(timeoutId)
+          }
+        } else {
+          const urlValidation = await validateUrlWithDNS(fullUrl, 'toolUrl')
+          if (!urlValidation.isValid) {
+            throw new Error(`Invalid tool URL: ${urlValidation.error}`)
+          }
+
+          const secureResponse = await secureFetchWithPinnedIP(fullUrl, urlValidation.resolvedIP!, {
+            method: requestParams.method,
+            headers: headersRecord,
+            body: requestParams.body ?? undefined,
+            timeout: requestParams.timeout,
+          })
+
+          const responseHeaders = new Headers(secureResponse.headers.toRecord())
+          const nullBodyStatuses = new Set([101, 204, 205, 304])
+
+          if (nullBodyStatuses.has(secureResponse.status)) {
+            response = new Response(null, {
+              status: secureResponse.status,
+              statusText: secureResponse.statusText,
+              headers: responseHeaders,
+            })
+          } else {
+            const bodyBuffer = await secureResponse.arrayBuffer()
+            response = new Response(bodyBuffer, {
+              status: secureResponse.status,
+              statusText: secureResponse.statusText,
+              headers: responseHeaders,
+            })
+          }
         }
-        throw error
-      } finally {
-        clearTimeout(timeoutId)
-      }
-    } else {
-      const urlValidation = await validateUrlWithDNS(fullUrl, 'toolUrl')
-      if (!urlValidation.isValid) {
-        throw new Error(`Invalid tool URL: ${urlValidation.error}`)
+      } catch (error) {
+        lastError = error
+        if (!retryConfig || isLastAttempt || !isRetryableFailure(error)) {
+          throw error
+        }
+        const delayMs = calculateBackoff(
+          attempt,
+          retryConfig.initialDelayMs,
+          retryConfig.maxDelayMs
+        )
+        logger.warn(
+          `[${requestId}] Retrying ${toolId} after error (attempt ${attempt + 1}/${maxAttempts})`,
+          { delayMs }
+        )
+        await new Promise((r) => setTimeout(r, delayMs))
+        continue
       }
 
-      const secureResponse = await secureFetchWithPinnedIP(fullUrl, urlValidation.resolvedIP!, {
-        method: requestParams.method,
-        headers: headersRecord,
-        body: requestParams.body ?? undefined,
-        timeout: requestParams.timeout,
-      })
-
-      const responseHeaders = new Headers(secureResponse.headers.toRecord())
-      const nullBodyStatuses = new Set([101, 204, 205, 304])
-
-      if (nullBodyStatuses.has(secureResponse.status)) {
-        response = new Response(null, {
-          status: secureResponse.status,
-          statusText: secureResponse.statusText,
-          headers: responseHeaders,
-        })
-      } else {
-        const bodyBuffer = await secureResponse.arrayBuffer()
-        response = new Response(bodyBuffer, {
-          status: secureResponse.status,
-          statusText: secureResponse.statusText,
-          headers: responseHeaders,
-        })
+      if (
+        retryConfig &&
+        !isLastAttempt &&
+        response &&
+        !response.ok &&
+        isRetryableFailure(null, response.status)
+      ) {
+        const retryAfterMs = parseRetryAfterHeader(response.headers.get('retry-after'))
+        if (retryAfterMs > retryConfig.maxDelayMs) {
+          logger.warn(
+            `[${requestId}] Retry-After (${retryAfterMs}ms) exceeds maxDelayMs (${retryConfig.maxDelayMs}ms), skipping retry`
+          )
+          break
+        }
+        try {
+          await response.arrayBuffer()
+        } catch {
+          // Ignore errors when consuming body
+        }
+        const backoffMs = calculateBackoff(
+          attempt,
+          retryConfig.initialDelayMs,
+          retryConfig.maxDelayMs
+        )
+        const delayMs = Math.max(backoffMs, retryAfterMs)
+        logger.warn(
+          `[${requestId}] Retrying ${toolId} after HTTP ${response.status} (attempt ${attempt + 1}/${maxAttempts})`,
+          { delayMs }
+        )
+        await new Promise((r) => setTimeout(r, delayMs))
+        continue
       }
+
+      break
+    }
+
+    if (!response) {
+      throw lastError ?? new Error(`Request failed for ${toolId}`)
     }
 
     // For non-OK responses, attempt JSON first; if parsing fails, fall back to text
@@ -1239,7 +1422,7 @@ async function executeMcpTool(
 
     const { serverId, toolName } = parseMcpToolId(toolId)
 
-    const baseUrl = getBaseUrl()
+    const baseUrl = getInternalApiBaseUrl()
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
 
@@ -1279,6 +1462,12 @@ async function executeMcpTool(
     const workspaceId = params._context?.workspaceId || executionContext?.workspaceId
     const workflowId = params._context?.workflowId || executionContext?.workflowId
     const userId = params._context?.userId || executionContext?.userId
+    const callChain =
+      (params._context?.callChain as string[] | undefined) || executionContext?.callChain
+
+    if (callChain && callChain.length > 0) {
+      headers[SIM_VIA_HEADER] = serializeCallChain(callChain)
+    }
 
     if (!workspaceId) {
       return {

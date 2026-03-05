@@ -38,6 +38,8 @@ export const SharepointBlock: BlockConfig<SharepointResponse> = {
       id: 'credential',
       title: 'Microsoft Account',
       type: 'oauth-input',
+      canonicalParamId: 'oauthCredential',
+      mode: 'basic',
       serviceId: 'sharepoint',
       requiredScopes: [
         'openid',
@@ -50,6 +52,14 @@ export const SharepointBlock: BlockConfig<SharepointResponse> = {
       ],
       placeholder: 'Select Microsoft account',
     },
+    {
+      id: 'manualCredential',
+      title: 'Microsoft Account',
+      type: 'short-input',
+      canonicalParamId: 'oauthCredential',
+      mode: 'advanced',
+      placeholder: 'Enter credential ID',
+    },
 
     {
       id: 'siteSelector',
@@ -57,6 +67,7 @@ export const SharepointBlock: BlockConfig<SharepointResponse> = {
       type: 'file-selector',
       canonicalParamId: 'siteId',
       serviceId: 'sharepoint',
+      selectorKey: 'sharepoint.sites',
       requiredScopes: [
         'openid',
         'profile',
@@ -403,7 +414,7 @@ Return ONLY the JSON object - no explanations, no markdown, no extra text.`,
         }
       },
       params: (params) => {
-        const { credential, siteId, mimeType, ...rest } = params
+        const { oauthCredential, siteId, mimeType, ...rest } = params
 
         // siteId is the canonical param from siteSelector (basic) or manualSiteId (advanced)
         const effectiveSiteId = siteId ? String(siteId).trim() : ''
@@ -461,7 +472,7 @@ Return ONLY the JSON object - no explanations, no markdown, no extra text.`,
         // Handle file upload files parameter using canonical param
         const normalizedFiles = normalizeFileInput(files)
         const baseParams: Record<string, any> = {
-          credential,
+          oauthCredential,
           siteId: effectiveSiteId || undefined,
           pageSize: others.pageSize ? Number.parseInt(others.pageSize as string, 10) : undefined,
           mimeType: mimeType,
@@ -487,7 +498,7 @@ Return ONLY the JSON object - no explanations, no markdown, no extra text.`,
   },
   inputs: {
     operation: { type: 'string', description: 'Operation to perform' },
-    credential: { type: 'string', description: 'Microsoft account credential' },
+    oauthCredential: { type: 'string', description: 'Microsoft account credential' },
     pageName: { type: 'string', description: 'Page name' },
     columnDefinitions: {
       type: 'string',

@@ -44,6 +44,8 @@ export const MicrosoftTeamsBlock: BlockConfig<MicrosoftTeamsResponse> = {
       id: 'credential',
       title: 'Microsoft Account',
       type: 'oauth-input',
+      canonicalParamId: 'oauthCredential',
+      mode: 'basic',
       serviceId: 'microsoft-teams',
       requiredScopes: [
         'openid',
@@ -71,11 +73,22 @@ export const MicrosoftTeamsBlock: BlockConfig<MicrosoftTeamsResponse> = {
       required: true,
     },
     {
+      id: 'manualCredential',
+      title: 'Microsoft Account',
+      type: 'short-input',
+      canonicalParamId: 'oauthCredential',
+      mode: 'advanced',
+      placeholder: 'Enter credential ID',
+      required: true,
+    },
+    {
       id: 'teamSelector',
       title: 'Select Team',
       type: 'file-selector',
       canonicalParamId: 'teamId',
       serviceId: 'microsoft-teams',
+      selectorKey: 'microsoft.teams',
+      selectorAllowSearch: false,
       requiredScopes: [],
       placeholder: 'Select a team',
       dependsOn: ['credential'],
@@ -121,6 +134,8 @@ export const MicrosoftTeamsBlock: BlockConfig<MicrosoftTeamsResponse> = {
       type: 'file-selector',
       canonicalParamId: 'chatId',
       serviceId: 'microsoft-teams',
+      selectorKey: 'microsoft.chats',
+      selectorAllowSearch: false,
       requiredScopes: [],
       placeholder: 'Select a chat',
       dependsOn: ['credential'],
@@ -150,6 +165,8 @@ export const MicrosoftTeamsBlock: BlockConfig<MicrosoftTeamsResponse> = {
       type: 'file-selector',
       canonicalParamId: 'channelId',
       serviceId: 'microsoft-teams',
+      selectorKey: 'microsoft.channels',
+      selectorAllowSearch: false,
       requiredScopes: [],
       placeholder: 'Select a channel',
       dependsOn: ['credential', 'teamSelector'],
@@ -321,7 +338,7 @@ export const MicrosoftTeamsBlock: BlockConfig<MicrosoftTeamsResponse> = {
       },
       params: (params) => {
         const {
-          credential,
+          oauthCredential,
           operation,
           teamId, // Canonical param from teamSelector (basic) or manualTeamId (advanced)
           chatId, // Canonical param from chatSelector (basic) or manualChatId (advanced)
@@ -339,7 +356,7 @@ export const MicrosoftTeamsBlock: BlockConfig<MicrosoftTeamsResponse> = {
 
         const baseParams: Record<string, any> = {
           ...rest,
-          credential,
+          oauthCredential,
         }
 
         if ((operation === 'read_chat' || operation === 'read_channel') && includeAttachments) {
@@ -419,7 +436,7 @@ export const MicrosoftTeamsBlock: BlockConfig<MicrosoftTeamsResponse> = {
   },
   inputs: {
     operation: { type: 'string', description: 'Operation to perform' },
-    credential: { type: 'string', description: 'Microsoft Teams access token' },
+    oauthCredential: { type: 'string', description: 'Microsoft Teams access token' },
     messageId: {
       type: 'string',
       description: 'Message identifier for update/delete/reply/reaction operations',

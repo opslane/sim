@@ -11,6 +11,7 @@ import {
   user,
   userStats,
   type WorkspaceInvitationStatus,
+  workspaceEnvironment,
   workspaceInvitation,
 } from '@sim/db/schema'
 import { createLogger } from '@sim/logger'
@@ -18,11 +19,13 @@ import { and, eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getEmailSubject, renderInvitationEmail } from '@/components/emails'
+import { AuditAction, AuditResourceType, recordAudit } from '@/lib/audit/log'
 import { getSession } from '@/lib/auth'
 import { hasAccessControlAccess } from '@/lib/billing'
 import { syncUsageLimitsFromSubscription } from '@/lib/billing/core/usage'
 import { requireStripeClient } from '@/lib/billing/stripe-client'
 import { getBaseUrl } from '@/lib/core/utils/urls'
+import { syncWorkspaceEnvCredentials } from '@/lib/credentials/environment'
 import { sendEmail } from '@/lib/messaging/email/mailer'
 
 const logger = createLogger('OrganizationInvitation')
@@ -495,6 +498,34 @@ export async function PUT(
       }
     })
 
+    if (status === 'accepted') {
+      const acceptedWsInvitations = await db
+        .select({ workspaceId: workspaceInvitation.workspaceId })
+        .from(workspaceInvitation)
+        .where(
+          and(
+            eq(workspaceInvitation.orgInvitationId, invitationId),
+            eq(workspaceInvitation.status, 'accepted' as WorkspaceInvitationStatus)
+          )
+        )
+
+      for (const wsInv of acceptedWsInvitations) {
+        const [wsEnvRow] = await db
+          .select({ variables: workspaceEnvironment.variables })
+          .from(workspaceEnvironment)
+          .where(eq(workspaceEnvironment.workspaceId, wsInv.workspaceId))
+          .limit(1)
+        const wsEnvKeys = Object.keys((wsEnvRow?.variables as Record<string, string>) || {})
+        if (wsEnvKeys.length > 0) {
+          await syncWorkspaceEnvCredentials({
+            workspaceId: wsInv.workspaceId,
+            envKeys: wsEnvKeys,
+            actingUserId: session.user.id,
+          })
+        }
+      }
+    }
+
     // Handle Pro subscription cancellation after transaction commits
     if (personalProToCancel) {
       try {
@@ -550,6 +581,30 @@ export async function PUT(
       invitationId,
       userId: session.user.id,
       email: orgInvitation.email,
+    })
+
+    const auditActionMap = {
+      accepted: AuditAction.ORG_INVITATION_ACCEPTED,
+      rejected: AuditAction.ORG_INVITATION_REJECTED,
+      cancelled: AuditAction.ORG_INVITATION_CANCELLED,
+    } as const
+
+    recordAudit({
+      workspaceId: null,
+      actorId: session.user.id,
+      action: auditActionMap[status],
+      resourceType: AuditResourceType.ORGANIZATION,
+      resourceId: organizationId,
+      actorName: session.user.name ?? undefined,
+      actorEmail: session.user.email ?? undefined,
+      description: `Organization invitation ${status} for ${orgInvitation.email}`,
+      metadata: {
+        invitationId,
+        targetEmail: orgInvitation.email,
+        targetRole: orgInvitation.role,
+        status,
+      },
+      request: req,
     })
 
     return NextResponse.json({

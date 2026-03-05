@@ -484,12 +484,12 @@ function ServerDetailView({ workspaceId, serverId, onBack }: ServerDetailViewPro
                     {activeConfigTab === 'cursor' && (
                       <a
                         href={getCursorInstallUrl(server.isPublic, server.name)}
-                        className='absolute top-[6px] right-2'
+                        className='absolute top-[6px] right-2 inline-flex rounded-[6px] bg-[var(--surface-5)] ring-1 ring-[var(--border-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-2)]'
                       >
                         <img
                           src='https://cursor.com/deeplink/mcp-install-dark.svg'
                           alt='Add to Cursor'
-                          className='h-[26px]'
+                          className='h-[26px] rounded-[6px] align-middle'
                         />
                       </a>
                     )}
@@ -616,7 +616,7 @@ function ServerDetailView({ workspaceId, serverId, onBack }: ServerDetailViewPro
                                 </Badge>
                               </div>
                             </div>
-                            <div className='border-[var(--border-1)] border-t px-[10px] pt-[6px] pb-[10px]'>
+                            <div className='rounded-b-[4px] border-[var(--border-1)] border-t bg-[var(--surface-2)] px-[10px] pt-[6px] pb-[10px]'>
                               <div className='flex flex-col gap-[6px]'>
                                 <Label className='text-[13px]'>Description</Label>
                                 <EmcnInput

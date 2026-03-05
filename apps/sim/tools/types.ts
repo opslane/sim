@@ -4,6 +4,17 @@ export type BYOKProviderId = 'openai' | 'anthropic' | 'google' | 'mistral' | 'ex
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD'
 
+/**
+ * Minimal execution context injected into tool params at runtime.
+ * This is a subset of the full ExecutionContext from executor/types.ts.
+ */
+export type WorkflowToolExecutionContext = {
+  workspaceId?: string
+  workflowId?: string
+  executionId?: string
+  userId?: string
+}
+
 export type OutputType =
   | 'string'
   | 'number'
@@ -49,6 +60,14 @@ export interface OAuthConfig {
   requiredScopes?: string[] // Specific scopes this tool needs (for granular scope validation)
 }
 
+export interface ToolRetryConfig {
+  enabled: boolean
+  maxRetries?: number
+  initialDelayMs?: number
+  maxDelayMs?: number
+  retryIdempotentOnly?: boolean
+}
+
 export interface ToolConfig<P = any, R = any> {
   // Basic tool identification
   id: string
@@ -72,7 +91,7 @@ export interface ToolConfig<P = any, R = any> {
       }
     }
   >
-
+  // Output schema - what this tool produces
   outputs?: Record<
     string,
     {
@@ -80,8 +99,8 @@ export interface ToolConfig<P = any, R = any> {
       description?: string
       optional?: boolean
       fileConfig?: {
-        mimeType?: string
-        extension?: string
+        mimeType?: string // Expected MIME type for file outputs
+        extension?: string // Expected file extension
       }
       items?: {
         type: OutputType
@@ -106,6 +125,7 @@ export interface ToolConfig<P = any, R = any> {
     method: HttpMethod | ((params: P) => HttpMethod)
     headers: (params: P) => Record<string, string>
     body?: (params: P) => Record<string, any> | string | FormData | undefined
+    retry?: ToolRetryConfig
   }
 
   // Post-processing (optional) - allows additional processing after the initial request
@@ -129,6 +149,11 @@ export interface ToolConfig<P = any, R = any> {
    * Maps param IDs to their enrichment configuration.
    */
   schemaEnrichment?: Record<string, SchemaEnrichmentConfig>
+  /**
+   * Optional tool-level enrichment that modifies description and all parameters.
+   * Use when multiple params depend on a single runtime value.
+   */
+  toolEnrichment?: ToolEnrichmentConfig
 
   /**
    * Hosted API key configuration for this tool.
@@ -177,6 +202,32 @@ export interface SchemaEnrichmentConfig {
     properties?: Record<string, { type: string; description?: string }>
     description?: string
     required?: string[]
+  } | null>
+}
+
+/**
+ * Configuration for enriching an entire tool (description + all parameters) at runtime.
+ * Used when multiple parameters and the description depend on a single runtime value (e.g., tableId).
+ */
+export interface ToolEnrichmentConfig {
+  /** The param ID that this enrichment depends on (e.g., 'tableId') */
+  dependsOn: string
+  /** Function to enrich the tool's description and parameter schema */
+  enrichTool: (
+    dependencyValue: string,
+    originalSchema: {
+      type: 'object'
+      properties: Record<string, unknown>
+      required: string[]
+    },
+    originalDescription: string
+  ) => Promise<{
+    description: string
+    parameters: {
+      type: 'object'
+      properties: Record<string, unknown>
+      required: string[]
+    }
   } | null>
 }
 

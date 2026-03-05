@@ -11,19 +11,19 @@ import { BlockInfoCard } from "@/components/ui/block-info-card"
 />
 
 {/* MANUAL-CONTENT-START:intro */}
-[Pipedrive](https://www.pipedrive.com) is a powerful sales-focused CRM platform designed to help sales teams manage leads, track deals, and optimize their sales pipeline. Built with simplicity and effectiveness in mind, Pipedrive has become a favorite among sales professionals and growing businesses worldwide for its intuitive visual pipeline management and actionable sales insights.
+[Pipedrive](https://www.pipedrive.com) is a sales-focused CRM platform designed to help sales teams manage leads, track deals, and optimize their sales pipeline. Built with simplicity and effectiveness in mind, Pipedrive provides intuitive visual pipeline management and actionable sales insights.
 
-Pipedrive provides a comprehensive suite of tools for managing the entire sales process from lead capture to deal closure. With its robust API and extensive integration capabilities, Pipedrive enables sales teams to automate repetitive tasks, maintain data consistency, and focus on what matters most—closing deals.
+With the Pipedrive integration in Sim, you can:
 
-Key features of Pipedrive include:
+- **Manage deals**: List, get, create, and update deals in your sales pipeline
+- **Manage leads**: Get, create, update, and delete leads for prospect tracking
+- **Track activities**: Get, create, and update sales activities such as calls, meetings, and tasks
+- **Manage projects**: List and create projects for post-sale delivery tracking
+- **Access pipelines**: Get pipeline configurations and list deals within specific pipelines
+- **Retrieve files**: Access files attached to deals, contacts, or other records
+- **Access email**: Get mail messages and threads linked to CRM records
 
-- Visual Sales Pipeline: Intuitive drag-and-drop interface for managing deals through customizable sales stages
-- Lead Management: Comprehensive lead inbox for capturing, qualifying, and converting potential opportunities
-- Activity Tracking: Sophisticated system for scheduling and tracking calls, meetings, emails, and tasks
-- Project Management: Built-in project tracking capabilities for post-sale customer success and delivery
-- Email Integration: Native mailbox integration for seamless communication tracking within the CRM
-
-In Sim, the Pipedrive integration allows your AI agents to seamlessly interact with your sales workflow. This creates opportunities for automated lead qualification, deal creation and updates, activity scheduling, and pipeline management as part of your AI-powered sales processes. The integration enables agents to create, retrieve, update, and manage deals, leads, activities, and projects programmatically, facilitating intelligent sales automation and ensuring that critical customer information is properly tracked and acted upon. By connecting Sim with Pipedrive, you can build AI agents that maintain sales pipeline visibility, automate routine CRM tasks, qualify leads intelligently, and ensure no opportunities slip through the cracks—enhancing sales team productivity and driving consistent revenue growth.
+In Sim, the Pipedrive integration enables your agents to interact with your sales workflow as part of automated processes. Agents can qualify leads, manage deals through pipeline stages, schedule activities, and keep CRM data synchronized—enabling intelligent sales automation.
 {/* MANUAL-CONTENT-END */}
 
 
@@ -49,6 +49,7 @@ Retrieve all deals from Pipedrive with optional filters
 | `pipeline_id` | string | No | If supplied, only deals in the specified pipeline are returned \(e.g., "1"\) |
 | `updated_since` | string | No | If set, only deals updated after this time are returned. Format: 2025-01-01T10:20:00Z |
 | `limit` | string | No | Number of results to return \(e.g., "50", default: 100, max: 500\) |
+| `cursor` | string | No | For pagination, the marker representing the first item on the next page |
 
 #### Output
 
@@ -74,6 +75,8 @@ Retrieve all deals from Pipedrive with optional filters
 | `metadata` | object | Pagination metadata for the response |
 |   ↳ `total_items` | number | Total number of items |
 |   ↳ `has_more` | boolean | Whether more items are available |
+|   ↳ `next_cursor` | string | Cursor for fetching the next page \(v2 endpoints\) |
+|   ↳ `next_start` | number | Offset for fetching the next page \(v1 endpoints\) |
 | `success` | boolean | Operation success status |
 
 ### `pipedrive_get_deal`
@@ -148,10 +151,9 @@ Retrieve files from Pipedrive with optional filters
 
 | Parameter | Type | Required | Description |
 | --------- | ---- | -------- | ----------- |
-| `deal_id` | string | No | Filter files by deal ID \(e.g., "123"\) |
-| `person_id` | string | No | Filter files by person ID \(e.g., "456"\) |
-| `org_id` | string | No | Filter files by organization ID \(e.g., "789"\) |
-| `limit` | string | No | Number of results to return \(e.g., "50", default: 100, max: 500\) |
+| `sort` | string | No | Sort files by field \(supported: "id", "update_time"\) |
+| `limit` | string | No | Number of results to return \(e.g., "50", default: 100, max: 100\) |
+| `start` | string | No | Pagination start offset \(0-based index of the first item to return\) |
 | `downloadFiles` | boolean | No | Download file contents into file outputs |
 
 #### Output
@@ -171,6 +173,8 @@ Retrieve files from Pipedrive with optional filters
 |   ↳ `url` | string | File download URL |
 | `downloadedFiles` | file[] | Downloaded files from Pipedrive |
 | `total_items` | number | Total number of files returned |
+| `has_more` | boolean | Whether more files are available |
+| `next_start` | number | Offset for fetching the next page |
 | `success` | boolean | Operation success status |
 
 ### `pipedrive_get_mail_messages`
@@ -183,6 +187,7 @@ Retrieve mail threads from Pipedrive mailbox
 | --------- | ---- | -------- | ----------- |
 | `folder` | string | No | Filter by folder: inbox, drafts, sent, archive \(default: inbox\) |
 | `limit` | string | No | Number of results to return \(e.g., "25", default: 50\) |
+| `start` | string | No | Pagination start offset \(0-based index of the first item to return\) |
 
 #### Output
 
@@ -190,6 +195,8 @@ Retrieve mail threads from Pipedrive mailbox
 | --------- | ---- | ----------- |
 | `messages` | array | Array of mail thread objects from Pipedrive mailbox |
 | `total_items` | number | Total number of mail threads returned |
+| `has_more` | boolean | Whether more messages are available |
+| `next_start` | number | Offset for fetching the next page |
 | `success` | boolean | Operation success status |
 
 ### `pipedrive_get_mail_thread`
@@ -221,7 +228,7 @@ Retrieve all pipelines from Pipedrive
 | `sort_by` | string | No | Field to sort by: id, update_time, add_time \(default: id\) |
 | `sort_direction` | string | No | Sorting direction: asc, desc \(default: asc\) |
 | `limit` | string | No | Number of results to return \(e.g., "50", default: 100, max: 500\) |
-| `cursor` | string | No | For pagination, the marker representing the first item on the next page |
+| `start` | string | No | Pagination start offset \(0-based index of the first item to return\) |
 
 #### Output
 
@@ -237,6 +244,8 @@ Retrieve all pipelines from Pipedrive
 |   ↳ `add_time` | string | When the pipeline was created |
 |   ↳ `update_time` | string | When the pipeline was last updated |
 | `total_items` | number | Total number of pipelines returned |
+| `has_more` | boolean | Whether more pipelines are available |
+| `next_start` | number | Offset for fetching the next page |
 | `success` | boolean | Operation success status |
 
 ### `pipedrive_get_pipeline_deals`
@@ -249,8 +258,8 @@ Retrieve all deals in a specific pipeline
 | --------- | ---- | -------- | ----------- |
 | `pipeline_id` | string | Yes | The ID of the pipeline \(e.g., "1"\) |
 | `stage_id` | string | No | Filter by specific stage within the pipeline \(e.g., "2"\) |
-| `status` | string | No | Filter by deal status: open, won, lost |
 | `limit` | string | No | Number of results to return \(e.g., "50", default: 100, max: 500\) |
+| `start` | string | No | Pagination start offset \(0-based index of the first item to return\) |
 
 #### Output
 
@@ -271,6 +280,7 @@ Retrieve all projects or a specific project from Pipedrive
 | `project_id` | string | No | Optional: ID of a specific project to retrieve \(e.g., "123"\) |
 | `status` | string | No | Filter by project status: open, completed, deleted \(only for listing all\) |
 | `limit` | string | No | Number of results to return \(e.g., "50", default: 100, max: 500, only for listing all\) |
+| `cursor` | string | No | For pagination, the marker representing the first item on the next page |
 
 #### Output
 
@@ -279,6 +289,8 @@ Retrieve all projects or a specific project from Pipedrive
 | `projects` | array | Array of project objects \(when listing all\) |
 | `project` | object | Single project object \(when project_id is provided\) |
 | `total_items` | number | Total number of projects returned |
+| `has_more` | boolean | Whether more projects are available |
+| `next_cursor` | string | Cursor for fetching the next page |
 | `success` | boolean | Operation success status |
 
 ### `pipedrive_create_project`
@@ -309,12 +321,11 @@ Retrieve activities (tasks) from Pipedrive with optional filters
 
 | Parameter | Type | Required | Description |
 | --------- | ---- | -------- | ----------- |
-| `deal_id` | string | No | Filter activities by deal ID \(e.g., "123"\) |
-| `person_id` | string | No | Filter activities by person ID \(e.g., "456"\) |
-| `org_id` | string | No | Filter activities by organization ID \(e.g., "789"\) |
+| `user_id` | string | No | Filter activities by user ID \(e.g., "123"\) |
 | `type` | string | No | Filter by activity type \(call, meeting, task, deadline, email, lunch\) |
 | `done` | string | No | Filter by completion status: 0 for not done, 1 for done |
 | `limit` | string | No | Number of results to return \(e.g., "50", default: 100, max: 500\) |
+| `start` | string | No | Pagination start offset \(0-based index of the first item to return\) |
 
 #### Output
 
@@ -335,6 +346,8 @@ Retrieve activities (tasks) from Pipedrive with optional filters
 |   ↳ `add_time` | string | When the activity was created |
 |   ↳ `update_time` | string | When the activity was last updated |
 | `total_items` | number | Total number of activities returned |
+| `has_more` | boolean | Whether more activities are available |
+| `next_start` | number | Offset for fetching the next page |
 | `success` | boolean | Operation success status |
 
 ### `pipedrive_create_activity`
@@ -399,6 +412,7 @@ Retrieve all leads or a specific lead from Pipedrive
 | `person_id` | string | No | Filter by person ID \(e.g., "456"\) |
 | `organization_id` | string | No | Filter by organization ID \(e.g., "789"\) |
 | `limit` | string | No | Number of results to return \(e.g., "50", default: 100, max: 500\) |
+| `start` | string | No | Pagination start offset \(0-based index of the first item to return\) |
 
 #### Output
 
@@ -433,6 +447,8 @@ Retrieve all leads or a specific lead from Pipedrive
 |   ↳ `add_time` | string | When the lead was created \(ISO 8601\) |
 |   ↳ `update_time` | string | When the lead was last updated \(ISO 8601\) |
 | `total_items` | number | Total number of leads returned |
+| `has_more` | boolean | Whether more leads are available |
+| `next_start` | number | Offset for fetching the next page |
 | `success` | boolean | Operation success status |
 
 ### `pipedrive_create_lead`

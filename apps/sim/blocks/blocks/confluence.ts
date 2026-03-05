@@ -3,6 +3,7 @@ import type { BlockConfig } from '@/blocks/types'
 import { AuthMode } from '@/blocks/types'
 import { normalizeFileInput } from '@/blocks/utils'
 import type { ConfluenceResponse } from '@/tools/confluence/types'
+import { getTrigger } from '@/triggers'
 
 export const ConfluenceBlock: BlockConfig<ConfluenceResponse> = {
   type: 'confluence',
@@ -51,6 +52,8 @@ export const ConfluenceBlock: BlockConfig<ConfluenceResponse> = {
       id: 'credential',
       title: 'Confluence Account',
       type: 'oauth-input',
+      canonicalParamId: 'oauthCredential',
+      mode: 'basic',
       serviceId: 'confluence',
       requiredScopes: [
         'read:confluence-content.all',
@@ -81,8 +84,18 @@ export const ConfluenceBlock: BlockConfig<ConfluenceResponse> = {
         'write:content.property:confluence',
         'read:hierarchical-content:confluence',
         'read:content.metadata:confluence',
+        'read:user:confluence',
       ],
       placeholder: 'Select Confluence account',
+      required: true,
+    },
+    {
+      id: 'manualCredential',
+      title: 'Confluence Account',
+      type: 'short-input',
+      canonicalParamId: 'oauthCredential',
+      mode: 'advanced',
+      placeholder: 'Enter credential ID',
       required: true,
     },
     {
@@ -91,6 +104,7 @@ export const ConfluenceBlock: BlockConfig<ConfluenceResponse> = {
       type: 'file-selector',
       canonicalParamId: 'pageId',
       serviceId: 'confluence',
+      selectorKey: 'confluence.pages',
       placeholder: 'Select Confluence page',
       dependsOn: ['credential', 'domain'],
       mode: 'basic',
@@ -287,7 +301,7 @@ export const ConfluenceBlock: BlockConfig<ConfluenceResponse> = {
       },
       params: (params) => {
         const {
-          credential,
+          oauthCredential,
           pageId,
           operation,
           attachmentFile,
@@ -300,7 +314,7 @@ export const ConfluenceBlock: BlockConfig<ConfluenceResponse> = {
 
         if (operation === 'upload_attachment') {
           return {
-            credential,
+            credential: oauthCredential,
             pageId: effectivePageId,
             operation,
             file: attachmentFile,
@@ -311,7 +325,7 @@ export const ConfluenceBlock: BlockConfig<ConfluenceResponse> = {
         }
 
         return {
-          credential,
+          credential: oauthCredential,
           pageId: effectivePageId || undefined,
           operation,
           ...rest,
@@ -322,7 +336,7 @@ export const ConfluenceBlock: BlockConfig<ConfluenceResponse> = {
   inputs: {
     operation: { type: 'string', description: 'Operation to perform' },
     domain: { type: 'string', description: 'Confluence domain' },
-    credential: { type: 'string', description: 'Confluence access token' },
+    oauthCredential: { type: 'string', description: 'Confluence access token' },
     pageId: { type: 'string', description: 'Page identifier (canonical param)' },
     spaceId: { type: 'string', description: 'Space identifier' },
     title: { type: 'string', description: 'Page title' },
@@ -402,6 +416,8 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
         { label: 'List Blog Posts', id: 'list_blogposts' },
         { label: 'Get Blog Post', id: 'get_blogpost' },
         { label: 'Create Blog Post', id: 'create_blogpost' },
+        { label: 'Update Blog Post', id: 'update_blogpost' },
+        { label: 'Delete Blog Post', id: 'delete_blogpost' },
         { label: 'List Blog Posts in Space', id: 'list_blogposts_in_space' },
         // Comment Operations
         { label: 'Create Comment', id: 'create_comment' },
@@ -420,7 +436,24 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
         { label: 'List Space Labels', id: 'list_space_labels' },
         // Space Operations
         { label: 'Get Space', id: 'get_space' },
+        { label: 'Create Space', id: 'create_space' },
+        { label: 'Update Space', id: 'update_space' },
+        { label: 'Delete Space', id: 'delete_space' },
         { label: 'List Spaces', id: 'list_spaces' },
+        // Space Property Operations
+        { label: 'List Space Properties', id: 'list_space_properties' },
+        { label: 'Create Space Property', id: 'create_space_property' },
+        { label: 'Delete Space Property', id: 'delete_space_property' },
+        // Space Permission Operations
+        { label: 'List Space Permissions', id: 'list_space_permissions' },
+        // Page Descendant Operations
+        { label: 'Get Page Descendants', id: 'get_page_descendants' },
+        // Task Operations
+        { label: 'List Tasks', id: 'list_tasks' },
+        { label: 'Get Task', id: 'get_task' },
+        { label: 'Update Task', id: 'update_task' },
+        // User Operations
+        { label: 'Get User', id: 'get_user' },
       ],
       value: () => 'read',
     },
@@ -428,6 +461,8 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
       id: 'credential',
       title: 'Confluence Account',
       type: 'oauth-input',
+      canonicalParamId: 'oauthCredential',
+      mode: 'basic',
       serviceId: 'confluence',
       requiredScopes: [
         'read:confluence-content.all',
@@ -458,8 +493,26 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
         'write:content.property:confluence',
         'read:hierarchical-content:confluence',
         'read:content.metadata:confluence',
+        'read:user:confluence',
+        'read:task:confluence',
+        'write:task:confluence',
+        'delete:blogpost:confluence',
+        'write:space:confluence',
+        'delete:space:confluence',
+        'read:space.property:confluence',
+        'write:space.property:confluence',
+        'read:space.permission:confluence',
       ],
       placeholder: 'Select Confluence account',
+      required: true,
+    },
+    {
+      id: 'manualCredential',
+      title: 'Confluence Account',
+      type: 'short-input',
+      canonicalParamId: 'oauthCredential',
+      mode: 'advanced',
+      placeholder: 'Enter credential ID',
       required: true,
     },
     {
@@ -475,6 +528,7 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
       type: 'file-selector',
       canonicalParamId: 'pageId',
       serviceId: 'confluence',
+      selectorKey: 'confluence.pages',
       placeholder: 'Select Confluence page',
       dependsOn: ['credential', 'domain'],
       mode: 'basic',
@@ -484,13 +538,26 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
           'list_pages_in_space',
           'list_blogposts',
           'get_blogpost',
+          'update_blogpost',
+          'delete_blogpost',
           'list_blogposts_in_space',
           'search',
           'search_in_space',
           'get_space',
+          'create_space',
+          'update_space',
+          'delete_space',
           'list_spaces',
           'get_pages_by_label',
           'list_space_labels',
+          'list_space_permissions',
+          'list_space_properties',
+          'create_space_property',
+          'delete_space_property',
+          'list_tasks',
+          'get_task',
+          'update_task',
+          'get_user',
         ],
         not: true,
       },
@@ -514,6 +581,7 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
           'get_page_version',
           'list_page_properties',
           'create_page_property',
+          'get_page_descendants',
         ],
       },
     },
@@ -530,13 +598,26 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
           'list_pages_in_space',
           'list_blogposts',
           'get_blogpost',
+          'update_blogpost',
+          'delete_blogpost',
           'list_blogposts_in_space',
           'search',
           'search_in_space',
           'get_space',
+          'create_space',
+          'update_space',
+          'delete_space',
           'list_spaces',
           'get_pages_by_label',
           'list_space_labels',
+          'list_space_permissions',
+          'list_space_properties',
+          'create_space_property',
+          'delete_space_property',
+          'list_tasks',
+          'get_task',
+          'update_task',
+          'get_user',
         ],
         not: true,
       },
@@ -560,6 +641,7 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
           'get_page_version',
           'list_page_properties',
           'create_page_property',
+          'get_page_descendants',
         ],
       },
     },
@@ -574,11 +656,17 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
         value: [
           'create',
           'get_space',
+          'update_space',
+          'delete_space',
           'list_pages_in_space',
           'search_in_space',
           'create_blogpost',
           'list_blogposts_in_space',
           'list_space_labels',
+          'list_space_permissions',
+          'list_space_properties',
+          'create_space_property',
+          'delete_space_property',
         ],
       },
     },
@@ -588,7 +676,10 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
       type: 'short-input',
       placeholder: 'Enter blog post ID',
       required: true,
-      condition: { field: 'operation', value: 'get_blogpost' },
+      condition: {
+        field: 'operation',
+        value: ['get_blogpost', 'update_blogpost', 'delete_blogpost'],
+      },
     },
     {
       id: 'versionNumber',
@@ -597,6 +688,86 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
       placeholder: 'Enter version number',
       required: true,
       condition: { field: 'operation', value: 'get_page_version' },
+    },
+    {
+      id: 'accountId',
+      title: 'Account ID',
+      type: 'short-input',
+      placeholder: 'Enter Atlassian account ID',
+      required: true,
+      condition: { field: 'operation', value: 'get_user' },
+    },
+    {
+      id: 'taskId',
+      title: 'Task ID',
+      type: 'short-input',
+      placeholder: 'Enter task ID',
+      required: true,
+      condition: { field: 'operation', value: ['get_task', 'update_task'] },
+    },
+    {
+      id: 'taskStatus',
+      title: 'Task Status',
+      type: 'dropdown',
+      options: [
+        { label: 'Complete', id: 'complete' },
+        { label: 'Incomplete', id: 'incomplete' },
+      ],
+      value: () => 'complete',
+      condition: { field: 'operation', value: 'update_task' },
+    },
+    {
+      id: 'taskAssignedTo',
+      title: 'Assigned To',
+      type: 'short-input',
+      placeholder: 'Filter by assignee account ID (optional)',
+      condition: { field: 'operation', value: 'list_tasks' },
+    },
+    {
+      id: 'spaceName',
+      title: 'Space Name',
+      type: 'short-input',
+      placeholder: 'Enter space name',
+      required: true,
+      condition: { field: 'operation', value: 'create_space' },
+    },
+    {
+      id: 'spaceKey',
+      title: 'Space Key',
+      type: 'short-input',
+      placeholder: 'Enter space key (e.g., MYSPACE)',
+      required: true,
+      condition: { field: 'operation', value: 'create_space' },
+    },
+    {
+      id: 'spaceDescription',
+      title: 'Description',
+      type: 'long-input',
+      placeholder: 'Enter space description (optional)',
+      condition: { field: 'operation', value: ['create_space', 'update_space'] },
+    },
+    {
+      id: 'spacePropertyKey',
+      title: 'Property Key',
+      type: 'short-input',
+      placeholder: 'Enter property key/name',
+      required: true,
+      condition: { field: 'operation', value: 'create_space_property' },
+    },
+    {
+      id: 'spacePropertyValue',
+      title: 'Property Value',
+      type: 'long-input',
+      placeholder: 'Enter property value (JSON supported)',
+      condition: { field: 'operation', value: 'create_space_property' },
+    },
+    {
+      id: 'spacePropertyId',
+      title: 'Property ID',
+      type: 'short-input',
+      placeholder: 'Enter property ID to delete',
+      required: true,
+      condition: { field: 'operation', value: 'delete_space_property' },
     },
     {
       id: 'propertyKey',
@@ -627,14 +798,20 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
       title: 'Title',
       type: 'short-input',
       placeholder: 'Enter title',
-      condition: { field: 'operation', value: ['create', 'update', 'create_blogpost'] },
+      condition: {
+        field: 'operation',
+        value: ['create', 'update', 'create_blogpost', 'update_blogpost', 'update_space'],
+      },
     },
     {
       id: 'content',
       title: 'Content',
       type: 'long-input',
       placeholder: 'Enter content',
-      condition: { field: 'operation', value: ['create', 'update', 'create_blogpost'] },
+      condition: {
+        field: 'operation',
+        value: ['create', 'update', 'create_blogpost', 'update_blogpost'],
+      },
     },
     {
       id: 'parentId',
@@ -790,6 +967,10 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
           'list_labels',
           'get_pages_by_label',
           'list_space_labels',
+          'get_page_descendants',
+          'list_space_permissions',
+          'list_space_properties',
+          'list_tasks',
         ],
       },
     },
@@ -813,10 +994,53 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
           'list_labels',
           'get_pages_by_label',
           'list_space_labels',
+          'get_page_descendants',
+          'list_space_permissions',
+          'list_space_properties',
+          'list_tasks',
         ],
       },
     },
+
+    // Trigger subBlocks
+    ...getTrigger('confluence_page_created').subBlocks,
+    ...getTrigger('confluence_page_updated').subBlocks,
+    ...getTrigger('confluence_page_removed').subBlocks,
+    ...getTrigger('confluence_page_moved').subBlocks,
+    ...getTrigger('confluence_comment_created').subBlocks,
+    ...getTrigger('confluence_comment_removed').subBlocks,
+    ...getTrigger('confluence_blog_created').subBlocks,
+    ...getTrigger('confluence_blog_updated').subBlocks,
+    ...getTrigger('confluence_blog_removed').subBlocks,
+    ...getTrigger('confluence_attachment_created').subBlocks,
+    ...getTrigger('confluence_attachment_removed').subBlocks,
+    ...getTrigger('confluence_space_created').subBlocks,
+    ...getTrigger('confluence_space_updated').subBlocks,
+    ...getTrigger('confluence_label_added').subBlocks,
+    ...getTrigger('confluence_label_removed').subBlocks,
+    ...getTrigger('confluence_webhook').subBlocks,
   ],
+  triggers: {
+    enabled: true,
+    available: [
+      'confluence_page_created',
+      'confluence_page_updated',
+      'confluence_page_removed',
+      'confluence_page_moved',
+      'confluence_comment_created',
+      'confluence_comment_removed',
+      'confluence_blog_created',
+      'confluence_blog_updated',
+      'confluence_blog_removed',
+      'confluence_attachment_created',
+      'confluence_attachment_removed',
+      'confluence_space_created',
+      'confluence_space_updated',
+      'confluence_label_added',
+      'confluence_label_removed',
+      'confluence_webhook',
+    ],
+  },
   tools: {
     access: [
       // Page Tools
@@ -859,7 +1083,27 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
       'confluence_list_space_labels',
       // Space Tools
       'confluence_get_space',
+      'confluence_create_space',
+      'confluence_update_space',
+      'confluence_delete_space',
       'confluence_list_spaces',
+      // Space Property Tools
+      'confluence_list_space_properties',
+      'confluence_create_space_property',
+      'confluence_delete_space_property',
+      // Space Permission Tools
+      'confluence_list_space_permissions',
+      // Page Descendant Tools
+      'confluence_get_page_descendants',
+      // Task Tools
+      'confluence_list_tasks',
+      'confluence_get_task',
+      'confluence_update_task',
+      // Blog Post Update/Delete
+      'confluence_update_blogpost',
+      'confluence_delete_blogpost',
+      // User Tools
+      'confluence_get_user',
     ],
     config: {
       tool: (params) => {
@@ -903,6 +1147,10 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
             return 'confluence_get_blogpost'
           case 'create_blogpost':
             return 'confluence_create_blogpost'
+          case 'update_blogpost':
+            return 'confluence_update_blogpost'
+          case 'delete_blogpost':
+            return 'confluence_delete_blogpost'
           case 'list_blogposts_in_space':
             return 'confluence_list_blogposts_in_space'
           // Comment Operations
@@ -935,15 +1183,44 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
           // Space Operations
           case 'get_space':
             return 'confluence_get_space'
+          case 'create_space':
+            return 'confluence_create_space'
+          case 'update_space':
+            return 'confluence_update_space'
+          case 'delete_space':
+            return 'confluence_delete_space'
           case 'list_spaces':
             return 'confluence_list_spaces'
+          // Space Property Operations
+          case 'list_space_properties':
+            return 'confluence_list_space_properties'
+          case 'create_space_property':
+            return 'confluence_create_space_property'
+          case 'delete_space_property':
+            return 'confluence_delete_space_property'
+          // Space Permission Operations
+          case 'list_space_permissions':
+            return 'confluence_list_space_permissions'
+          // Page Descendant Operations
+          case 'get_page_descendants':
+            return 'confluence_get_page_descendants'
+          // Task Operations
+          case 'list_tasks':
+            return 'confluence_list_tasks'
+          case 'get_task':
+            return 'confluence_get_task'
+          case 'update_task':
+            return 'confluence_update_task'
+          // User Operations
+          case 'get_user':
+            return 'confluence_get_user'
           default:
             return 'confluence_retrieve'
         }
       },
       params: (params) => {
         const {
-          credential,
+          oauthCredential,
           pageId,
           operation,
           attachmentFile,
@@ -951,6 +1228,7 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
           attachmentComment,
           blogPostId,
           versionNumber,
+          accountId,
           propertyKey,
           propertyValue,
           propertyId,
@@ -960,6 +1238,15 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
           purge,
           bodyFormat,
           cursor,
+          taskId,
+          taskStatus,
+          taskAssignedTo,
+          spaceName,
+          spaceKey,
+          spaceDescription,
+          spacePropertyKey,
+          spacePropertyValue,
+          spacePropertyId,
           ...rest
         } = params
 
@@ -968,7 +1255,7 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
 
         if (operation === 'add_label') {
           return {
-            credential,
+            credential: oauthCredential,
             pageId: effectivePageId,
             operation,
             prefix: labelPrefix || 'global',
@@ -978,7 +1265,7 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
 
         if (operation === 'create_blogpost') {
           return {
-            credential,
+            credential: oauthCredential,
             operation,
             status: blogPostStatus || 'current',
             ...rest,
@@ -987,7 +1274,7 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
 
         if (operation === 'delete') {
           return {
-            credential,
+            credential: oauthCredential,
             pageId: effectivePageId,
             operation,
             purge: purge || false,
@@ -997,7 +1284,7 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
 
         if (operation === 'list_comments') {
           return {
-            credential,
+            credential: oauthCredential,
             pageId: effectivePageId,
             operation,
             bodyFormat: bodyFormat || 'storage',
@@ -1007,8 +1294,8 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
         }
 
         // Operations that support generic cursor pagination.
-        // get_pages_by_label and list_space_labels have dedicated handlers
-        // below that pass cursor along with their required params (labelId, spaceId).
+        // get_pages_by_label, list_space_labels, and list_tasks have dedicated handlers
+        // below that pass cursor along with their required params.
         const supportsCursor = [
           'list_attachments',
           'list_spaces',
@@ -1019,11 +1306,14 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
           'list_page_versions',
           'list_page_properties',
           'list_labels',
+          'get_page_descendants',
+          'list_space_permissions',
+          'list_space_properties',
         ]
 
         if (supportsCursor.includes(operation) && cursor) {
           return {
-            credential,
+            credential: oauthCredential,
             pageId: effectivePageId || undefined,
             operation,
             cursor,
@@ -1036,7 +1326,7 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
             throw new Error('Property key is required for this operation.')
           }
           return {
-            credential,
+            credential: oauthCredential,
             pageId: effectivePageId,
             operation,
             key: propertyKey,
@@ -1047,7 +1337,7 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
 
         if (operation === 'delete_page_property') {
           return {
-            credential,
+            credential: oauthCredential,
             pageId: effectivePageId,
             operation,
             propertyId,
@@ -1057,7 +1347,7 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
 
         if (operation === 'get_pages_by_label') {
           return {
-            credential,
+            credential: oauthCredential,
             operation,
             labelId,
             cursor: cursor || undefined,
@@ -1067,7 +1357,7 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
 
         if (operation === 'list_space_labels') {
           return {
-            credential,
+            credential: oauthCredential,
             operation,
             cursor: cursor || undefined,
             ...rest,
@@ -1080,7 +1370,7 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
             throw new Error('File is required for upload attachment operation.')
           }
           return {
-            credential,
+            credential: oauthCredential,
             pageId: effectivePageId,
             operation,
             file: normalizedFile,
@@ -1090,8 +1380,124 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
           }
         }
 
+        if (operation === 'get_user') {
+          return {
+            credential: oauthCredential,
+            operation,
+            accountId: accountId ? String(accountId).trim() : undefined,
+            ...rest,
+          }
+        }
+
+        if (operation === 'update_blogpost' || operation === 'delete_blogpost') {
+          return {
+            credential: oauthCredential,
+            operation,
+            blogPostId: blogPostId || undefined,
+            ...rest,
+          }
+        }
+
+        if (operation === 'create_space') {
+          return {
+            credential: oauthCredential,
+            operation,
+            name: spaceName,
+            key: spaceKey,
+            description: spaceDescription,
+            ...rest,
+          }
+        }
+
+        if (operation === 'update_space') {
+          return {
+            credential: oauthCredential,
+            operation,
+            name: spaceName || rest.title,
+            description: spaceDescription,
+            ...rest,
+          }
+        }
+
+        if (operation === 'delete_space') {
+          return {
+            credential: oauthCredential,
+            operation,
+            ...rest,
+          }
+        }
+
+        if (operation === 'create_space_property') {
+          return {
+            credential: oauthCredential,
+            operation,
+            key: spacePropertyKey,
+            value: spacePropertyValue,
+            ...rest,
+          }
+        }
+
+        if (operation === 'delete_space_property') {
+          return {
+            credential: oauthCredential,
+            operation,
+            propertyId: spacePropertyId,
+            ...rest,
+          }
+        }
+
+        if (operation === 'list_space_permissions' || operation === 'list_space_properties') {
+          return {
+            credential: oauthCredential,
+            operation,
+            cursor: cursor || undefined,
+            ...rest,
+          }
+        }
+
+        if (operation === 'get_page_descendants') {
+          return {
+            credential: oauthCredential,
+            pageId: effectivePageId,
+            operation,
+            cursor: cursor || undefined,
+            ...rest,
+          }
+        }
+
+        if (operation === 'get_task') {
+          return {
+            credential: oauthCredential,
+            operation,
+            taskId,
+            ...rest,
+          }
+        }
+
+        if (operation === 'update_task') {
+          return {
+            credential: oauthCredential,
+            operation,
+            taskId,
+            status: taskStatus,
+            ...rest,
+          }
+        }
+
+        if (operation === 'list_tasks') {
+          return {
+            credential: oauthCredential,
+            operation,
+            pageId: effectivePageId || undefined,
+            assignedTo: taskAssignedTo || undefined,
+            status: taskStatus || undefined,
+            cursor: cursor || undefined,
+            ...rest,
+          }
+        }
+
         return {
-          credential,
+          credential: oauthCredential,
           pageId: effectivePageId || undefined,
           blogPostId: blogPostId || undefined,
           versionNumber: versionNumber ? Number.parseInt(String(versionNumber), 10) : undefined,
@@ -1104,11 +1510,12 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
   inputs: {
     operation: { type: 'string', description: 'Operation to perform' },
     domain: { type: 'string', description: 'Confluence domain' },
-    credential: { type: 'string', description: 'Confluence access token' },
+    oauthCredential: { type: 'string', description: 'Confluence access token' },
     pageId: { type: 'string', description: 'Page identifier (canonical param)' },
     spaceId: { type: 'string', description: 'Space identifier' },
     blogPostId: { type: 'string', description: 'Blog post identifier' },
     versionNumber: { type: 'number', description: 'Page version number' },
+    accountId: { type: 'string', description: 'Atlassian account ID' },
     propertyKey: { type: 'string', description: 'Property key/name' },
     propertyValue: { type: 'json', description: 'Property value (JSON)' },
     title: { type: 'string', description: 'Page or blog post title' },
@@ -1130,6 +1537,15 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
     bodyFormat: { type: 'string', description: 'Body format for comments' },
     limit: { type: 'number', description: 'Maximum number of results' },
     cursor: { type: 'string', description: 'Pagination cursor from previous response' },
+    taskId: { type: 'string', description: 'Task identifier' },
+    taskStatus: { type: 'string', description: 'Task status (complete or incomplete)' },
+    taskAssignedTo: { type: 'string', description: 'Filter tasks by assignee account ID' },
+    spaceName: { type: 'string', description: 'Space name for create/update' },
+    spaceKey: { type: 'string', description: 'Space key for create' },
+    spaceDescription: { type: 'string', description: 'Space description' },
+    spacePropertyKey: { type: 'string', description: 'Space property key' },
+    spacePropertyValue: { type: 'json', description: 'Space property value' },
+    spacePropertyId: { type: 'string', description: 'Space property identifier' },
   },
   outputs: {
     ts: { type: 'string', description: 'Timestamp' },
@@ -1180,6 +1596,23 @@ export const ConfluenceV2Block: BlockConfig<ConfluenceResponse> = {
     propertyId: { type: 'string', description: 'Property identifier' },
     propertyKey: { type: 'string', description: 'Property key' },
     propertyValue: { type: 'json', description: 'Property value' },
+    // User Results
+    accountId: { type: 'string', description: 'Atlassian account ID' },
+    displayName: { type: 'string', description: 'User display name' },
+    email: { type: 'string', description: 'User email address' },
+    accountType: { type: 'string', description: 'Account type (atlassian, app, customer)' },
+    profilePicture: { type: 'string', description: 'Path to user profile picture' },
+    publicName: { type: 'string', description: 'User public name' },
+    // Task Results
+    tasks: { type: 'array', description: 'List of tasks' },
+    taskId: { type: 'string', description: 'Task identifier' },
+    // Descendant Results
+    descendants: { type: 'array', description: 'List of descendant pages' },
+    // Permission Results
+    permissions: { type: 'array', description: 'List of space permissions' },
+    // Space Property Results
+    homepageId: { type: 'string', description: 'Space homepage ID' },
+    description: { type: 'json', description: 'Space description' },
     // Pagination
     nextCursor: { type: 'string', description: 'Cursor for fetching next page of results' },
   },

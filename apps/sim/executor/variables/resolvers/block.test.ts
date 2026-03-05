@@ -2,13 +2,139 @@ import { loggerMock } from '@sim/testing'
 import { describe, expect, it, vi } from 'vitest'
 import { ExecutionState } from '@/executor/execution/state'
 import { BlockResolver } from './block'
-import type { ResolutionContext } from './reference'
+import { RESOLVED_EMPTY, type ResolutionContext } from './reference'
+
+/**
+ * Minimal block configs providing only the fields needed by getBlockSchema / getEffectiveBlockOutputs.
+ * This avoids loading all 200+ block definition files via the real registry.
+ * Uses vi.hoisted() so the mock data is available when vi.mock factories execute.
+ */
+const MOCK_BLOCKS = vi.hoisted(
+  () =>
+    ({
+      start_trigger: {
+        type: 'start_trigger',
+        category: 'triggers',
+        subBlocks: [{ id: 'inputFormat', type: 'input-format' }],
+        outputs: {},
+        triggers: { enabled: true, available: ['chat', 'manual', 'api'] },
+      },
+      function: {
+        type: 'function',
+        category: 'tools',
+        subBlocks: [],
+        outputs: {
+          result: {
+            type: 'json',
+            description: 'Return value from the executed JavaScript function',
+          },
+          stdout: { type: 'string', description: 'Console log output' },
+        },
+      },
+      response: {
+        type: 'response',
+        category: 'tools',
+        subBlocks: [],
+        outputs: {
+          data: { type: 'json', description: 'Response data' },
+          status: { type: 'number', description: 'HTTP status code' },
+          headers: { type: 'json', description: 'Response headers' },
+        },
+      },
+      workflow: {
+        type: 'workflow',
+        category: 'tools',
+        subBlocks: [],
+        outputs: {
+          success: { type: 'boolean', description: 'Execution success status' },
+          childWorkflowName: { type: 'string', description: 'Child workflow name' },
+          childWorkflowId: { type: 'string', description: 'Child workflow ID' },
+          result: { type: 'json', description: 'Workflow execution result' },
+          error: { type: 'string', description: 'Error message' },
+          childTraceSpans: {
+            type: 'json',
+            description: 'Child workflow trace spans',
+            hiddenFromDisplay: true,
+          },
+        },
+      },
+      workflow_input: {
+        type: 'workflow_input',
+        category: 'tools',
+        subBlocks: [],
+        outputs: {
+          success: { type: 'boolean', description: 'Execution success status' },
+          childWorkflowName: { type: 'string', description: 'Child workflow name' },
+          childWorkflowId: { type: 'string', description: 'Child workflow ID' },
+          result: { type: 'json', description: 'Workflow execution result' },
+          error: { type: 'string', description: 'Error message' },
+          childTraceSpans: {
+            type: 'json',
+            description: 'Child workflow trace spans',
+            hiddenFromDisplay: true,
+          },
+        },
+      },
+      human_in_the_loop: {
+        type: 'human_in_the_loop',
+        category: 'tools',
+        subBlocks: [],
+        outputs: {
+          url: { type: 'string', description: 'Resume UI URL' },
+          resumeEndpoint: { type: 'string', description: 'Resume API endpoint URL' },
+          response: {
+            type: 'json',
+            description: 'Display data shown to the approver',
+            hiddenFromDisplay: true,
+          },
+          submission: {
+            type: 'json',
+            description: 'Form submission data',
+            hiddenFromDisplay: true,
+          },
+          resumeInput: {
+            type: 'json',
+            description: 'Raw input data submitted when resuming',
+            hiddenFromDisplay: true,
+          },
+          submittedAt: {
+            type: 'string',
+            description: 'ISO timestamp when the workflow was resumed',
+          },
+        },
+      },
+      agent: {
+        type: 'agent',
+        category: 'tools',
+        subBlocks: [],
+        outputs: {
+          response: { type: 'json', description: 'Agent response' },
+          tokens: { type: 'json', description: 'Token usage' },
+        },
+      },
+    }) as Record<string, any>
+)
 
 vi.mock('@sim/logger', () => loggerMock)
-vi.mock('@/blocks/registry', async () => {
-  const actual = await vi.importActual<typeof import('@/blocks/registry')>('@/blocks/registry')
-  return actual
-})
+vi.mock('@/blocks/registry', () => ({
+  getBlock: (type: string) => MOCK_BLOCKS[type] ?? undefined,
+  registry: MOCK_BLOCKS,
+  getAllBlocks: () => Object.values(MOCK_BLOCKS),
+  getAllBlockTypes: () => Object.keys(MOCK_BLOCKS),
+  isValidBlockType: (type: string) => type in MOCK_BLOCKS,
+  getBlockByToolName: () => undefined,
+  getBlocksByCategory: () => [],
+  getLatestBlock: () => undefined,
+}))
+vi.mock('@/blocks', () => ({
+  getBlock: (type: string) => MOCK_BLOCKS[type] ?? undefined,
+  registry: MOCK_BLOCKS,
+  getAllBlocks: () => Object.values(MOCK_BLOCKS),
+  getAllBlockTypes: () => Object.keys(MOCK_BLOCKS),
+  isValidBlockType: (type: string) => type in MOCK_BLOCKS,
+  getBlockByToolName: () => undefined,
+  getBlocksByCategory: () => [],
+}))
 
 function createTestWorkflow(
   blocks: Array<{
@@ -134,15 +260,18 @@ describe('BlockResolver', () => {
       expect(resolver.resolve('<source.items.1.id>', ctx)).toBe(2)
     })
 
-    it.concurrent('should return undefined for non-existent path when no schema defined', () => {
-      const workflow = createTestWorkflow([{ id: 'source', type: 'unknown_block_type' }])
-      const resolver = new BlockResolver(workflow)
-      const ctx = createTestContext('current', {
-        source: { existing: 'value' },
-      })
+    it.concurrent(
+      'should return RESOLVED_EMPTY for non-existent path when no schema defined',
+      () => {
+        const workflow = createTestWorkflow([{ id: 'source', type: 'unknown_block_type' }])
+        const resolver = new BlockResolver(workflow)
+        const ctx = createTestContext('current', {
+          source: { existing: 'value' },
+        })
 
-      expect(resolver.resolve('<source.nonexistent>', ctx)).toBeUndefined()
-    })
+        expect(resolver.resolve('<source.nonexistent>', ctx)).toBe(RESOLVED_EMPTY)
+      }
+    )
 
     it.concurrent('should throw error for path not in output schema', () => {
       const workflow = createTestWorkflow([
@@ -162,7 +291,7 @@ describe('BlockResolver', () => {
       expect(() => resolver.resolve('<source.invalidField>', ctx)).toThrow(/Available fields:/)
     })
 
-    it.concurrent('should return undefined for path in schema but missing in data', () => {
+    it.concurrent('should return RESOLVED_EMPTY for path in schema but missing in data', () => {
       const workflow = createTestWorkflow([
         {
           id: 'source',
@@ -175,7 +304,7 @@ describe('BlockResolver', () => {
       })
 
       expect(resolver.resolve('<source.stdout>', ctx)).toBe('log output')
-      expect(resolver.resolve('<source.result>', ctx)).toBeUndefined()
+      expect(resolver.resolve('<source.result>', ctx)).toBe(RESOLVED_EMPTY)
     })
 
     it.concurrent(
@@ -191,7 +320,7 @@ describe('BlockResolver', () => {
         const resolver = new BlockResolver(workflow)
         const ctx = createTestContext('current', {})
 
-        expect(resolver.resolve('<workflow.childTraceSpans>', ctx)).toBeUndefined()
+        expect(resolver.resolve('<workflow.childTraceSpans>', ctx)).toBe(RESOLVED_EMPTY)
       }
     )
 
@@ -208,7 +337,7 @@ describe('BlockResolver', () => {
         const resolver = new BlockResolver(workflow)
         const ctx = createTestContext('current', {})
 
-        expect(resolver.resolve('<workflowinput.childTraceSpans>', ctx)).toBeUndefined()
+        expect(resolver.resolve('<workflowinput.childTraceSpans>', ctx)).toBe(RESOLVED_EMPTY)
       }
     )
 
@@ -225,18 +354,33 @@ describe('BlockResolver', () => {
         const resolver = new BlockResolver(workflow)
         const ctx = createTestContext('current', {})
 
-        expect(resolver.resolve('<hitl.response>', ctx)).toBeUndefined()
-        expect(resolver.resolve('<hitl.submission>', ctx)).toBeUndefined()
-        expect(resolver.resolve('<hitl.resumeInput>', ctx)).toBeUndefined()
+        expect(resolver.resolve('<hitl.response>', ctx)).toBe(RESOLVED_EMPTY)
+        expect(resolver.resolve('<hitl.submission>', ctx)).toBe(RESOLVED_EMPTY)
+        expect(resolver.resolve('<hitl.resumeInput>', ctx)).toBe(RESOLVED_EMPTY)
       }
     )
 
-    it.concurrent('should return undefined for non-existent block', () => {
+    it.concurrent('should return undefined for block not in workflow', () => {
       const workflow = createTestWorkflow([{ id: 'existing' }])
       const resolver = new BlockResolver(workflow)
       const ctx = createTestContext('current', {})
 
       expect(resolver.resolve('<nonexistent>', ctx)).toBeUndefined()
+    })
+
+    it.concurrent('should return RESOLVED_EMPTY for block in workflow that did not execute', () => {
+      const workflow = createTestWorkflow([
+        { id: 'start-block', name: 'Start', type: 'start_trigger' },
+        { id: 'slack-block', name: 'Slack', type: 'slack_trigger' },
+      ])
+      const resolver = new BlockResolver(workflow)
+      const ctx = createTestContext('current', {
+        'slack-block': { message: 'hello from slack' },
+      })
+
+      expect(resolver.resolve('<slack.message>', ctx)).toBe('hello from slack')
+      expect(resolver.resolve('<start>', ctx)).toBe(RESOLVED_EMPTY)
+      expect(resolver.resolve('<start.input>', ctx)).toBe(RESOLVED_EMPTY)
     })
 
     it.concurrent('should fall back to context blockStates', () => {
@@ -1012,24 +1156,24 @@ describe('BlockResolver', () => {
       expect(resolver.resolve('<source.other>', ctx)).toBe('exists')
     })
 
-    it.concurrent('should handle output with undefined values', () => {
+    it.concurrent('should return RESOLVED_EMPTY for output with undefined values', () => {
       const workflow = createTestWorkflow([{ id: 'source', type: 'unknown_block_type' }])
       const resolver = new BlockResolver(workflow)
       const ctx = createTestContext('current', {
         source: { value: undefined, other: 'exists' },
       })
 
-      expect(resolver.resolve('<source.value>', ctx)).toBeUndefined()
+      expect(resolver.resolve('<source.value>', ctx)).toBe(RESOLVED_EMPTY)
     })
 
-    it.concurrent('should return undefined for deeply nested non-existent path', () => {
+    it.concurrent('should return RESOLVED_EMPTY for deeply nested non-existent path', () => {
       const workflow = createTestWorkflow([{ id: 'source', type: 'unknown_block_type' }])
       const resolver = new BlockResolver(workflow)
       const ctx = createTestContext('current', {
         source: { level1: { level2: {} } },
       })
 
-      expect(resolver.resolve('<source.level1.level2.level3>', ctx)).toBeUndefined()
+      expect(resolver.resolve('<source.level1.level2.level3>', ctx)).toBe(RESOLVED_EMPTY)
     })
   })
 })

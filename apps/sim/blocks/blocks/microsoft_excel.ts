@@ -36,6 +36,8 @@ export const MicrosoftExcelBlock: BlockConfig<MicrosoftExcelResponse> = {
       id: 'credential',
       title: 'Microsoft Account',
       type: 'oauth-input',
+      canonicalParamId: 'oauthCredential',
+      mode: 'basic',
       serviceId: 'microsoft-excel',
       requiredScopes: [
         'openid',
@@ -49,11 +51,21 @@ export const MicrosoftExcelBlock: BlockConfig<MicrosoftExcelResponse> = {
       required: true,
     },
     {
+      id: 'manualCredential',
+      title: 'Microsoft Account',
+      type: 'short-input',
+      canonicalParamId: 'oauthCredential',
+      mode: 'advanced',
+      placeholder: 'Enter credential ID',
+      required: true,
+    },
+    {
       id: 'spreadsheetId',
       title: 'Select Sheet',
       type: 'file-selector',
       canonicalParamId: 'spreadsheetId',
       serviceId: 'microsoft-excel',
+      selectorKey: 'microsoft.excel',
       requiredScopes: [],
       mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       placeholder: 'Select a spreadsheet',
@@ -241,7 +253,7 @@ Return ONLY the JSON array - no explanations, no markdown, no extra text.`,
         }
       },
       params: (params) => {
-        const { credential, values, spreadsheetId, tableName, worksheetName, ...rest } = params
+        const { oauthCredential, values, spreadsheetId, tableName, worksheetName, ...rest } = params
 
         // Use canonical param ID (raw subBlock IDs are deleted after serialization)
         const effectiveSpreadsheetId = spreadsheetId ? String(spreadsheetId).trim() : ''
@@ -269,7 +281,7 @@ Return ONLY the JSON array - no explanations, no markdown, no extra text.`,
           ...rest,
           spreadsheetId: effectiveSpreadsheetId,
           values: parsedValues,
-          credential,
+          oauthCredential,
         }
 
         if (params.operation === 'table_add') {
@@ -292,7 +304,7 @@ Return ONLY the JSON array - no explanations, no markdown, no extra text.`,
   },
   inputs: {
     operation: { type: 'string', description: 'Operation to perform' },
-    credential: { type: 'string', description: 'Microsoft Excel access token' },
+    oauthCredential: { type: 'string', description: 'Microsoft Excel access token' },
     spreadsheetId: { type: 'string', description: 'Spreadsheet identifier (canonical param)' },
     range: { type: 'string', description: 'Cell range' },
     tableName: { type: 'string', description: 'Table name' },
@@ -351,6 +363,8 @@ export const MicrosoftExcelV2Block: BlockConfig<MicrosoftExcelV2Response> = {
       id: 'credential',
       title: 'Microsoft Account',
       type: 'oauth-input',
+      canonicalParamId: 'oauthCredential',
+      mode: 'basic',
       serviceId: 'microsoft-excel',
       requiredScopes: [
         'openid',
@@ -363,6 +377,15 @@ export const MicrosoftExcelV2Block: BlockConfig<MicrosoftExcelV2Response> = {
       placeholder: 'Select Microsoft account',
       required: true,
     },
+    {
+      id: 'manualCredential',
+      title: 'Microsoft Account',
+      type: 'short-input',
+      canonicalParamId: 'oauthCredential',
+      mode: 'advanced',
+      placeholder: 'Enter credential ID',
+      required: true,
+    },
     // Spreadsheet Selector (basic mode)
     {
       id: 'spreadsheetId',
@@ -370,6 +393,7 @@ export const MicrosoftExcelV2Block: BlockConfig<MicrosoftExcelV2Response> = {
       type: 'file-selector',
       canonicalParamId: 'spreadsheetId',
       serviceId: 'microsoft-excel',
+      selectorKey: 'microsoft.excel',
       requiredScopes: [],
       mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       placeholder: 'Select a spreadsheet',
@@ -393,6 +417,8 @@ export const MicrosoftExcelV2Block: BlockConfig<MicrosoftExcelV2Response> = {
       type: 'sheet-selector',
       canonicalParamId: 'sheetName',
       serviceId: 'microsoft-excel',
+      selectorKey: 'microsoft.excel.sheets',
+      selectorAllowSearch: false,
       placeholder: 'Select a sheet',
       required: true,
       dependsOn: { all: ['credential'], any: ['spreadsheetId', 'manualSpreadsheetId'] },
@@ -497,7 +523,7 @@ Return ONLY the JSON array - no explanations, no markdown, no extra text.`,
         fallbackToolId: 'microsoft_excel_read_v2',
       }),
       params: (params) => {
-        const { credential, values, spreadsheetId, sheetName, cellRange, ...rest } = params
+        const { oauthCredential, values, spreadsheetId, sheetName, cellRange, ...rest } = params
 
         const parsedValues = values ? JSON.parse(values as string) : undefined
 
@@ -519,14 +545,14 @@ Return ONLY the JSON array - no explanations, no markdown, no extra text.`,
           sheetName: effectiveSheetName,
           cellRange: cellRange ? (cellRange as string).trim() : undefined,
           values: parsedValues,
-          credential,
+          oauthCredential,
         }
       },
     },
   },
   inputs: {
     operation: { type: 'string', description: 'Operation to perform' },
-    credential: { type: 'string', description: 'Microsoft Excel access token' },
+    oauthCredential: { type: 'string', description: 'Microsoft Excel access token' },
     spreadsheetId: { type: 'string', description: 'Spreadsheet identifier (canonical param)' },
     sheetName: { type: 'string', description: 'Name of the sheet/tab (canonical param)' },
     cellRange: { type: 'string', description: 'Cell range (e.g., A1:D10)' },

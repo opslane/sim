@@ -1,4 +1,5 @@
 import type { JSX, SVGProps } from 'react'
+import type { SelectorKey } from '@/hooks/selectors/types'
 import type { ToolResponse } from '@/tools/types'
 
 export type BlockIcon = (props: SVGProps<SVGSVGElement>) => JSX.Element
@@ -27,6 +28,7 @@ export type GenerationType =
   | 'typescript-function-body'
   | 'json-schema'
   | 'json-object'
+  | 'table-schema'
   | 'system-prompt'
   | 'custom-tool-schema'
   | 'sql-query'
@@ -40,6 +42,8 @@ export type GenerationType =
   | 'neo4j-parameters'
   | 'timestamp'
   | 'timezone'
+  | 'cron-expression'
+  | 'odata-expression'
 
 export type SubBlockType =
   | 'short-input' // Single line input
@@ -75,6 +79,8 @@ export type SubBlockType =
   | 'mcp-dynamic-args' // MCP dynamic arguments based on tool schema
   | 'input-format' // Input structure format
   | 'response-format' // Response structure format
+  | 'filter-builder' // Filter conditions builder
+  | 'sort-builder' // Sort conditions builder
   /**
    * @deprecated Legacy trigger save subblock type.
    */
@@ -87,6 +93,7 @@ export type SubBlockType =
   | 'workflow-input-mapper' // Dynamic workflow input mapper based on selected workflow
   | 'text' // Read-only text display
   | 'router-input' // Router route definitions with descriptions
+  | 'table-selector' // Table selector with link to view table
 
 /**
  * Selector types that require display name hydration
@@ -106,6 +113,7 @@ export const SELECTOR_TYPES_HYDRATION_REQUIRED: SubBlockType[] = [
   'variables-input',
   'mcp-server-selector',
   'mcp-tool-selector',
+  'table-selector',
 ] as const
 
 export type ExtractToolOutput<T> = T extends ToolResponse ? T['output'] : never
@@ -196,6 +204,8 @@ export interface SubBlockConfig {
   type: SubBlockType
   mode?: 'basic' | 'advanced' | 'both' | 'trigger' // Default is 'both' if not specified. 'trigger' means only shown in trigger mode
   canonicalParamId?: string
+  /** Controls parameter visibility in agent/tool-input context */
+  paramVisibility?: 'user-or-llm' | 'user-only' | 'llm-only' | 'hidden'
   required?:
     | boolean
     | {
@@ -282,6 +292,9 @@ export interface SubBlockConfig {
   requiredScopes?: string[]
   // Whether this credential selector supports credential sets (for trigger blocks)
   supportsCredentialSets?: boolean
+  // Selector properties — declarative mapping to a SelectorKey
+  selectorKey?: SelectorKey
+  selectorAllowSearch?: boolean
   // File selector specific properties
   mimeType?: string
   // File upload specific properties

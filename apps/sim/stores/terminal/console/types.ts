@@ -1,3 +1,4 @@
+import type { ParentIteration } from '@/executor/execution/types'
 import type { NormalizedBlockOutput } from '@/executor/types'
 import type { SubflowType } from '@/stores/workflows/workflow/types'
 
@@ -22,8 +23,15 @@ export interface ConsoleEntry {
   iterationTotal?: number
   iterationType?: SubflowType
   iterationContainerId?: string
+  parentIterations?: ParentIteration[]
   isRunning?: boolean
   isCanceled?: boolean
+  /** ID of the workflow block in the parent execution that spawned this child block */
+  childWorkflowBlockId?: string
+  /** Display name of the child workflow this block belongs to */
+  childWorkflowName?: string
+  /** Per-invocation unique ID linking this workflow block to its child block events */
+  childWorkflowInstanceId?: string
 }
 
 export interface ConsoleUpdate {
@@ -44,6 +52,10 @@ export interface ConsoleUpdate {
   iterationTotal?: number
   iterationType?: SubflowType
   iterationContainerId?: string
+  parentIterations?: ParentIteration[]
+  childWorkflowBlockId?: string
+  childWorkflowName?: string
+  childWorkflowInstanceId?: string
 }
 
 export interface ConsoleStore {

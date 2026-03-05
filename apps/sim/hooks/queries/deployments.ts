@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { createLogger } from '@sim/logger'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { WorkflowDeploymentVersionResponse } from '@/lib/workflows/persistence/utils'
@@ -32,6 +33,7 @@ export interface WorkflowDeploymentInfo {
   deployedAt: string | null
   apiKey: string | null
   needsRedeployment: boolean
+  isPublicApi: boolean
 }
 
 /**
@@ -50,6 +52,7 @@ async function fetchDeploymentInfo(workflowId: string): Promise<WorkflowDeployme
     deployedAt: data.deployedAt ?? null,
     apiKey: data.apiKey ?? null,
     needsRedeployment: data.needsRedeployment ?? false,
+    isPublicApi: data.isPublicApi ?? false,
   }
 }
 
@@ -207,6 +210,13 @@ export function useChatDeploymentInfo(workflowId: string | null, options?: { ena
     enabled: Boolean(chatId) && statusQuery.isSuccess && (options?.enabled ?? true),
   })
 
+  const refetch = useCallback(async () => {
+    const statusResult = await statusQuery.refetch()
+    if (statusResult.data?.deployment?.id) {
+      await detailQuery.refetch()
+    }
+  }, [statusQuery.refetch, detailQuery.refetch])
+
   return {
     isLoading:
       statusQuery.isLoading || Boolean(statusQuery.data?.isDeployed && detailQuery.isLoading),
@@ -214,12 +224,7 @@ export function useChatDeploymentInfo(workflowId: string | null, options?: { ena
     error: statusQuery.error ?? detailQuery.error,
     chatExists: statusQuery.data?.isDeployed ?? false,
     existingChat: detailQuery.data ?? null,
-    refetch: async () => {
-      await statusQuery.refetch()
-      if (statusQuery.data?.deployment?.id) {
-        await detailQuery.refetch()
-      }
-    },
+    refetch,
   }
 }
 
@@ -611,6 +616,52 @@ export function useActivateDeploymentVersion() {
       queryClient.invalidateQueries({
         queryKey: deploymentKeys.versions(variables.workflowId),
       })
+    },
+  })
+}
+
+/**
+ * Variables for updating public API access
+ */
+interface UpdatePublicApiVariables {
+  workflowId: string
+  isPublicApi: boolean
+}
+
+/**
+ * Mutation hook for toggling a workflow's public API access.
+ * Invalidates deployment info query on success.
+ */
+export function useUpdatePublicApi() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ workflowId, isPublicApi }: UpdatePublicApiVariables) => {
+      const response = await fetch(`/api/workflows/${workflowId}/deploy`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPublicApi }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update public API setting')
+      }
+
+      return response.json()
+    },
+    onSuccess: (_, variables) => {
+      logger.info('Public API setting updated', {
+        workflowId: variables.workflowId,
+        isPublicApi: variables.isPublicApi,
+      })
+
+      queryClient.invalidateQueries({
+        queryKey: deploymentKeys.info(variables.workflowId),
+      })
+    },
+    onError: (error) => {
+      logger.error('Failed to update public API setting', { error })
     },
   })
 }

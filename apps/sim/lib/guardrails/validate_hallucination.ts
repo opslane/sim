@@ -2,7 +2,7 @@ import { db } from '@sim/db'
 import { account } from '@sim/db/schema'
 import { createLogger } from '@sim/logger'
 import { eq } from 'drizzle-orm'
-import { getBaseUrl } from '@/lib/core/utils/urls'
+import { getInternalApiBaseUrl } from '@/lib/core/utils/urls'
 import { refreshTokenIfNeeded } from '@/app/api/auth/oauth/utils'
 import { executeProviderRequest } from '@/providers'
 import { getProviderFromModel } from '@/providers/utils'
@@ -54,14 +54,8 @@ async function queryKnowledgeBase(
   authHeaders?: { cookie?: string; authorization?: string }
 ): Promise<string[]> {
   try {
-    logger.info(`[${requestId}] Querying knowledge base`, {
-      knowledgeBaseId,
-      query: query.substring(0, 100),
-      topK,
-    })
-
     // Call the knowledge base search API directly
-    const searchUrl = `${getBaseUrl()}/api/knowledge/search`
+    const searchUrl = `${getInternalApiBaseUrl()}/api/knowledge/search`
 
     const response = await fetch(searchUrl, {
       method: 'POST',
@@ -89,8 +83,6 @@ async function queryKnowledgeBase(
     const results = result.data?.results || []
 
     const chunks = results.map((r: any) => r.content || '').filter((c: string) => c.length > 0)
-
-    logger.info(`[${requestId}] Retrieved ${chunks.length} chunks from knowledge base`)
 
     return chunks
   } catch (error: any) {
@@ -194,7 +186,6 @@ Evaluate the consistency and provide your score and reasoning in JSON format.`
     }
 
     const content = response.content.trim()
-    logger.debug(`[${requestId}] LLM response:`, { content })
 
     let jsonContent = content
 

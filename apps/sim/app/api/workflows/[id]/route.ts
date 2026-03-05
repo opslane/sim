@@ -1,9 +1,10 @@
 import { db } from '@sim/db'
 import { templates, webhook, workflow } from '@sim/db/schema'
 import { createLogger } from '@sim/logger'
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull, ne } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { AuditAction, AuditResourceType, recordAudit } from '@/lib/audit/log'
 import { checkHybridAuth, checkSessionOrInternalAuth } from '@/lib/auth/hybrid'
 import { env } from '@/lib/core/config/env'
 import { PlatformEvents } from '@/lib/core/telemetry'
@@ -76,18 +77,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }
     }
 
-    logger.debug(`[${requestId}] Attempting to load workflow ${workflowId} from normalized tables`)
     const normalizedData = await loadWorkflowFromNormalizedTables(workflowId)
 
     if (normalizedData) {
-      logger.debug(`[${requestId}] Found normalized data for workflow ${workflowId}:`, {
-        blocksCount: Object.keys(normalizedData.blocks).length,
-        edgesCount: normalizedData.edges.length,
-        loopsCount: Object.keys(normalizedData.loops).length,
-        parallelsCount: Object.keys(normalizedData.parallels).length,
-        loops: normalizedData.loops,
-      })
-
       const finalWorkflowData = {
         ...workflowData,
         state: {
@@ -336,6 +328,22 @@ export async function DELETE(
       // Don't fail the deletion if Socket.IO notification fails
     }
 
+    recordAudit({
+      workspaceId: workflowData.workspaceId || null,
+      actorId: userId,
+      actorName: auth.userName,
+      actorEmail: auth.userEmail,
+      action: AuditAction.WORKFLOW_DELETED,
+      resourceType: AuditResourceType.WORKFLOW,
+      resourceId: workflowId,
+      resourceName: workflowData.name,
+      description: `Deleted workflow "${workflowData.name}"`,
+      metadata: {
+        deleteTemplates: deleteTemplatesParam === 'delete',
+      },
+      request,
+    })
+
     return NextResponse.json({ success: true }, { status: 200 })
   } catch (error: any) {
     const elapsed = Date.now() - startTime
@@ -396,6 +404,45 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (updates.color !== undefined) updateData.color = updates.color
     if (updates.folderId !== undefined) updateData.folderId = updates.folderId
     if (updates.sortOrder !== undefined) updateData.sortOrder = updates.sortOrder
+
+    if (updates.name !== undefined || updates.folderId !== undefined) {
+      const targetName = updates.name ?? workflowData.name
+      const targetFolderId =
+        updates.folderId !== undefined ? updates.folderId : workflowData.folderId
+
+      if (!workflowData.workspaceId) {
+        logger.error(`[${requestId}] Workflow ${workflowId} has no workspaceId`)
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+      }
+
+      const conditions = [
+        eq(workflow.workspaceId, workflowData.workspaceId),
+        eq(workflow.name, targetName),
+        ne(workflow.id, workflowId),
+      ]
+
+      if (targetFolderId) {
+        conditions.push(eq(workflow.folderId, targetFolderId))
+      } else {
+        conditions.push(isNull(workflow.folderId))
+      }
+
+      const [duplicate] = await db
+        .select({ id: workflow.id })
+        .from(workflow)
+        .where(and(...conditions))
+        .limit(1)
+
+      if (duplicate) {
+        logger.warn(
+          `[${requestId}] Duplicate workflow name "${targetName}" in folder ${targetFolderId ?? 'root'}`
+        )
+        return NextResponse.json(
+          { error: `A workflow named "${targetName}" already exists in this folder` },
+          { status: 409 }
+        )
+      }
+    }
 
     // Update the workflow
     const [updatedWorkflow] = await db

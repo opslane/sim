@@ -60,6 +60,8 @@ export const JiraBlock: BlockConfig<JiraResponse> = {
       id: 'credential',
       title: 'Jira Account',
       type: 'oauth-input',
+      canonicalParamId: 'oauthCredential',
+      mode: 'basic',
       required: true,
       serviceId: 'jira',
       requiredScopes: [
@@ -96,6 +98,15 @@ export const JiraBlock: BlockConfig<JiraResponse> = {
       ],
       placeholder: 'Select Jira account',
     },
+    {
+      id: 'manualCredential',
+      title: 'Jira Account',
+      type: 'short-input',
+      canonicalParamId: 'oauthCredential',
+      mode: 'advanced',
+      placeholder: 'Enter credential ID',
+      required: true,
+    },
     // Project selector (basic mode)
     {
       id: 'projectId',
@@ -103,6 +114,7 @@ export const JiraBlock: BlockConfig<JiraResponse> = {
       type: 'project-selector',
       canonicalParamId: 'projectId',
       serviceId: 'jira',
+      selectorKey: 'jira.projects',
       placeholder: 'Select Jira project',
       dependsOn: ['credential', 'domain'],
       mode: 'basic',
@@ -126,6 +138,7 @@ export const JiraBlock: BlockConfig<JiraResponse> = {
       type: 'file-selector',
       canonicalParamId: 'issueKey',
       serviceId: 'jira',
+      selectorKey: 'jira.issues',
       placeholder: 'Select Jira issue',
       dependsOn: ['credential', 'domain', 'projectId'],
       condition: {
@@ -789,14 +802,14 @@ Return ONLY the comment text - no explanations.`,
         }
       },
       params: (params) => {
-        const { credential, projectId, issueKey, ...rest } = params
+        const { oauthCredential, projectId, issueKey, ...rest } = params
 
         // Use canonical param IDs (raw subBlock IDs are deleted after serialization)
         const effectiveProjectId = projectId ? String(projectId).trim() : ''
         const effectiveIssueKey = issueKey ? String(issueKey).trim() : ''
 
         const baseParams = {
-          credential,
+          oauthCredential,
           domain: params.domain,
         }
 
@@ -1049,7 +1062,7 @@ Return ONLY the comment text - no explanations.`,
   inputs: {
     operation: { type: 'string', description: 'Operation to perform' },
     domain: { type: 'string', description: 'Jira domain' },
-    credential: { type: 'string', description: 'Jira access token' },
+    oauthCredential: { type: 'string', description: 'Jira access token' },
     issueKey: { type: 'string', description: 'Issue key identifier (canonical param)' },
     projectId: { type: 'string', description: 'Project identifier (canonical param)' },
     // Update/Write operation inputs

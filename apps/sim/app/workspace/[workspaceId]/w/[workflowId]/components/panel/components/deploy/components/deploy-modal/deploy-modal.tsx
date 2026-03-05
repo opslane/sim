@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createLogger } from '@sim/logger'
 import { useQueryClient } from '@tanstack/react-query'
 import {
@@ -70,6 +70,7 @@ interface WorkflowDeploymentInfoUI {
   endpoint: string
   exampleCommand: string
   needsRedeployment: boolean
+  isPublicApi: boolean
 }
 
 type TabView = 'general' | 'api' | 'chat' | 'template' | 'mcp' | 'form' | 'a2a'
@@ -112,12 +113,13 @@ export function DeployModal({
   const [showA2aDeleteConfirm, setShowA2aDeleteConfirm] = useState(false)
 
   const [chatSuccess, setChatSuccess] = useState(false)
+  const chatSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [isCreateKeyModalOpen, setIsCreateKeyModalOpen] = useState(false)
   const [isApiInfoModalOpen, setIsApiInfoModalOpen] = useState(false)
   const userPermissions = useUserPermissionsContext()
   const canManageWorkspaceKeys = userPermissions.canAdmin
-  const { config: permissionConfig } = usePermissionConfig()
+  const { config: permissionConfig, isPublicApiDisabled } = usePermissionConfig()
   const { data: apiKeysData, isLoading: isLoadingKeys } = useApiKeys(workflowWorkspaceId || '')
   const { data: workspaceSettingsData, isLoading: isLoadingSettings } = useWorkspaceSettings(
     workflowWorkspaceId || ''
@@ -214,9 +216,11 @@ export function DeployModal({
       endpoint,
       exampleCommand: `curl -X POST -H "X-API-Key: ${placeholderKey}" -H "Content-Type: application/json"${inputFormatExample} ${endpoint}`,
       needsRedeployment: deploymentInfoData.needsRedeployment,
+      isPublicApi: isPublicApiDisabled ? false : (deploymentInfoData.isPublicApi ?? false),
     }
   }, [
     deploymentInfoData,
+    isPublicApiDisabled,
     workflowId,
     selectedStreamingOutputs,
     getInputFormatExample,
@@ -229,6 +233,12 @@ export function DeployModal({
       setActiveTab('general')
       setDeployError(null)
       setDeployWarnings([])
+      setChatSuccess(false)
+    }
+    return () => {
+      if (chatSuccessTimeoutRef.current) {
+        clearTimeout(chatSuccessTimeoutRef.current)
+      }
     }
   }, [open, workflowId])
 
@@ -374,15 +384,16 @@ export function DeployModal({
   const handleChatDeployed = useCallback(async () => {
     if (!workflowId) return
 
-    queryClient.invalidateQueries({ queryKey: deploymentKeys.info(workflowId) })
     queryClient.invalidateQueries({ queryKey: deploymentKeys.versions(workflowId) })
-    queryClient.invalidateQueries({ queryKey: deploymentKeys.chatStatus(workflowId) })
 
     await refetchDeployedState()
     useWorkflowRegistry.getState().setWorkflowNeedsRedeployment(workflowId, false)
 
+    if (chatSuccessTimeoutRef.current) {
+      clearTimeout(chatSuccessTimeoutRef.current)
+    }
     setChatSuccess(true)
-    setTimeout(() => setChatSuccess(false), 2000)
+    chatSuccessTimeoutRef.current = setTimeout(() => setChatSuccess(false), 2000)
   }, [workflowId, queryClient, refetchDeployedState])
 
   const handleRefetchChat = useCallback(async () => {
@@ -391,14 +402,7 @@ export function DeployModal({
 
   const handleChatFormSubmit = useCallback(() => {
     const form = document.getElementById('chat-deploy-form') as HTMLFormElement
-    if (form) {
-      const updateTrigger = form.querySelector('[data-update-trigger]') as HTMLButtonElement
-      if (updateTrigger) {
-        updateTrigger.click()
-      } else {
-        form.requestSubmit()
-      }
-    }
+    form?.requestSubmit()
   }, [])
 
   const handleChatDelete = useCallback(() => {

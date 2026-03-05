@@ -150,6 +150,7 @@ export async function POST(request: NextRequest) {
         method: 'GET',
       })
       if (!response.ok) {
+        await response.text().catch(() => {})
         throw new Error(`Failed to download audio from URL: ${response.statusText}`)
       }
 
@@ -766,7 +767,7 @@ async function transcribeWithGemini(
     const error = await response.json()
     if (response.status === 404) {
       throw new Error(
-        `Model not found: ${modelName}. Use gemini-3-pro-preview, gemini-2.5-pro, gemini-2.5-flash, gemini-2.5-flash-lite, or gemini-2.0-flash-exp`
+        `Model not found: ${modelName}. Use gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-2.5-pro, gemini-2.5-flash, gemini-2.5-flash-lite, or gemini-2.0-flash-exp`
       )
     }
     const errorMessage = error.error?.message || JSON.stringify(error)

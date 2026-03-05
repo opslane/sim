@@ -22,7 +22,8 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { type AuthResult, checkHybridAuth } from '@/lib/auth/hybrid'
 import { generateInternalToken } from '@/lib/auth/internal'
 import { getMaxExecutionTimeout } from '@/lib/core/execution-limits'
-import { getBaseUrl } from '@/lib/core/utils/urls'
+import { getInternalApiBaseUrl } from '@/lib/core/utils/urls'
+import { SIM_VIA_HEADER } from '@/lib/execution/call-chain'
 import { getUserEntityPermissions } from '@/lib/workspaces/permissions/utils'
 
 const logger = createLogger('WorkflowMcpServeAPI')
@@ -181,7 +182,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<R
           serverId,
           rpcParams as { name: string; arguments?: Record<string, unknown> },
           executeAuthContext,
-          server.isPublic ? server.createdBy : undefined
+          server.isPublic ? server.createdBy : undefined,
+          request.headers.get(SIM_VIA_HEADER)
         )
 
       default:
@@ -244,7 +246,8 @@ async function handleToolsCall(
   serverId: string,
   params: { name: string; arguments?: Record<string, unknown> } | undefined,
   executeAuthContext?: ExecuteAuthContext | null,
-  publicServerOwnerId?: string
+  publicServerOwnerId?: string,
+  simViaHeader?: string | null
 ): Promise<NextResponse> {
   try {
     if (!params?.name) {
@@ -285,7 +288,7 @@ async function handleToolsCall(
       )
     }
 
-    const executeUrl = `${getBaseUrl()}/api/workflows/${tool.workflowId}/execute`
+    const executeUrl = `${getInternalApiBaseUrl()}/api/workflows/${tool.workflowId}/execute`
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
 
     if (publicServerOwnerId) {
@@ -298,6 +301,10 @@ async function handleToolsCall(
         const internalToken = await generateInternalToken(executeAuthContext.userId)
         headers.Authorization = `Bearer ${internalToken}`
       }
+    }
+
+    if (simViaHeader) {
+      headers[SIM_VIA_HEADER] = simViaHeader
     }
 
     logger.info(`Executing workflow ${tool.workflowId} via MCP tool ${params.name}`)

@@ -55,6 +55,8 @@ export const JiraServiceManagementBlock: BlockConfig<JsmResponse> = {
       id: 'credential',
       title: 'Jira Account',
       type: 'oauth-input',
+      canonicalParamId: 'oauthCredential',
+      mode: 'basic',
       required: true,
       serviceId: 'jira',
       requiredScopes: [
@@ -96,10 +98,32 @@ export const JiraServiceManagementBlock: BlockConfig<JsmResponse> = {
       placeholder: 'Select Jira account',
     },
     {
+      id: 'manualCredential',
+      title: 'Jira Account',
+      type: 'short-input',
+      canonicalParamId: 'oauthCredential',
+      mode: 'advanced',
+      placeholder: 'Enter credential ID',
+      required: true,
+    },
+    {
       id: 'serviceDeskId',
       title: 'Service Desk ID',
       type: 'short-input',
       placeholder: 'Enter service desk ID',
+      required: {
+        field: 'operation',
+        value: [
+          'get_request_types',
+          'create_request',
+          'get_customers',
+          'add_customer',
+          'get_organizations',
+          'add_organization',
+          'get_queues',
+          'get_request_type_fields',
+        ],
+      },
       condition: {
         field: 'operation',
         value: [
@@ -207,9 +231,10 @@ Return ONLY the description text - no explanations.`,
     },
     {
       id: 'requestFieldValues',
-      title: 'Custom Field Values',
+      title: 'Request Field Values',
       type: 'long-input',
-      placeholder: 'JSON object of custom field values (e.g., {"customfield_10010": "value"})',
+      placeholder:
+        'JSON object of field values (e.g., {"summary": "Title", "customfield_10010": "value"})',
       condition: { field: 'operation', value: 'create_request' },
     },
     {
@@ -493,7 +518,7 @@ Return ONLY the comment text - no explanations.`,
       },
       params: (params) => {
         const baseParams = {
-          credential: params.credential,
+          oauthCredential: params.oauthCredential,
           domain: params.domain,
         }
 
@@ -740,7 +765,7 @@ Return ONLY the comment text - no explanations.`,
   inputs: {
     operation: { type: 'string', description: 'Operation to perform' },
     domain: { type: 'string', description: 'Jira domain' },
-    credential: { type: 'string', description: 'Jira Service Management access token' },
+    oauthCredential: { type: 'string', description: 'Jira Service Management access token' },
     serviceDeskId: { type: 'string', description: 'Service desk ID' },
     requestTypeId: { type: 'string', description: 'Request type ID' },
     issueIdOrKey: { type: 'string', description: 'Issue ID or key' },
@@ -775,7 +800,7 @@ Return ONLY the comment text - no explanations.`,
       description: 'Comma-separated account IDs for request participants',
     },
     channel: { type: 'string', description: 'Channel (e.g., portal, email)' },
-    requestFieldValues: { type: 'string', description: 'JSON object of custom field values' },
+    requestFieldValues: { type: 'string', description: 'JSON object of request field values' },
     searchQuery: { type: 'string', description: 'Filter request types by name' },
     groupId: { type: 'string', description: 'Filter by request type group ID' },
     expand: { type: 'string', description: 'Comma-separated fields to expand' },

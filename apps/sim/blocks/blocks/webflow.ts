@@ -34,9 +34,20 @@ export const WebflowBlock: BlockConfig<WebflowResponse> = {
       id: 'credential',
       title: 'Webflow Account',
       type: 'oauth-input',
+      canonicalParamId: 'oauthCredential',
+      mode: 'basic',
       serviceId: 'webflow',
       requiredScopes: ['sites:read', 'sites:write', 'cms:read', 'cms:write'],
       placeholder: 'Select Webflow account',
+      required: true,
+    },
+    {
+      id: 'manualCredential',
+      title: 'Webflow Account',
+      type: 'short-input',
+      canonicalParamId: 'oauthCredential',
+      mode: 'advanced',
+      placeholder: 'Enter credential ID',
       required: true,
     },
     {
@@ -45,6 +56,8 @@ export const WebflowBlock: BlockConfig<WebflowResponse> = {
       type: 'project-selector',
       canonicalParamId: 'siteId',
       serviceId: 'webflow',
+      selectorKey: 'webflow.sites',
+      selectorAllowSearch: false,
       placeholder: 'Select Webflow site',
       dependsOn: ['credential'],
       mode: 'basic',
@@ -65,6 +78,8 @@ export const WebflowBlock: BlockConfig<WebflowResponse> = {
       type: 'file-selector',
       canonicalParamId: 'collectionId',
       serviceId: 'webflow',
+      selectorKey: 'webflow.collections',
+      selectorAllowSearch: false,
       placeholder: 'Select collection',
       dependsOn: ['credential', 'siteSelector'],
       mode: 'basic',
@@ -85,6 +100,7 @@ export const WebflowBlock: BlockConfig<WebflowResponse> = {
       type: 'file-selector',
       canonicalParamId: 'itemId',
       serviceId: 'webflow',
+      selectorKey: 'webflow.items',
       placeholder: 'Select item',
       dependsOn: ['credential', 'collectionSelector'],
       mode: 'basic',
@@ -107,6 +123,7 @@ export const WebflowBlock: BlockConfig<WebflowResponse> = {
       type: 'short-input',
       placeholder: 'Pagination offset (optional)',
       condition: { field: 'operation', value: 'list' },
+      mode: 'advanced',
     },
     {
       id: 'limit',
@@ -114,6 +131,7 @@ export const WebflowBlock: BlockConfig<WebflowResponse> = {
       type: 'short-input',
       placeholder: 'Max items to return (optional)',
       condition: { field: 'operation', value: 'list' },
+      mode: 'advanced',
     },
     {
       id: 'fieldData',
@@ -156,7 +174,7 @@ export const WebflowBlock: BlockConfig<WebflowResponse> = {
       },
       params: (params) => {
         const {
-          credential,
+          oauthCredential,
           fieldData,
           siteId, // Canonical param from siteSelector (basic) or manualSiteId (advanced)
           collectionId, // Canonical param from collectionSelector (basic) or manualCollectionId (advanced)
@@ -178,7 +196,7 @@ export const WebflowBlock: BlockConfig<WebflowResponse> = {
         const effectiveItemId = itemId ? String(itemId).trim() : ''
 
         const baseParams = {
-          credential,
+          credential: oauthCredential,
           siteId: effectiveSiteId,
           collectionId: effectiveCollectionId,
           ...rest,
@@ -203,7 +221,7 @@ export const WebflowBlock: BlockConfig<WebflowResponse> = {
   },
   inputs: {
     operation: { type: 'string', description: 'Operation to perform' },
-    credential: { type: 'string', description: 'Webflow OAuth access token' },
+    oauthCredential: { type: 'string', description: 'Webflow OAuth access token' },
     siteId: { type: 'string', description: 'Webflow site identifier' },
     collectionId: { type: 'string', description: 'Webflow collection identifier' },
     itemId: { type: 'string', description: 'Item identifier' },

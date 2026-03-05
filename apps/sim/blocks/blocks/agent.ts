@@ -2,11 +2,10 @@ import { createLogger } from '@sim/logger'
 import { AgentIcon } from '@/components/icons'
 import type { BlockConfig } from '@/blocks/types'
 import { AuthMode } from '@/blocks/types'
-import { getApiKeyCondition } from '@/blocks/utils'
+import { getApiKeyCondition, getModelOptions } from '@/blocks/utils'
 import {
   getBaseModelProviders,
   getMaxTemperature,
-  getProviderIcon,
   getReasoningEffortValuesForModel,
   getThinkingLevelsForModel,
   getVerbosityValuesForModel,
@@ -18,7 +17,6 @@ import {
   providers,
   supportsTemperature,
 } from '@/providers/utils'
-import { useProvidersStore } from '@/stores/providers'
 import type { ToolResponse } from '@/tools/types'
 
 const logger = createLogger('AgentBlock')
@@ -121,29 +119,30 @@ Return ONLY the JSON array.`,
       placeholder: 'Type or select a model...',
       required: true,
       defaultValue: 'claude-sonnet-4-5',
-      options: () => {
-        const providersState = useProvidersStore.getState()
-        const baseModels = providersState.providers.base.models
-        const ollamaModels = providersState.providers.ollama.models
-        const vllmModels = providersState.providers.vllm.models
-        const openrouterModels = providersState.providers.openrouter.models
-        const allModels = Array.from(
-          new Set([...baseModels, ...ollamaModels, ...vllmModels, ...openrouterModels])
-        )
-
-        return allModels.map((model) => {
-          const icon = getProviderIcon(model)
-          return { label: model, id: model, ...(icon && { icon }) }
-        })
-      },
+      options: getModelOptions,
     },
     {
       id: 'vertexCredential',
       title: 'Google Cloud Account',
       type: 'oauth-input',
       serviceId: 'vertex-ai',
+      canonicalParamId: 'oauthCredential',
+      mode: 'basic',
       requiredScopes: ['https://www.googleapis.com/auth/cloud-platform'],
       placeholder: 'Select Google Cloud account',
+      required: true,
+      condition: {
+        field: 'model',
+        value: providers.vertex.models,
+      },
+    },
+    {
+      id: 'manualCredential',
+      title: 'Google Cloud Account',
+      type: 'short-input',
+      canonicalParamId: 'oauthCredential',
+      mode: 'advanced',
+      placeholder: 'Enter credential ID',
       required: true,
       condition: {
         field: 'model',
@@ -748,6 +747,7 @@ Example 3 (Array Input):
     apiKey: { type: 'string', description: 'Provider API key' },
     azureEndpoint: { type: 'string', description: 'Azure endpoint URL' },
     azureApiVersion: { type: 'string', description: 'Azure API version' },
+    oauthCredential: { type: 'string', description: 'OAuth credential for Vertex AI' },
     vertexProject: { type: 'string', description: 'Google Cloud project ID for Vertex AI' },
     vertexLocation: { type: 'string', description: 'Google Cloud location for Vertex AI' },
     bedrockAccessKeyId: { type: 'string', description: 'AWS Access Key ID for Bedrock' },

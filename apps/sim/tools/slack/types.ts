@@ -516,7 +516,8 @@ export interface SlackMessageParams extends SlackBaseParams {
   dmUserId?: string
   userId?: string
   text: string
-  thread_ts?: string
+  threadTs?: string
+  blocks?: string
   files?: UserFile[]
 }
 
@@ -546,6 +547,7 @@ export interface SlackUpdateMessageParams extends SlackBaseParams {
   channel: string
   timestamp: string
   text: string
+  blocks?: string
 }
 
 export interface SlackDeleteMessageParams extends SlackBaseParams {
@@ -554,6 +556,12 @@ export interface SlackDeleteMessageParams extends SlackBaseParams {
 }
 
 export interface SlackAddReactionParams extends SlackBaseParams {
+  channel: string
+  timestamp: string
+  name: string
+}
+
+export interface SlackRemoveReactionParams extends SlackBaseParams {
   channel: string
   timestamp: string
   name: string
@@ -584,10 +592,41 @@ export interface SlackGetMessageParams extends SlackBaseParams {
   timestamp: string
 }
 
+export interface SlackEphemeralMessageParams extends SlackBaseParams {
+  channel: string
+  user: string
+  text: string
+  threadTs?: string
+  blocks?: string
+}
+
 export interface SlackGetThreadParams extends SlackBaseParams {
   channel: string
   threadTs: string
   limit?: number
+}
+
+export interface SlackGetChannelInfoParams extends SlackBaseParams {
+  channel: string
+  includeNumMembers?: boolean
+}
+
+export interface SlackGetUserPresenceParams extends SlackBaseParams {
+  userId: string
+}
+
+export interface SlackEditCanvasParams extends SlackBaseParams {
+  canvasId: string
+  operation: string
+  content?: string
+  sectionId?: string
+  title?: string
+}
+
+export interface SlackCreateChannelCanvasParams extends SlackBaseParams {
+  channel: string
+  title?: string
+  content?: string
 }
 
 export interface SlackMessageResponse extends ToolResponse {
@@ -749,17 +788,34 @@ export interface SlackAddReactionResponse extends ToolResponse {
   }
 }
 
+export interface SlackRemoveReactionResponse extends ToolResponse {
+  output: {
+    content: string
+    metadata: {
+      channel: string
+      timestamp: string
+      reaction: string
+    }
+  }
+}
+
 export interface SlackChannel {
   id: string
   name: string
+  is_channel?: boolean
   is_private: boolean
   is_archived: boolean
+  is_general?: boolean
   is_member: boolean
+  is_shared?: boolean
+  is_ext_shared?: boolean
+  is_org_shared?: boolean
   num_members?: number
   topic?: string
   purpose?: string
   created?: number
   creator?: string
+  updated?: number
 }
 
 export interface SlackListChannelsResponse extends ToolResponse {
@@ -831,6 +887,13 @@ export interface SlackGetMessageResponse extends ToolResponse {
   }
 }
 
+export interface SlackEphemeralMessageResponse extends ToolResponse {
+  output: {
+    messageTs: string
+    channel: string
+  }
+}
+
 export interface SlackGetThreadResponse extends ToolResponse {
   output: {
     parentMessage: SlackMessage
@@ -838,6 +901,35 @@ export interface SlackGetThreadResponse extends ToolResponse {
     messages: SlackMessage[]
     replyCount: number
     hasMore: boolean
+  }
+}
+
+export interface SlackGetChannelInfoResponse extends ToolResponse {
+  output: {
+    channelInfo: SlackChannel
+  }
+}
+
+export interface SlackGetUserPresenceResponse extends ToolResponse {
+  output: {
+    presence: string
+    online?: boolean | null
+    autoAway?: boolean | null
+    manualAway?: boolean | null
+    connectionCount?: number | null
+    lastActivity?: number | null
+  }
+}
+
+export interface SlackEditCanvasResponse extends ToolResponse {
+  output: {
+    content: string
+  }
+}
+
+export interface SlackCreateChannelCanvasResponse extends ToolResponse {
+  output: {
+    canvas_id: string
   }
 }
 
@@ -849,9 +941,15 @@ export type SlackResponse =
   | SlackUpdateMessageResponse
   | SlackDeleteMessageResponse
   | SlackAddReactionResponse
+  | SlackRemoveReactionResponse
   | SlackListChannelsResponse
   | SlackListMembersResponse
   | SlackListUsersResponse
   | SlackGetUserResponse
+  | SlackEphemeralMessageResponse
   | SlackGetMessageResponse
   | SlackGetThreadResponse
+  | SlackGetChannelInfoResponse
+  | SlackGetUserPresenceResponse
+  | SlackEditCanvasResponse
+  | SlackCreateChannelCanvasResponse

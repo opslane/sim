@@ -10,6 +10,8 @@ import { checkAndBillOverageThreshold } from '@/lib/billing/threshold-billing'
 import { env } from '@/lib/core/config/env'
 import { getCostMultiplier, isBillingEnabled } from '@/lib/core/config/feature-flags'
 import { generateRequestId } from '@/lib/core/utils/request'
+import { decrementSSEConnections, incrementSSEConnections } from '@/lib/monitoring/sse-connections'
+import { enrichTableSchema } from '@/lib/table/llm/wand'
 import { verifyWorkspaceMembership } from '@/app/api/workflows/utils'
 import { extractResponseText, parseResponsesUsage } from '@/providers/openai/utils'
 import { getModelPricing } from '@/providers/utils'
@@ -48,6 +50,7 @@ interface RequestBody {
   history?: ChatMessage[]
   workflowId?: string
   generationType?: string
+  wandContext?: Record<string, unknown>
 }
 
 function safeStringify(value: unknown): string {
@@ -56,6 +59,38 @@ function safeStringify(value: unknown): string {
   } catch {
     return '[unserializable]'
   }
+}
+
+/**
+ * Wand enricher function type.
+ * Enrichers add context to the system prompt based on generationType.
+ */
+type WandEnricher = (
+  workspaceId: string | null,
+  context: Record<string, unknown>
+) => Promise<string | null>
+
+/**
+ * Registry of wand enrichers by generationType.
+ * Each enricher returns additional context to append to the system prompt.
+ */
+const wandEnrichers: Partial<Record<string, WandEnricher>> = {
+  timestamp: async () => {
+    const now = new Date()
+    return `Current date and time context for reference:
+- Current UTC timestamp: ${now.toISOString()}
+- Current Unix timestamp (seconds): ${Math.floor(now.getTime() / 1000)}
+- Current Unix timestamp (milliseconds): ${now.getTime()}
+- Current date (UTC): ${now.toISOString().split('T')[0]}
+- Current year: ${now.getUTCFullYear()}
+- Current month: ${now.getUTCMonth() + 1}
+- Current day of month: ${now.getUTCDate()}
+- Current day of week: ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][now.getUTCDay()]}
+
+Use this context to calculate relative dates like "yesterday", "last week", "beginning of this month", etc.`
+  },
+
+  'table-schema': enrichTableSchema,
 }
 
 async function updateUserStatsForWand(
@@ -69,12 +104,10 @@ async function updateUserStatsForWand(
   isBYOK = false
 ): Promise<void> {
   if (!isBillingEnabled) {
-    logger.debug(`[${requestId}] Billing is disabled, skipping wand usage cost update`)
     return
   }
 
   if (!usage.total_tokens || usage.total_tokens <= 0) {
-    logger.debug(`[${requestId}] No tokens to update in user stats`)
     return
   }
 
@@ -112,13 +145,6 @@ async function updateUserStatsForWand(
       })
       .where(eq(userStats.userId, userId))
 
-    logger.debug(`[${requestId}] Updated user stats for wand usage`, {
-      userId,
-      tokensUsed: totalTokens,
-      costAdded: costToStore,
-      isBYOK,
-    })
-
     await logModelUsage({
       userId,
       source: 'wand',
@@ -147,7 +173,15 @@ export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as RequestBody
 
-    const { prompt, systemPrompt, stream = false, history = [], workflowId, generationType } = body
+    const {
+      prompt,
+      systemPrompt,
+      stream = false,
+      history = [],
+      workflowId,
+      generationType,
+      wandContext = {},
+    } = body
 
     if (!prompt) {
       logger.warn(`[${requestId}] Invalid request: Missing prompt.`)
@@ -222,20 +256,20 @@ export async function POST(req: NextRequest) {
       systemPrompt ||
       'You are a helpful AI assistant. Generate content exactly as requested by the user.'
 
-    if (generationType === 'timestamp') {
-      const now = new Date()
-      const currentTimeContext = `\n\nCurrent date and time context for reference:
-- Current UTC timestamp: ${now.toISOString()}
-- Current Unix timestamp (seconds): ${Math.floor(now.getTime() / 1000)}
-- Current Unix timestamp (milliseconds): ${now.getTime()}
-- Current date (UTC): ${now.toISOString().split('T')[0]}
-- Current year: ${now.getUTCFullYear()}
-- Current month: ${now.getUTCMonth() + 1}
-- Current day of month: ${now.getUTCDate()}
-- Current day of week: ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][now.getUTCDay()]}
+    // Apply enricher if one exists for this generationType
+    if (generationType) {
+      const enricher = wandEnrichers[generationType]
+      if (enricher) {
+        const enrichment = await enricher(workspaceId, wandContext)
+        if (enrichment) {
+          finalSystemPrompt += `\n\n${enrichment}`
+        }
+      }
+    }
 
-Use this context to calculate relative dates like "yesterday", "last week", "beginning of this month", etc.`
-      finalSystemPrompt += currentTimeContext
+    if (generationType === 'cron-expression') {
+      finalSystemPrompt +=
+        '\n\nIMPORTANT: Return ONLY the raw cron expression (e.g., "0 9 * * 1-5"). Do NOT wrap it in markdown code blocks, backticks, or quotes. Do NOT include any explanation or text before or after the expression.'
     }
 
     if (generationType === 'json-object') {
@@ -249,23 +283,8 @@ Use this context to calculate relative dates like "yesterday", "last week", "beg
 
     messages.push({ role: 'user', content: prompt })
 
-    logger.debug(
-      `[${requestId}] Calling ${useWandAzure ? 'Azure OpenAI' : 'OpenAI'} API for wand generation`,
-      {
-        stream,
-        historyLength: history.length,
-        endpoint: useWandAzure ? azureEndpoint : 'api.openai.com',
-        model: useWandAzure ? wandModelName : 'gpt-4o',
-        apiVersion: useWandAzure ? azureApiVersion : 'N/A',
-      }
-    )
-
     if (stream) {
       try {
-        logger.debug(
-          `[${requestId}] Starting streaming request to ${useWandAzure ? 'Azure OpenAI' : 'OpenAI'}`
-        )
-
         logger.info(
           `[${requestId}] About to create stream with model: ${useWandAzure ? wandModelName : 'gpt-4o'}`
         )
@@ -284,8 +303,6 @@ Use this context to calculate relative dates like "yesterday", "last week", "beg
         } else {
           headers.Authorization = `Bearer ${activeOpenAIKey}`
         }
-
-        logger.debug(`[${requestId}] Making streaming request to: ${apiUrl}`)
 
         const response = await fetch(apiUrl, {
           method: 'POST',
@@ -314,10 +331,14 @@ Use this context to calculate relative dates like "yesterday", "last week", "beg
         const encoder = new TextEncoder()
         const decoder = new TextDecoder()
 
+        let wandStreamClosed = false
         const readable = new ReadableStream({
           async start(controller) {
+            incrementSSEConnections('wand')
             const reader = response.body?.getReader()
             if (!reader) {
+              wandStreamClosed = true
+              decrementSSEConnections('wand')
               controller.close()
               return
             }
@@ -387,7 +408,6 @@ Use this context to calculate relative dates like "yesterday", "last week", "beg
                   try {
                     parsed = JSON.parse(data)
                   } catch (parseError) {
-                    logger.debug(`[${requestId}] Skipped non-JSON line: ${data.substring(0, 100)}`)
                     continue
                   }
 
@@ -463,6 +483,16 @@ Use this context to calculate relative dates like "yesterday", "last week", "beg
               controller.close()
             } finally {
               reader.releaseLock()
+              if (!wandStreamClosed) {
+                wandStreamClosed = true
+                decrementSSEConnections('wand')
+              }
+            }
+          },
+          cancel() {
+            if (!wandStreamClosed) {
+              wandStreamClosed = true
+              decrementSSEConnections('wand')
             }
           },
         })

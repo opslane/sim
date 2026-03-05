@@ -27,6 +27,7 @@ import { useSubBlockStore } from '@/stores/workflows/subblock/store'
 import { filterNewEdges, filterValidEdges, mergeSubblockState } from '@/stores/workflows/utils'
 import { useWorkflowStore } from '@/stores/workflows/workflow/store'
 import type { BlockState, Loop, Parallel, Position } from '@/stores/workflows/workflow/types'
+import { findAllDescendantNodes, isBlockProtected } from '@/stores/workflows/workflow/utils'
 
 const logger = createLogger('CollaborativeWorkflow')
 
@@ -748,9 +749,7 @@ export function useCollaborativeWorkflow() {
       const block = blocks[id]
 
       if (block) {
-        const parentId = block.data?.parentId
-        const isParentLocked = parentId ? blocks[parentId]?.locked : false
-        if (block.locked || isParentLocked) {
+        if (isBlockProtected(id, blocks)) {
           logger.error('Cannot rename locked block')
           useNotificationStore.getState().addNotification({
             level: 'info',
@@ -858,21 +857,21 @@ export function useCollaborativeWorkflow() {
       const previousStates: Record<string, boolean> = {}
       const validIds: string[] = []
 
-      // For each ID, collect non-locked blocks and their children for undo/redo
+      // For each ID, collect non-locked blocks and their descendants for undo/redo
       for (const id of ids) {
         const block = currentBlocks[id]
         if (!block) continue
 
-        // Skip locked blocks
-        if (block.locked) continue
+        // Skip protected blocks (locked or inside a locked ancestor)
+        if (isBlockProtected(id, currentBlocks)) continue
         validIds.push(id)
         previousStates[id] = block.enabled
 
-        // If it's a loop or parallel, also capture children's previous states for undo/redo
+        // If it's a loop or parallel, also capture descendants' previous states for undo/redo
         if (block.type === 'loop' || block.type === 'parallel') {
-          Object.entries(currentBlocks).forEach(([blockId, b]) => {
-            if (b.data?.parentId === id && !b.locked) {
-              previousStates[blockId] = b.enabled
+          findAllDescendantNodes(id, currentBlocks).forEach((descId) => {
+            if (!isBlockProtected(descId, currentBlocks)) {
+              previousStates[descId] = currentBlocks[descId]?.enabled ?? true
             }
           })
         }
@@ -1038,21 +1037,12 @@ export function useCollaborativeWorkflow() {
 
       const blocks = useWorkflowStore.getState().blocks
 
-      const isProtected = (blockId: string): boolean => {
-        const block = blocks[blockId]
-        if (!block) return false
-        if (block.locked) return true
-        const parentId = block.data?.parentId
-        if (parentId && blocks[parentId]?.locked) return true
-        return false
-      }
-
       const previousStates: Record<string, boolean> = {}
       const validIds: string[] = []
 
       for (const id of ids) {
         const block = blocks[id]
-        if (block && !isProtected(id)) {
+        if (block && !isBlockProtected(id, blocks)) {
           previousStates[id] = block.horizontalHandles ?? false
           validIds.push(id)
         }
@@ -1100,10 +1090,8 @@ export function useCollaborativeWorkflow() {
         previousStates[id] = block.locked ?? false
 
         if (block.type === 'loop' || block.type === 'parallel') {
-          Object.entries(currentBlocks).forEach(([blockId, b]) => {
-            if (b.data?.parentId === id) {
-              previousStates[blockId] = b.locked ?? false
-            }
+          findAllDescendantNodes(id, currentBlocks).forEach((descId) => {
+            previousStates[descId] = currentBlocks[descId]?.locked ?? false
           })
         }
       }
@@ -1243,6 +1231,21 @@ export function useCollaborativeWorkflow() {
       // ALWAYS update local store first for immediate UI feedback
       useSubBlockStore.getState().setValue(blockId, subblockId, value)
 
+      if (activeWorkflowId) {
+        const operationId = crypto.randomUUID()
+
+        addToQueue({
+          id: operationId,
+          operation: {
+            operation: SUBBLOCK_OPERATIONS.UPDATE,
+            target: OPERATION_TARGETS.SUBBLOCK,
+            payload: { blockId, subblockId, value },
+          },
+          workflowId: activeWorkflowId,
+          userId: session?.user?.id || 'unknown',
+        })
+      }
+
       // Handle dependent subblock clearing (recursive calls)
       try {
         const visited = options?._visited || new Set<string>()
@@ -1256,34 +1259,20 @@ export function useCollaborativeWorkflow() {
           )
           for (const dep of dependents) {
             if (!dep?.id || dep.id === subblockId) continue
+            const currentDepValue = useSubBlockStore.getState().getValue(blockId, dep.id)
+            if (
+              currentDepValue === '' ||
+              currentDepValue === null ||
+              currentDepValue === undefined
+            ) {
+              continue
+            }
             collaborativeSetSubblockValue(blockId, dep.id, '', { _visited: visited })
           }
         }
       } catch {
         // Best-effort; do not block on clearing
       }
-
-      // Queue socket operation if we have an active workflow
-      if (!activeWorkflowId) {
-        logger.debug('Local update applied, skipping socket queue - no active workflow', {
-          blockId,
-          subblockId,
-        })
-        return
-      }
-
-      const operationId = crypto.randomUUID()
-
-      addToQueue({
-        id: operationId,
-        operation: {
-          operation: SUBBLOCK_OPERATIONS.UPDATE,
-          target: OPERATION_TARGETS.SUBBLOCK,
-          payload: { blockId, subblockId, value },
-        },
-        workflowId: activeWorkflowId,
-        userId: session?.user?.id || 'unknown',
-      })
     },
     [activeWorkflowId, addToQueue, session?.user?.id, isBaselineDiffView]
   )

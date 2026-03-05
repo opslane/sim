@@ -1,3 +1,8 @@
+import type {
+  ChildWorkflowContext,
+  IterationContext,
+  ParentIteration,
+} from '@/executor/execution/types'
 import type { SubflowType } from '@/stores/workflows/workflow/types'
 
 export type ExecutionEventType =
@@ -8,6 +13,7 @@ export type ExecutionEventType =
   | 'block:started'
   | 'block:completed'
   | 'block:error'
+  | 'block:childWorkflowStarted'
   | 'stream:chunk'
   | 'stream:done'
 
@@ -81,6 +87,9 @@ export interface BlockStartedEvent extends BaseExecutionEvent {
     iterationTotal?: number
     iterationType?: SubflowType
     iterationContainerId?: string
+    parentIterations?: ParentIteration[]
+    childWorkflowBlockId?: string
+    childWorkflowName?: string
   }
 }
 
@@ -104,6 +113,11 @@ export interface BlockCompletedEvent extends BaseExecutionEvent {
     iterationTotal?: number
     iterationType?: SubflowType
     iterationContainerId?: string
+    parentIterations?: ParentIteration[]
+    childWorkflowBlockId?: string
+    childWorkflowName?: string
+    /** Per-invocation unique ID for correlating child block events with this workflow block. */
+    childWorkflowInstanceId?: string
   }
 }
 
@@ -127,6 +141,28 @@ export interface BlockErrorEvent extends BaseExecutionEvent {
     iterationTotal?: number
     iterationType?: SubflowType
     iterationContainerId?: string
+    parentIterations?: ParentIteration[]
+    childWorkflowBlockId?: string
+    childWorkflowName?: string
+    /** Per-invocation unique ID for correlating child block events with this workflow block. */
+    childWorkflowInstanceId?: string
+  }
+}
+
+/**
+ * Block child workflow started event — fires when a workflow block generates its instanceId,
+ * before child execution begins. Allows clients to pre-associate the running entry with
+ * the instanceId so child block events can be correlated in real-time.
+ */
+export interface BlockChildWorkflowStartedEvent extends BaseExecutionEvent {
+  type: 'block:childWorkflowStarted'
+  workflowId: string
+  data: {
+    blockId: string
+    childWorkflowInstanceId: string
+    iterationCurrent?: number
+    iterationContainerId?: string
+    executionOrder?: number
   }
 }
 
@@ -164,6 +200,7 @@ export type ExecutionEvent =
   | BlockStartedEvent
   | BlockCompletedEvent
   | BlockErrorEvent
+  | BlockChildWorkflowStartedEvent
   | StreamChunkEvent
   | StreamDoneEvent
 
@@ -174,6 +211,7 @@ export type ExecutionCancelledData = ExecutionCancelledEvent['data']
 export type BlockStartedData = BlockStartedEvent['data']
 export type BlockCompletedData = BlockCompletedEvent['data']
 export type BlockErrorData = BlockErrorEvent['data']
+export type BlockChildWorkflowStartedData = BlockChildWorkflowStartedEvent['data']
 export type StreamChunkData = StreamChunkEvent['data']
 export type StreamDoneData = StreamDoneEvent['data']
 
@@ -222,12 +260,8 @@ export function createSSECallbacks(options: SSECallbackOptions) {
     blockName: string,
     blockType: string,
     executionOrder: number,
-    iterationContext?: {
-      iterationCurrent: number
-      iterationTotal?: number
-      iterationType: string
-      iterationContainerId?: string
-    }
+    iterationContext?: IterationContext,
+    childWorkflowContext?: ChildWorkflowContext
   ) => {
     sendEvent({
       type: 'block:started',
@@ -242,8 +276,15 @@ export function createSSECallbacks(options: SSECallbackOptions) {
         ...(iterationContext && {
           iterationCurrent: iterationContext.iterationCurrent,
           iterationTotal: iterationContext.iterationTotal,
-          iterationType: iterationContext.iterationType as any,
+          iterationType: iterationContext.iterationType,
           iterationContainerId: iterationContext.iterationContainerId,
+          ...(iterationContext.parentIterations?.length && {
+            parentIterations: iterationContext.parentIterations,
+          }),
+        }),
+        ...(childWorkflowContext && {
+          childWorkflowBlockId: childWorkflowContext.parentBlockId,
+          childWorkflowName: childWorkflowContext.workflowName,
         }),
       },
     })
@@ -260,22 +301,32 @@ export function createSSECallbacks(options: SSECallbackOptions) {
       startedAt: string
       executionOrder: number
       endedAt: string
+      childWorkflowInstanceId?: string
     },
-    iterationContext?: {
-      iterationCurrent: number
-      iterationTotal?: number
-      iterationType: string
-      iterationContainerId?: string
-    }
+    iterationContext?: IterationContext,
+    childWorkflowContext?: ChildWorkflowContext
   ) => {
     const hasError = callbackData.output?.error
     const iterationData = iterationContext
       ? {
           iterationCurrent: iterationContext.iterationCurrent,
           iterationTotal: iterationContext.iterationTotal,
-          iterationType: iterationContext.iterationType as any,
+          iterationType: iterationContext.iterationType,
           iterationContainerId: iterationContext.iterationContainerId,
+          ...(iterationContext.parentIterations?.length && {
+            parentIterations: iterationContext.parentIterations,
+          }),
         }
+      : {}
+    const childWorkflowData = childWorkflowContext
+      ? {
+          childWorkflowBlockId: childWorkflowContext.parentBlockId,
+          childWorkflowName: childWorkflowContext.workflowName,
+        }
+      : {}
+
+    const instanceData = callbackData.childWorkflowInstanceId
+      ? { childWorkflowInstanceId: callbackData.childWorkflowInstanceId }
       : {}
 
     if (hasError) {
@@ -295,6 +346,8 @@ export function createSSECallbacks(options: SSECallbackOptions) {
           executionOrder: callbackData.executionOrder,
           endedAt: callbackData.endedAt,
           ...iterationData,
+          ...childWorkflowData,
+          ...instanceData,
         },
       })
     } else {
@@ -314,6 +367,8 @@ export function createSSECallbacks(options: SSECallbackOptions) {
           executionOrder: callbackData.executionOrder,
           endedAt: callbackData.endedAt,
           ...iterationData,
+          ...childWorkflowData,
+          ...instanceData,
         },
       })
     }
@@ -352,5 +407,28 @@ export function createSSECallbacks(options: SSECallbackOptions) {
     }
   }
 
-  return { sendEvent, onBlockStart, onBlockComplete, onStream }
+  const onChildWorkflowInstanceReady = (
+    blockId: string,
+    childWorkflowInstanceId: string,
+    iterationContext?: IterationContext,
+    executionOrder?: number
+  ) => {
+    sendEvent({
+      type: 'block:childWorkflowStarted',
+      timestamp: new Date().toISOString(),
+      executionId,
+      workflowId,
+      data: {
+        blockId,
+        childWorkflowInstanceId,
+        ...(iterationContext && {
+          iterationCurrent: iterationContext.iterationCurrent,
+          iterationContainerId: iterationContext.iterationContainerId,
+        }),
+        ...(executionOrder !== undefined && { executionOrder }),
+      },
+    })
+  }
+
+  return { sendEvent, onBlockStart, onBlockComplete, onStream, onChildWorkflowInstanceReady }
 }

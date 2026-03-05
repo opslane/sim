@@ -1,5 +1,5 @@
 import type { Edge } from 'reactflow'
-import type { SerializableExecutionState } from '@/executor/execution/types'
+import type { ParentIteration, SerializableExecutionState } from '@/executor/execution/types'
 import type { BlockLog, NormalizedBlockOutput } from '@/executor/types'
 import type { DeploymentStatus } from '@/stores/workflows/registry/types'
 import type { Loop, Parallel, WorkflowState } from '@/stores/workflows/workflow/types'
@@ -194,6 +194,7 @@ export interface TraceSpan {
   loopId?: string
   parallelId?: string
   iterationIndex?: number
+  parentIterations?: ParentIteration[]
 }
 
 export interface WorkflowExecutionSummary {
@@ -337,7 +338,6 @@ export interface BatchInsertResult<T> {
 export interface SnapshotService {
   createSnapshot(workflowId: string, state: WorkflowState): Promise<WorkflowExecutionSnapshot>
   getSnapshot(id: string): Promise<WorkflowExecutionSnapshot | null>
-  getSnapshotByHash(workflowId: string, hash: string): Promise<WorkflowExecutionSnapshot | null>
   computeStateHash(state: WorkflowState): string
   cleanupOrphanedSnapshots(olderThanDays: number): Promise<number>
 }
