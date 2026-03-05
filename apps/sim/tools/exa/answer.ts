@@ -47,6 +47,10 @@ export const answerTool: ToolConfig<ExaAnswerParams, ExaAnswerResponse> = {
         return 0.005
       },
     },
+    throttle: {
+      mode: 'per_request',
+      userRequestsPerMinute: 10,
+    },
   },
 
   request: {

@@ -82,6 +82,10 @@ export const getContentsTool: ToolConfig<ExaGetContentsParams, ExaGetContentsRes
         return (results?.length || 0) * 0.001
       },
     },
+    throttle: {
+      mode: 'per_request',
+      userRequestsPerMinute: 10,
+    },
   },
 
   request: {

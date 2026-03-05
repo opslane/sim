@@ -53,6 +53,10 @@ export const researchTool: ToolConfig<ExaResearchParams, ExaResearchResponse> = 
         return model === 'exa-research-pro' ? 0.055 : 0.03
       },
     },
+    throttle: {
+      mode: 'per_request',
+      userRequestsPerMinute: 10,
+    },
   },
 
   request: {

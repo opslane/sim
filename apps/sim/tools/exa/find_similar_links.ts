@@ -98,6 +98,10 @@ export const findSimilarLinksTool: ToolConfig<
         return resultCount <= 25 ? 0.005 : 0.025
       },
     },
+    throttle: {
+      mode: 'per_request',
+      userRequestsPerMinute: 10,
+    },
   },
 
   request: {

@@ -16,12 +16,19 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Hoisted mock state - these are available to vi.mock factories
-const { mockIsHosted, mockEnv, mockGetBYOKKey, mockLogFixedUsage } = vi.hoisted(() => ({
-  mockIsHosted: { value: false },
-  mockEnv: { NEXT_PUBLIC_APP_URL: 'http://localhost:3000' } as Record<string, string | undefined>,
-  mockGetBYOKKey: vi.fn(),
-  mockLogFixedUsage: vi.fn(),
-}))
+const { mockIsHosted, mockEnv, mockGetBYOKKey, mockLogFixedUsage, mockThrottlerFns } = vi.hoisted(
+  () => ({
+    mockIsHosted: { value: false },
+    mockEnv: { NEXT_PUBLIC_APP_URL: 'http://localhost:3000' } as Record<string, string | undefined>,
+    mockGetBYOKKey: vi.fn(),
+    mockLogFixedUsage: vi.fn(),
+    mockThrottlerFns: {
+      acquireKey: vi.fn(),
+      preConsumeCapacity: vi.fn(),
+      consumeCapacity: vi.fn(),
+    },
+  })
+)
 
 // Mock feature flags
 vi.mock('@/lib/core/config/feature-flags', () => ({
@@ -51,6 +58,11 @@ vi.mock('@/lib/api-key/byok', () => ({
 // Mock logFixedUsage for billing
 vi.mock('@/lib/billing/core/usage-log', () => ({
   logFixedUsage: (...args: unknown[]) => mockLogFixedUsage(...args),
+}))
+
+// Mock hosted key throttler
+vi.mock('@/lib/core/hosted-key-throttler', () => ({
+  getHostedKeyThrottler: () => mockThrottlerFns,
 }))
 
 // Mock custom tools - define mock data inside factory function
@@ -1284,6 +1296,10 @@ describe('Hosted Key Injection', () => {
           type: 'per_request' as const,
           cost: 0.005,
         },
+        throttle: {
+          mode: 'per_request' as const,
+          userRequestsPerMinute: 100,
+        },
       },
       request: {
         url: '/api/test/endpoint',
@@ -1340,6 +1356,10 @@ describe('Hosted Key Injection', () => {
           type: 'per_request' as const,
           cost: 0.005,
         },
+        throttle: {
+          mode: 'per_request' as const,
+          userRequestsPerMinute: 100,
+        },
       },
       request: {
         url: '/api/test/endpoint',
@@ -1378,6 +1398,10 @@ describe('Hosted Key Injection', () => {
         pricing: {
           type: 'custom' as const,
           getCost: mockGetCost,
+        },
+        throttle: {
+          mode: 'per_request' as const,
+          userRequestsPerMinute: 100,
         },
       },
       request: {
@@ -1422,6 +1446,10 @@ describe('Hosted Key Injection', () => {
           type: 'custom' as const,
           getCost: mockGetCost,
         },
+        throttle: {
+          mode: 'per_request' as const,
+          userRequestsPerMinute: 100,
+        },
       },
       request: {
         url: '/api/test/endpoint',
@@ -1451,6 +1479,15 @@ describe('Rate Limiting and Retry Logic', () => {
     mockIsHosted.value = true
     mockEnv.TEST_HOSTED_KEY = 'test-hosted-api-key'
     mockGetBYOKKey.mockResolvedValue(null)
+    // Set up throttler mock defaults
+    mockThrottlerFns.acquireKey.mockResolvedValue({
+      success: true,
+      key: 'mock-hosted-key',
+      keyIndex: 0,
+      envVarName: 'TEST_HOSTED_KEY',
+    })
+    mockThrottlerFns.preConsumeCapacity.mockResolvedValue(true)
+    mockThrottlerFns.consumeCapacity.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -1477,6 +1514,10 @@ describe('Rate Limiting and Retry Logic', () => {
         pricing: {
           type: 'per_request' as const,
           cost: 0.001,
+        },
+        throttle: {
+          mode: 'per_request' as const,
+          userRequestsPerMinute: 100,
         },
       },
       request: {
@@ -1544,6 +1585,10 @@ describe('Rate Limiting and Retry Logic', () => {
           type: 'per_request' as const,
           cost: 0.001,
         },
+        throttle: {
+          mode: 'per_request' as const,
+          userRequestsPerMinute: 100,
+        },
       },
       request: {
         url: '/api/test/persistent-rate-limit',
@@ -1598,6 +1643,10 @@ describe('Rate Limiting and Retry Logic', () => {
           type: 'per_request' as const,
           cost: 0.001,
         },
+        throttle: {
+          mode: 'per_request' as const,
+          userRequestsPerMinute: 100,
+        },
       },
       request: {
         url: '/api/test/no-retry',
@@ -1649,6 +1698,15 @@ describe('Cost Field Handling', () => {
     mockEnv.TEST_HOSTED_KEY = 'test-hosted-api-key'
     mockGetBYOKKey.mockResolvedValue(null)
     mockLogFixedUsage.mockResolvedValue(undefined)
+    // Set up throttler mock defaults
+    mockThrottlerFns.acquireKey.mockResolvedValue({
+      success: true,
+      key: 'mock-hosted-key',
+      keyIndex: 0,
+      envVarName: 'TEST_HOSTED_KEY',
+    })
+    mockThrottlerFns.preConsumeCapacity.mockResolvedValue(true)
+    mockThrottlerFns.consumeCapacity.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -1673,6 +1731,10 @@ describe('Cost Field Handling', () => {
         pricing: {
           type: 'per_request' as const,
           cost: 0.005,
+        },
+        throttle: {
+          mode: 'per_request' as const,
+          userRequestsPerMinute: 100,
         },
       },
       request: {
@@ -1741,6 +1803,10 @@ describe('Cost Field Handling', () => {
           type: 'per_request' as const,
           cost: 0.005,
         },
+        throttle: {
+          mode: 'per_request' as const,
+          userRequestsPerMinute: 100,
+        },
       },
       request: {
         url: '/api/test/no-hosted',
@@ -1805,6 +1871,10 @@ describe('Cost Field Handling', () => {
         pricing: {
           type: 'custom' as const,
           getCost: mockGetCost,
+        },
+        throttle: {
+          mode: 'per_request' as const,
+          userRequestsPerMinute: 100,
         },
       },
       request: {

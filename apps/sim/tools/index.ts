@@ -2,9 +2,9 @@ import { createLogger } from '@sim/logger'
 import { getBYOKKey } from '@/lib/api-key/byok'
 import { generateInternalToken } from '@/lib/auth/internal'
 import { logFixedUsage } from '@/lib/billing/core/usage-log'
-import { env } from '@/lib/core/config/env'
 import { isHosted } from '@/lib/core/config/feature-flags'
 import { DEFAULT_EXECUTION_TIMEOUT_MS } from '@/lib/core/execution-limits'
+import { getHostedKeyThrottler } from '@/lib/core/hosted-key-throttler'
 import {
   secureFetchWithPinnedIP,
   validateUrlWithDNS,
@@ -36,31 +36,6 @@ import {
 
 const logger = createLogger('Tools')
 
-/** Result from hosted key lookup */
-interface HostedKeyResult {
-  key: string
-  envVarName: string
-}
-
-/**
- * Get a hosted API key from environment variables
- * Supports rotation when multiple keys are configured
- * Returns both the key and which env var it came from
- */
-function getHostedKeyFromEnv(envKeys: string[]): HostedKeyResult | null {
-  const keysWithNames = envKeys
-    .map((envVarName) => ({ envVarName, key: env[envVarName as keyof typeof env] }))
-    .filter((item): item is { envVarName: string; key: string } => Boolean(item.key))
-
-  if (keysWithNames.length === 0) return null
-
-  // Round-robin rotation based on current minute
-  const currentMinute = Math.floor(Date.now() / 60000)
-  const keyIndex = currentMinute % keysWithNames.length
-
-  return keysWithNames[keyIndex]
-}
-
 /** Result from hosted key injection */
 interface HostedKeyInjectionResult {
   isUsingHostedKey: boolean
@@ -69,7 +44,7 @@ interface HostedKeyInjectionResult {
 
 /**
  * Inject hosted API key if tool supports it and user didn't provide one.
- * Checks BYOK workspace keys first, then falls back to hosted env keys.
+ * Checks BYOK workspace keys first, then uses the HostedKeyThrottler for least-loaded key selection.
  * Returns whether a hosted (billable) key was injected and which env var it came from.
  */
 async function injectHostedKeyIfNeeded(
@@ -81,7 +56,7 @@ async function injectHostedKeyIfNeeded(
   if (!tool.hosting) return { isUsingHostedKey: false }
   if (!isHosted) return { isUsingHostedKey: false }
 
-  const { envKeys, apiKeyParam, byokProviderId } = tool.hosting
+  const { envKeys, apiKeyParam, byokProviderId, throttle } = tool.hosting
 
   // Check BYOK workspace key first
   if (byokProviderId && executionContext?.workspaceId) {
@@ -101,16 +76,55 @@ async function injectHostedKeyIfNeeded(
     }
   }
 
-  // Fall back to hosted env key
-  const hostedKeyResult = getHostedKeyFromEnv(envKeys)
-  if (!hostedKeyResult) {
-    logger.debug(`[${requestId}] No hosted key available for ${tool.id}`)
-    return { isUsingHostedKey: false }
+  // Use the throttler for least-loaded key selection with per-user rate limiting
+  const throttler = getHostedKeyThrottler()
+  const provider = byokProviderId || tool.id
+  const userId = executionContext?.userId
+
+  const acquireResult = await throttler.acquireKey(provider, envKeys, throttle, userId)
+
+  // Handle per-user rate limiting (enforced - blocks the user)
+  if (!acquireResult.success && acquireResult.userThrottled) {
+    logger.warn(`[${requestId}] User ${userId} throttled for ${tool.id}`, {
+      provider,
+      retryAfterMs: acquireResult.retryAfterMs,
+    })
+
+    PlatformEvents.hostedKeyThrottled({
+      toolId: tool.id,
+      envVarName: 'user_throttled',
+      attempt: 0,
+      maxRetries: 0,
+      delayMs: acquireResult.retryAfterMs ?? 0,
+      userId,
+      workspaceId: executionContext?.workspaceId,
+      workflowId: executionContext?.workflowId,
+    })
+
+    const error = new Error(acquireResult.error || `Rate limit exceeded for ${tool.id}`)
+    ;(error as any).status = 429
+    ;(error as any).retryAfterMs = acquireResult.retryAfterMs
+    throw error
   }
 
-  params[apiKeyParam] = hostedKeyResult.key
-  logger.info(`[${requestId}] Using hosted key for ${tool.id} (${hostedKeyResult.envVarName})`)
-  return { isUsingHostedKey: true, envVarName: hostedKeyResult.envVarName }
+  // Handle no keys configured (503)
+  if (!acquireResult.success) {
+    logger.error(`[${requestId}] No hosted keys configured for ${tool.id}: ${acquireResult.error}`)
+    const error = new Error(acquireResult.error || `No hosted keys configured for ${tool.id}`)
+    ;(error as any).status = 503
+    throw error
+  }
+
+  params[apiKeyParam] = acquireResult.key
+  logger.info(`[${requestId}] Using hosted key for ${tool.id} (${acquireResult.envVarName})`, {
+    keyIndex: acquireResult.keyIndex,
+    provider,
+  })
+
+  return {
+    isUsingHostedKey: true,
+    envVarName: acquireResult.envVarName,
+  }
 }
 
 /**

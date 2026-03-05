@@ -113,6 +113,10 @@ export const searchTool: ToolConfig<ExaSearchParams, ExaSearchResponse> = {
         return resultCount <= 25 ? 0.005 : 0.025
       },
     },
+    throttle: {
+      mode: 'per_request',
+      userRequestsPerMinute: 2, // Per-user limit (enforced)
+    },
   },
 
   request: {
