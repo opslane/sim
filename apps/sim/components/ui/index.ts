@@ -51,5 +51,6 @@ export {
 } from './select'
 export { Separator } from './separator'
 export { Skeleton } from './skeleton'
+export { StreamingIndicator, StreamingText } from './streaming-text'
 export { TagInput } from './tag-input'
 export { ToolCallCompletion, ToolCallExecution } from './tool-call'

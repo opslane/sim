@@ -70,7 +70,7 @@ export function useChatStreaming() {
   const accumulatedTextRef = useRef<string>('')
   const lastStreamedPositionRef = useRef<number>(0)
   const audioStreamingActiveRef = useRef<boolean>(false)
-  const lastDisplayedPositionRef = useRef<number>(0) // Track displayed text in synced mode
+  const lastDisplayedPositionRef = useRef<number>(0)
 
   const stopStreaming = (setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>) => {
     if (abortControllerRef.current) {
@@ -374,6 +374,7 @@ export function useChatStreaming() {
                   messageId,
                   chunk: contentChunk.substring(0, 20),
                 })
+
                 setMessages((prev) =>
                   prev.map((msg) =>
                     msg.id === messageId ? { ...msg, content: accumulatedText } : msg

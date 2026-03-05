@@ -3,6 +3,7 @@
 import { memo, useMemo, useState } from 'react'
 import { Check, Copy, File as FileIcon, FileText, Image as ImageIcon } from 'lucide-react'
 import { Tooltip } from '@/components/emcn'
+import { StreamingText } from '@/components/ui/streaming-text'
 import {
   ChatFileDownload,
   ChatFileDownloadAll,
@@ -41,6 +42,8 @@ export interface ChatMessage {
 function EnhancedMarkdownRenderer({ content }: { content: string }) {
   return <MarkdownRenderer content={content} />
 }
+
+const renderMarkdown = (content: string) => <EnhancedMarkdownRenderer content={content} />
 
 export const ClientChatMessage = memo(
   function ClientChatMessage({ message }: { message: ChatMessage }) {
@@ -188,7 +191,11 @@ export const ClientChatMessage = memo(
                       {JSON.stringify(cleanTextContent, null, 2)}
                     </pre>
                   ) : (
-                    <EnhancedMarkdownRenderer content={cleanTextContent as string} />
+                    <StreamingText
+                      content={cleanTextContent as string}
+                      isStreaming={!!message.isStreaming}
+                      renderer={renderMarkdown}
+                    />
                   )}
                 </div>
               </div>

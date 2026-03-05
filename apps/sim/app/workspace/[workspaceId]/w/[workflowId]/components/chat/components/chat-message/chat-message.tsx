@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { StreamingIndicator } from '@/app/workspace/[workspaceId]/w/[workflowId]/components/panel/components/copilot/components/copilot-message/components/smooth-streaming'
+import { StreamingIndicator, StreamingText } from '@/components/ui/streaming-text'
 
 interface ChatAttachment {
   id: string
@@ -89,6 +89,8 @@ const WordWrap = ({ text }: { text: string }) => {
   )
 }
 
+const renderWordWrap = (content: string) => <WordWrap text={content} />
+
 /**
  * Renders a chat message with optional file attachments
  */
@@ -170,7 +172,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
   return (
     <div className='w-full max-w-full overflow-hidden pl-[2px] opacity-100 transition-opacity duration-200'>
       <div className='whitespace-pre-wrap break-words font-[470] font-season text-[var(--text-primary)] text-sm leading-[1.25rem]'>
-        <WordWrap text={formattedContent} />
+        <StreamingText
+          content={formattedContent}
+          isStreaming={!!message.isStreaming}
+          renderer={renderWordWrap}
+        />
         {message.isStreaming && <StreamingIndicator />}
       </div>
     </div>
