@@ -5,6 +5,7 @@ import {
   copilotChats,
   document,
   form,
+  knowledgeConnector,
   mcpServers as mcpServersTable,
   workflowDeploymentVersion,
   workflowExecutionLogs,
@@ -21,6 +22,9 @@ import type { DeploymentData } from '@/lib/copilot/vfs/serializers'
 import {
   serializeApiKeys,
   serializeBlockSchema,
+  serializeConnectorOverview,
+  serializeConnectors,
+  serializeConnectorSchema,
   serializeCredentials,
   serializeCustomTool,
   serializeDeployments,
@@ -59,6 +63,7 @@ import { listSkills } from '@/lib/workflows/skills/operations'
 import { listWorkflows } from '@/lib/workflows/utils'
 import { getUsersWithPermissions, getWorkspaceWithOwner } from '@/lib/workspaces/permissions/utils'
 import { getAllBlocks } from '@/blocks/registry'
+import { CONNECTOR_REGISTRY } from '@/connectors/registry'
 import { tools as toolRegistry } from '@/tools/registry'
 import { getLatestVersionTools, stripVersionSuffix } from '@/tools/utils'
 
@@ -182,10 +187,27 @@ function getStaticComponentFiles(): Map<string, string> {
     )
   )
 
+  const connectorConfigs = Object.values(CONNECTOR_REGISTRY).map((c) => ({
+    id: c.id,
+    name: c.name,
+    description: c.description,
+    version: c.version,
+    oauth: { provider: c.oauth.provider, requiredScopes: c.oauth.requiredScopes },
+    configFields: c.configFields,
+    tagDefinitions: c.tagDefinitions,
+    supportsIncrementalSync: c.supportsIncrementalSync,
+  }))
+
+  files.set('knowledgebases/connectors/connectors.md', serializeConnectorOverview(connectorConfigs))
+  for (const cc of connectorConfigs) {
+    files.set(`knowledgebases/connectors/${cc.id}.json`, serializeConnectorSchema(cc))
+  }
+
   logger.info('Static component files built', {
     blocks: visibleBlocks.length,
     blocksFiltered,
     integrations: integrationCount,
+    connectors: connectorConfigs.length,
   })
 
   staticComponentFiles = files
@@ -203,6 +225,7 @@ function getStaticComponentFiles(): Map<string, string> {
  *   workflows/{name}/deployment.json
  *   knowledgebases/{name}/meta.json
  *   knowledgebases/{name}/documents.json
+ *   knowledgebases/{name}/connectors.json
  *   tables/{name}/meta.json
  *   files/{name}/meta.json
  *   jobs/{title}/meta.json
@@ -212,6 +235,8 @@ function getStaticComponentFiles(): Map<string, string> {
  *   environment/credentials.json
  *   environment/api-keys.json
  *   environment/variables.json
+ *   knowledgebases/connectors/connectors.md  (available connector types overview)
+ *   knowledgebases/connectors/{type}.json    (per-connector config schema)
  *   components/blocks/{type}.json
  *   components/integrations/{service}/{operation}.json
  */
@@ -521,6 +546,7 @@ export class WorkspaceVFS {
             createdAt: kb.createdAt,
             updatedAt: kb.updatedAt,
             documentCount: kb.docCount,
+            connectorTypes: kb.connectorTypes,
           })
         )
 
@@ -549,6 +575,39 @@ export class WorkspaceVFS {
             error: err instanceof Error ? err.message : String(err),
           })
         }
+
+        try {
+          const connectorRows = await db
+            .select({
+              id: knowledgeConnector.id,
+              connectorType: knowledgeConnector.connectorType,
+              status: knowledgeConnector.status,
+              syncMode: knowledgeConnector.syncMode,
+              syncIntervalMinutes: knowledgeConnector.syncIntervalMinutes,
+              lastSyncAt: knowledgeConnector.lastSyncAt,
+              lastSyncError: knowledgeConnector.lastSyncError,
+              lastSyncDocCount: knowledgeConnector.lastSyncDocCount,
+              nextSyncAt: knowledgeConnector.nextSyncAt,
+              consecutiveFailures: knowledgeConnector.consecutiveFailures,
+              createdAt: knowledgeConnector.createdAt,
+            })
+            .from(knowledgeConnector)
+            .where(
+              and(
+                eq(knowledgeConnector.knowledgeBaseId, kb.id),
+                isNull(knowledgeConnector.deletedAt)
+              )
+            )
+
+          if (connectorRows.length > 0) {
+            this.files.set(`${prefix}connectors.json`, serializeConnectors(connectorRows))
+          }
+        } catch (err) {
+          logger.warn('Failed to load KB connectors', {
+            knowledgeBaseId: kb.id,
+            error: err instanceof Error ? err.message : String(err),
+          })
+        }
       })
     )
 
@@ -556,6 +615,7 @@ export class WorkspaceVFS {
       id: kb.id,
       name: kb.name,
       description: kb.description,
+      connectorTypes: kb.connectorTypes.length > 0 ? kb.connectorTypes : undefined,
     }))
   }
 
@@ -1023,6 +1083,7 @@ export class WorkspaceVFS {
             createdAt: c.updatedAt,
           })),
           ...oauthCredentials.map((c) => ({
+            id: c.id,
             providerId: c.providerId,
             scope: null,
             createdAt: c.updatedAt,

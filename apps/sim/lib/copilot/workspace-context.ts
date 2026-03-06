@@ -2,6 +2,7 @@ import { db } from '@sim/db'
 import {
   copilotChats,
   knowledgeBase,
+  knowledgeConnector,
   mcpServers,
   userTableDefinitions,
   userTableRows,
@@ -10,7 +11,7 @@ import {
   workspace,
 } from '@sim/db/schema'
 import { createLogger } from '@sim/logger'
-import { and, count, desc, eq, isNull } from 'drizzle-orm'
+import { and, count, desc, eq, inArray, isNull } from 'drizzle-orm'
 import { getAccessibleOAuthCredentials } from '@/lib/credentials/environment'
 import { listWorkspaceFiles } from '@/lib/uploads/contexts/workspace'
 import { listCustomTools } from '@/lib/workflows/custom-tools/operations'
@@ -29,7 +30,12 @@ export interface WorkspaceMdData {
     isDeployed: boolean
     lastRunAt?: Date | null
   }>
-  knowledgeBases: Array<{ id: string; name: string; description?: string | null }>
+  knowledgeBases: Array<{
+    id: string
+    name: string
+    description?: string | null
+    connectorTypes?: string[]
+  }>
   tables: Array<{ id: string; name: string; description?: string | null; rowCount: number }>
   files: Array<{ name: string; type: string; size: number }>
   credentials: Array<{ providerId: string }>
@@ -88,6 +94,9 @@ export function buildWorkspaceMd(data: WorkspaceMdData): string {
     const lines = data.knowledgeBases.map((kb) => {
       let line = `- **${kb.name}** (${kb.id})`
       if (kb.description) line += ` — ${kb.description}`
+      if (kb.connectorTypes && kb.connectorTypes.length > 0) {
+        line += ` | connectors: ${kb.connectorTypes.join(', ')}`
+      }
       return line
     })
     sections.push(`## Knowledge Bases (${data.knowledgeBases.length})\n${lines.join('\n')}`)
@@ -292,11 +301,34 @@ export async function generateWorkspaceContext(
           )
         : []
 
+    const kbIds = kbs.map((kb) => kb.id)
+    const connectorRows =
+      kbIds.length > 0
+        ? await db
+            .select({
+              knowledgeBaseId: knowledgeConnector.knowledgeBaseId,
+              connectorType: knowledgeConnector.connectorType,
+            })
+            .from(knowledgeConnector)
+            .where(and(inArray(knowledgeConnector.knowledgeBaseId, kbIds), isNull(knowledgeConnector.deletedAt)))
+        : []
+    const connectorTypesByKb = new Map<string, string[]>()
+    for (const row of connectorRows) {
+      const types = connectorTypesByKb.get(row.knowledgeBaseId) ?? []
+      if (!types.includes(row.connectorType)) {
+        types.push(row.connectorType)
+      }
+      connectorTypesByKb.set(row.knowledgeBaseId, types)
+    }
+
     return buildWorkspaceMd({
       workspace: wsRow,
       members,
       workflows,
-      knowledgeBases: kbs,
+      knowledgeBases: kbs.map((kb) => ({
+        ...kb,
+        connectorTypes: connectorTypesByKb.get(kb.id),
+      })),
       tables: tables.map((t, i) => ({ ...t, rowCount: rowCounts[i] ?? 0 })),
       files: files.map((f) => ({ name: f.name, type: f.type, size: f.size })),
       credentials: credentials.map((c) => ({ providerId: c.providerId })),

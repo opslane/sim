@@ -360,6 +360,7 @@ export async function getAccessibleEnvCredentials(
 }
 
 export interface AccessibleOAuthCredential {
+  id: string
   providerId: string
   displayName: string
   updatedAt: Date
@@ -371,6 +372,7 @@ export async function getAccessibleOAuthCredentials(
 ): Promise<AccessibleOAuthCredential[]> {
   const rows = await db
     .select({
+      id: credential.id,
       providerId: credential.providerId,
       displayName: credential.displayName,
       updatedAt: credential.updatedAt,
@@ -389,6 +391,7 @@ export async function getAccessibleOAuthCredentials(
   return rows
     .filter((row): row is AccessibleOAuthCredential => Boolean(row.providerId))
     .map((row) => ({
+      id: row.id,
       providerId: row.providerId!,
       displayName: row.displayName,
       updatedAt: row.updatedAt,
