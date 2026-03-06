@@ -98,12 +98,11 @@ async function injectHostedKeyIfNeeded(
       retryAfterMs: acquireResult.retryAfterMs,
     })
 
-    PlatformEvents.hostedKeyRateLimited({
+    PlatformEvents.userThrottled({
       toolId: tool.id,
-      envVarName: 'billing_actor_rate_limited',
-      attempt: 0,
-      maxRetries: 0,
-      delayMs: acquireResult.retryAfterMs ?? 0,
+      reason: 'billing_actor_limit',
+      provider,
+      retryAfterMs: acquireResult.retryAfterMs ?? 0,
       userId: executionContext?.userId,
       workspaceId: executionContext?.workspaceId,
       workflowId: executionContext?.workflowId,
@@ -175,6 +174,15 @@ async function executeWithRetry<T>(
       lastError = error
 
       if (!isRateLimitError(error) || attempt === maxRetries) {
+        if (isRateLimitError(error) && attempt === maxRetries) {
+          PlatformEvents.userThrottled({
+            toolId,
+            reason: 'upstream_retries_exhausted',
+            userId: executionContext?.userId,
+            workspaceId: executionContext?.workspaceId,
+            workflowId: executionContext?.workflowId,
+          })
+        }
         throw error
       }
 

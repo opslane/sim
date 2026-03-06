@@ -935,7 +935,31 @@ export const PlatformEvents = {
   },
 
   /**
-   * Track hosted key rate limited
+   * Track when a rate limit error is surfaced to the end user (not retried/absorbed).
+   * Fires for both billing-actor limits and exhausted upstream retries.
+   */
+  userThrottled: (attrs: {
+    toolId: string
+    reason: 'billing_actor_limit' | 'upstream_retries_exhausted'
+    provider?: string
+    retryAfterMs?: number
+    userId?: string
+    workspaceId?: string
+    workflowId?: string
+  }) => {
+    trackPlatformEvent('platform.user.throttled', {
+      'tool.id': attrs.toolId,
+      'throttle.reason': attrs.reason,
+      ...(attrs.provider && { 'provider.id': attrs.provider }),
+      ...(attrs.retryAfterMs != null && { 'rate_limit.retry_after_ms': attrs.retryAfterMs }),
+      ...(attrs.userId && { 'user.id': attrs.userId }),
+      ...(attrs.workspaceId && { 'workspace.id': attrs.workspaceId }),
+      ...(attrs.workflowId && { 'workflow.id': attrs.workflowId }),
+    })
+  },
+
+  /**
+   * Track hosted key rate limited by upstream provider (429 from the external API)
    */
   hostedKeyRateLimited: (attrs: {
     toolId: string
