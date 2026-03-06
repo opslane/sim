@@ -135,7 +135,7 @@ describe('Nested parallel expansion + edge resolution', () => {
 
     // Step 3: Verify edge manager resolves ready nodes after outer-sentinel-start completes
     const edgeManager = new EdgeManager(dag)
-    const { readyNodes: readyAfterOuterStart } = edgeManager.processOutgoingEdges(
+    const readyAfterOuterStart = edgeManager.processOutgoingEdges(
       outerStart,
       { sentinelStart: true },
       false
@@ -159,7 +159,7 @@ describe('Nested parallel expansion + edge resolution', () => {
     expect(innerStartTargets).toContain(branch2)
 
     // Step 5: Verify edge manager resolves branch nodes after inner-sentinel-start
-    const { readyNodes: readyAfterInnerStart } = edgeManager.processOutgoingEdges(
+    const readyAfterInnerStart = edgeManager.processOutgoingEdges(
       innerStart,
       { sentinelStart: true },
       false
@@ -175,16 +175,12 @@ describe('Nested parallel expansion + edge resolution', () => {
 
     edgeManager.processOutgoingEdges(branch0Node, {}, false)
     edgeManager.processOutgoingEdges(branch1Node, {}, false)
-    const { readyNodes: readyAfterBranch2 } = edgeManager.processOutgoingEdges(
-      branch2Node,
-      {},
-      false
-    )
+    const readyAfterBranch2 = edgeManager.processOutgoingEdges(branch2Node, {}, false)
     expect(readyAfterBranch2).toContain(innerEndId)
 
     // Step 7: inner-sentinel-end completes → outer-sentinel-end becomes ready
     // (only if both branches are done — cloned branch must also complete)
-    const { readyNodes: readyAfterInnerEnd } = edgeManager.processOutgoingEdges(
+    const readyAfterInnerEnd = edgeManager.processOutgoingEdges(
       innerEnd,
       { sentinelEnd: true, selectedRoute: 'parallel_exit' },
       false
@@ -205,7 +201,7 @@ describe('Nested parallel expansion + edge resolution', () => {
     edgeManager.processOutgoingEdges(dag.nodes.get(clonedBranch1)!, {}, false)
     edgeManager.processOutgoingEdges(dag.nodes.get(clonedBranch2)!, {}, false)
 
-    const { readyNodes: readyAfterClonedInnerEnd } = edgeManager.processOutgoingEdges(
+    const readyAfterClonedInnerEnd = edgeManager.processOutgoingEdges(
       clonedInnerEnd,
       { sentinelEnd: true, selectedRoute: 'parallel_exit' },
       false

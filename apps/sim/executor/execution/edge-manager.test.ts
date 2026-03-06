@@ -66,13 +66,13 @@ describe('EdgeManager', () => {
       const dag = createMockDAG(nodes)
       const edgeManager = new EdgeManager(dag)
 
-      const { readyNodes: readyAfterA } = edgeManager.processOutgoingEdges(blockANode, {
+      const readyAfterA = edgeManager.processOutgoingEdges(blockANode, {
         result: 'done',
       })
       expect(readyAfterA).toContain(blockBId)
       expect(readyAfterA).not.toContain(blockCId)
 
-      const { readyNodes: readyAfterB } = edgeManager.processOutgoingEdges(blockBNode, {
+      const readyAfterB = edgeManager.processOutgoingEdges(blockBNode, {
         result: 'done',
       })
       expect(readyAfterB).toContain(blockCId)
@@ -100,7 +100,7 @@ describe('EdgeManager', () => {
       const dag = createMockDAG(nodes)
       const edgeManager = new EdgeManager(dag)
 
-      const { readyNodes } = edgeManager.processOutgoingEdges(startNode, { selectedOption: 'opt1' })
+      const readyNodes = edgeManager.processOutgoingEdges(startNode, { selectedOption: 'opt1' })
       expect(readyNodes).toContain(branch1Id)
       expect(readyNodes).not.toContain(branch2Id)
     })
@@ -126,7 +126,7 @@ describe('EdgeManager', () => {
         tokens: { input: 10, output: 20, total: 30 },
       }
 
-      const { readyNodes } = edgeManager.processOutgoingEdges(sourceNode, output)
+      const readyNodes = edgeManager.processOutgoingEdges(sourceNode, output)
       expect(readyNodes).toContain(targetId)
     })
 
@@ -151,16 +151,16 @@ describe('EdgeManager', () => {
       const dag = createMockDAG(nodes)
       const edgeManager = new EdgeManager(dag)
 
-      let ready = edgeManager.processOutgoingEdges(block1Node, {}).readyNodes
+      let ready = edgeManager.processOutgoingEdges(block1Node, {})
       expect(ready).toEqual([block2Id])
 
-      ready = edgeManager.processOutgoingEdges(block2Node, {}).readyNodes
+      ready = edgeManager.processOutgoingEdges(block2Node, {})
       expect(ready).toEqual([block3Id])
 
-      ready = edgeManager.processOutgoingEdges(block3Node, {}).readyNodes
+      ready = edgeManager.processOutgoingEdges(block3Node, {})
       expect(ready).toEqual([block4Id])
 
-      ready = edgeManager.processOutgoingEdges(block4Node, {}).readyNodes
+      ready = edgeManager.processOutgoingEdges(block4Node, {})
       expect(ready).toEqual([])
     })
   })
@@ -190,7 +190,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       const output = { selectedOption: 'if' }
-      const { readyNodes } = edgeManager.processOutgoingEdges(conditionNode, output)
+      const readyNodes = edgeManager.processOutgoingEdges(conditionNode, output)
 
       expect(readyNodes).toContain(function1Id)
       expect(function1Node.incomingEdges.size).toBe(0)
@@ -216,7 +216,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       const output = { selectedOption: 'elseif-id' }
-      const { readyNodes } = edgeManager.processOutgoingEdges(conditionNode, output)
+      const readyNodes = edgeManager.processOutgoingEdges(conditionNode, output)
 
       expect(readyNodes).toContain(function1Id)
     })
@@ -245,7 +245,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       const output = { selectedOption: 'if' }
-      const { readyNodes } = edgeManager.processOutgoingEdges(conditionNode, output)
+      const readyNodes = edgeManager.processOutgoingEdges(conditionNode, output)
       expect(readyNodes).toContain(function1Id)
       expect(readyNodes).not.toContain(function2Id)
     })
@@ -274,7 +274,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       const output = { selectedOption: 'elseif' }
-      const { readyNodes } = edgeManager.processOutgoingEdges(conditionNode, output)
+      const readyNodes = edgeManager.processOutgoingEdges(conditionNode, output)
 
       expect(readyNodes).toContain(function2Id)
       expect(readyNodes).not.toContain(function1Id)
@@ -304,7 +304,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       const output = { selectedOption: 'else' }
-      const { readyNodes } = edgeManager.processOutgoingEdges(conditionNode, output)
+      const readyNodes = edgeManager.processOutgoingEdges(conditionNode, output)
 
       expect(readyNodes).toContain(function1Id)
       expect(readyNodes).not.toContain(function2Id)
@@ -335,7 +335,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       const output = { selectedOption: 'else' }
-      const { readyNodes } = edgeManager.processOutgoingEdges(conditionNode, output)
+      const readyNodes = edgeManager.processOutgoingEdges(conditionNode, output)
 
       expect(readyNodes).not.toContain(function1Id)
     })
@@ -375,7 +375,7 @@ describe('EdgeManager', () => {
       const conditionNode = dag.nodes.get(conditionId)!
 
       const output = { selectedOption: ifConditionId }
-      const { readyNodes } = edgeManager.processOutgoingEdges(conditionNode, output)
+      const readyNodes = edgeManager.processOutgoingEdges(conditionNode, output)
 
       expect(readyNodes).toContain(function1Id)
       expect(readyNodes).not.toContain(function2Id)
@@ -387,7 +387,7 @@ describe('EdgeManager', () => {
       const conditionNode = dag.nodes.get(conditionId)!
 
       const output = { selectedOption: elseIfConditionId }
-      const { readyNodes } = edgeManager.processOutgoingEdges(conditionNode, output)
+      const readyNodes = edgeManager.processOutgoingEdges(conditionNode, output)
 
       expect(readyNodes).toContain(function2Id)
       expect(readyNodes).not.toContain(function1Id)
@@ -399,7 +399,7 @@ describe('EdgeManager', () => {
       const conditionNode = dag.nodes.get(conditionId)!
 
       const output = { selectedOption: elseConditionId }
-      const { readyNodes } = edgeManager.processOutgoingEdges(conditionNode, output)
+      const readyNodes = edgeManager.processOutgoingEdges(conditionNode, output)
 
       expect(readyNodes).toContain(function1Id)
       expect(readyNodes).not.toContain(function2Id)
@@ -417,7 +417,7 @@ describe('EdgeManager', () => {
         edgeManager.clearDeactivatedEdges()
 
         const output = { selectedOption: ifConditionId }
-        const { readyNodes } = edgeManager.processOutgoingEdges(conditionNode, output)
+        const readyNodes = edgeManager.processOutgoingEdges(conditionNode, output)
         expect(readyNodes).toContain(function1Id)
         expect(readyNodes).not.toContain(function2Id)
       }
@@ -429,7 +429,7 @@ describe('EdgeManager', () => {
         edgeManager.clearDeactivatedEdges()
 
         const output = { selectedOption: elseIfConditionId }
-        const { readyNodes } = edgeManager.processOutgoingEdges(conditionNode, output)
+        const readyNodes = edgeManager.processOutgoingEdges(conditionNode, output)
         expect(readyNodes).toContain(function2Id)
         expect(readyNodes).not.toContain(function1Id)
       }
@@ -441,7 +441,7 @@ describe('EdgeManager', () => {
         edgeManager.clearDeactivatedEdges()
 
         const output = { selectedOption: elseConditionId }
-        const { readyNodes } = edgeManager.processOutgoingEdges(conditionNode, output)
+        const readyNodes = edgeManager.processOutgoingEdges(conditionNode, output)
         expect(readyNodes).toContain(function1Id)
         expect(readyNodes).not.toContain(function2Id)
       }
@@ -472,7 +472,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       const output = { error: 'Something went wrong' }
-      const { readyNodes } = edgeManager.processOutgoingEdges(sourceNode, output)
+      const readyNodes = edgeManager.processOutgoingEdges(sourceNode, output)
 
       expect(readyNodes).toContain(errorTargetId)
       expect(readyNodes).not.toContain(successTargetId)
@@ -501,7 +501,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       const output = { result: 'success' }
-      const { readyNodes } = edgeManager.processOutgoingEdges(sourceNode, output)
+      const readyNodes = edgeManager.processOutgoingEdges(sourceNode, output)
 
       expect(readyNodes).toContain(successTargetId)
       expect(readyNodes).not.toContain(errorTargetId)
@@ -536,7 +536,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       const output = { selectedRoute: 'route2' }
-      const { readyNodes } = edgeManager.processOutgoingEdges(routerNode, output)
+      const readyNodes = edgeManager.processOutgoingEdges(routerNode, output)
 
       expect(readyNodes).toContain(route2Id)
       expect(readyNodes).not.toContain(route1Id)
@@ -563,10 +563,10 @@ describe('EdgeManager', () => {
       const dag = createMockDAG(nodes)
       const edgeManager = new EdgeManager(dag)
 
-      const { readyNodes: readyAfterFirst } = edgeManager.processOutgoingEdges(source1Node, {})
+      const readyAfterFirst = edgeManager.processOutgoingEdges(source1Node, {})
       expect(readyAfterFirst).not.toContain(targetId)
 
-      const { readyNodes: readyAfterSecond } = edgeManager.processOutgoingEdges(source2Node, {})
+      const readyAfterSecond = edgeManager.processOutgoingEdges(source2Node, {})
       expect(readyAfterSecond).toContain(targetId)
     })
   })
@@ -595,7 +595,7 @@ describe('EdgeManager', () => {
 
       function1Node.incomingEdges.add(conditionId)
 
-      const { readyNodes } = edgeManager.processOutgoingEdges(conditionNode, {
+      const readyNodes = edgeManager.processOutgoingEdges(conditionNode, {
         selectedOption: 'if',
       })
       expect(readyNodes).toContain(function1Id)
@@ -653,12 +653,12 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       const output = { selectedOption: 'if' }
-      const { readyNodes } = edgeManager.processOutgoingEdges(conditionNode, output)
+      const readyNodes = edgeManager.processOutgoingEdges(conditionNode, output)
 
       expect(readyNodes).toContain(branchAId)
       expect(readyNodes).not.toContain(branchBId)
 
-      const { readyNodes: mergeReady } = edgeManager.processOutgoingEdges(branchANode, {})
+      const mergeReady = edgeManager.processOutgoingEdges(branchANode, {})
 
       expect(mergeReady).toContain(mergeId)
     })
@@ -681,10 +681,10 @@ describe('EdgeManager', () => {
       const dag = createMockDAG(nodes)
       const edgeManager = new EdgeManager(dag)
 
-      const { readyNodes: readyAfterFirst } = edgeManager.processOutgoingEdges(source1Node, {})
+      const readyAfterFirst = edgeManager.processOutgoingEdges(source1Node, {})
       expect(readyAfterFirst).not.toContain(mergeId)
 
-      const { readyNodes: readyAfterSecond } = edgeManager.processOutgoingEdges(source2Node, {})
+      const readyAfterSecond = edgeManager.processOutgoingEdges(source2Node, {})
       expect(readyAfterSecond).toContain(mergeId)
     })
   })
@@ -716,7 +716,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       const output = { error: 'Something failed' }
-      const { readyNodes } = edgeManager.processOutgoingEdges(sourceNode, output)
+      const readyNodes = edgeManager.processOutgoingEdges(sourceNode, output)
 
       expect(readyNodes).toContain(errorId)
       expect(readyNodes).not.toContain(successId)
@@ -748,7 +748,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       const output = { result: 'success' }
-      const { readyNodes } = edgeManager.processOutgoingEdges(sourceNode, output)
+      const readyNodes = edgeManager.processOutgoingEdges(sourceNode, output)
 
       expect(readyNodes).toContain(successId)
       expect(readyNodes).not.toContain(errorId)
@@ -774,10 +774,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       const errorOutput = { error: 'Failed' }
-      const { readyNodes: readyWithError } = edgeManager.processOutgoingEdges(
-        sourceNode,
-        errorOutput
-      )
+      const readyWithError = edgeManager.processOutgoingEdges(sourceNode, errorOutput)
       expect(readyWithError).toContain(handlerId)
     })
   })
@@ -817,14 +814,14 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       // Workflow 1 errors first - error edge activates
-      const { readyNodes: readyAfterWorkflow1 } = edgeManager.processOutgoingEdges(workflow1Node, {
+      const readyAfterWorkflow1 = edgeManager.processOutgoingEdges(workflow1Node, {
         error: 'Something went wrong',
       })
       // Error handler should NOT be ready yet (waiting for workflow 7)
       expect(readyAfterWorkflow1).not.toContain(errorHandlerId)
 
       // Workflow 7 succeeds - error edge deactivates
-      const { readyNodes: readyAfterWorkflow7 } = edgeManager.processOutgoingEdges(workflow7Node, {
+      const readyAfterWorkflow7 = edgeManager.processOutgoingEdges(workflow7Node, {
         result: 'success',
       })
       // Error handler SHOULD be ready now (workflow 1's error edge activated)
@@ -858,14 +855,14 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       // Workflow 1 succeeds first - error edge deactivates
-      const { readyNodes: readyAfterWorkflow1 } = edgeManager.processOutgoingEdges(workflow1Node, {
+      const readyAfterWorkflow1 = edgeManager.processOutgoingEdges(workflow1Node, {
         result: 'success',
       })
       // Error handler should NOT be ready yet (waiting for workflow 7)
       expect(readyAfterWorkflow1).not.toContain(errorHandlerId)
 
       // Workflow 7 errors - error edge activates
-      const { readyNodes: readyAfterWorkflow7 } = edgeManager.processOutgoingEdges(workflow7Node, {
+      const readyAfterWorkflow7 = edgeManager.processOutgoingEdges(workflow7Node, {
         error: 'Something went wrong',
       })
       // Error handler SHOULD be ready now (workflow 7's error edge activated)
@@ -899,12 +896,12 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       // Both workflows succeed - both error edges deactivate
-      const { readyNodes: readyAfterWorkflow1 } = edgeManager.processOutgoingEdges(workflow1Node, {
+      const readyAfterWorkflow1 = edgeManager.processOutgoingEdges(workflow1Node, {
         result: 'success',
       })
       expect(readyAfterWorkflow1).not.toContain(errorHandlerId)
 
-      const { readyNodes: readyAfterWorkflow7 } = edgeManager.processOutgoingEdges(workflow7Node, {
+      const readyAfterWorkflow7 = edgeManager.processOutgoingEdges(workflow7Node, {
         result: 'success',
       })
       // Error handler should NOT be ready (no errors occurred)
@@ -938,13 +935,13 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       // Workflow 1 errors
-      const { readyNodes: readyAfterWorkflow1 } = edgeManager.processOutgoingEdges(workflow1Node, {
+      const readyAfterWorkflow1 = edgeManager.processOutgoingEdges(workflow1Node, {
         error: 'Error 1',
       })
       expect(readyAfterWorkflow1).not.toContain(errorHandlerId)
 
       // Workflow 7 errors
-      const { readyNodes: readyAfterWorkflow7 } = edgeManager.processOutgoingEdges(workflow7Node, {
+      const readyAfterWorkflow7 = edgeManager.processOutgoingEdges(workflow7Node, {
         error: 'Error 2',
       })
       // Error handler SHOULD be ready (both edges activated)
@@ -986,13 +983,13 @@ describe('EdgeManager', () => {
       const dag = createMockDAG(nodes)
       const edgeManager = new EdgeManager(dag)
 
-      const { readyNodes: ready1 } = edgeManager.processOutgoingEdges(condition1Node, {
+      const ready1 = edgeManager.processOutgoingEdges(condition1Node, {
         selectedOption: 'if',
       })
       expect(ready1).toContain(condition2Id)
       expect(ready1).not.toContain(target1Id)
 
-      const { readyNodes: ready2 } = edgeManager.processOutgoingEdges(condition2Node, {
+      const ready2 = edgeManager.processOutgoingEdges(condition2Node, {
         selectedOption: 'else',
       })
       expect(ready2).toContain(target1Id)
@@ -1023,7 +1020,7 @@ describe('EdgeManager', () => {
       const dag = createMockDAG(nodes)
       const edgeManager = new EdgeManager(dag)
 
-      const { readyNodes } = edgeManager.processOutgoingEdges(loopBodyNode, {}, true)
+      const readyNodes = edgeManager.processOutgoingEdges(loopBodyNode, {}, true)
 
       expect(readyNodes).not.toContain(loopStartId)
     })
@@ -1047,7 +1044,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       // Process without skipping backwards edges
-      const { readyNodes } = edgeManager.processOutgoingEdges(loopBodyNode, {}, false)
+      const readyNodes = edgeManager.processOutgoingEdges(loopBodyNode, {}, false)
 
       // Loop start should be activated
       expect(readyNodes).toContain(loopStartId)
@@ -1076,7 +1073,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       const exitOutput = { selectedRoute: 'loop_exit' }
-      const { readyNodes: exitReady } = edgeManager.processOutgoingEdges(loopCheckNode, exitOutput)
+      const exitReady = edgeManager.processOutgoingEdges(loopCheckNode, exitOutput)
       expect(exitReady).toContain(afterLoopId)
       expect(exitReady).not.toContain(loopBodyId)
     })
@@ -1108,7 +1105,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       const output = { selectedOption: 'cond2' }
-      const { readyNodes } = edgeManager.processOutgoingEdges(conditionNode, output)
+      const readyNodes = edgeManager.processOutgoingEdges(conditionNode, output)
 
       expect(readyNodes).toContain(targetId)
       expect(readyNodes).not.toContain(altTargetId)
@@ -1137,7 +1134,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       const output = { selectedOption: 'nonexistent' }
-      const { readyNodes } = edgeManager.processOutgoingEdges(conditionNode, output)
+      const readyNodes = edgeManager.processOutgoingEdges(conditionNode, output)
 
       expect(readyNodes).not.toContain(target1Id)
       expect(readyNodes).not.toContain(target2Id)
@@ -1201,16 +1198,16 @@ describe('EdgeManager', () => {
       const dag = createMockDAG(nodes)
       const edgeManager = new EdgeManager(dag)
 
-      const { readyNodes: readyAfterCondition } = edgeManager.processOutgoingEdges(conditionNode, {
+      const readyAfterCondition = edgeManager.processOutgoingEdges(conditionNode, {
         selectedOption: 'else',
       })
       expect(readyAfterCondition).toContain(nodeBId)
       expect(readyAfterCondition).not.toContain(nodeAId)
 
-      const { readyNodes: readyAfterNodeB } = edgeManager.processOutgoingEdges(nodeBNode, {})
+      const readyAfterNodeB = edgeManager.processOutgoingEdges(nodeBNode, {})
       expect(readyAfterNodeB).toContain(sentinelEndId)
 
-      const { readyNodes: readyAfterSentinel } = edgeManager.processOutgoingEdges(sentinelEndNode, {
+      const readyAfterSentinel = edgeManager.processOutgoingEdges(sentinelEndNode, {
         selectedRoute: 'loop_continue',
       })
 
@@ -1262,15 +1259,12 @@ describe('EdgeManager', () => {
 
       edgeManager.processOutgoingEdges(conditionNode, { selectedOption: 'else' })
 
-      const { readyNodes: readyAfterNodeB } = edgeManager.processOutgoingEdges(nodeBNode, {})
+      const readyAfterNodeB = edgeManager.processOutgoingEdges(nodeBNode, {})
       expect(readyAfterNodeB).toContain(parallelEndId)
 
-      const { readyNodes: readyAfterParallelEnd } = edgeManager.processOutgoingEdges(
-        parallelEndNode,
-        {
-          selectedRoute: 'parallel_exit',
-        }
-      )
+      const readyAfterParallelEnd = edgeManager.processOutgoingEdges(parallelEndNode, {
+        selectedRoute: 'parallel_exit',
+      })
       expect(readyAfterParallelEnd).toContain(afterParallelId)
     })
 
@@ -1313,7 +1307,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       // When selectedOption is null, the cascade deactivation makes sentinel_end ready
-      const { readyNodes: readyAfterCondition } = edgeManager.processOutgoingEdges(conditionNode, {
+      const readyAfterCondition = edgeManager.processOutgoingEdges(conditionNode, {
         selectedOption: null,
       })
       expect(readyAfterCondition).toContain(sentinelEndId)
@@ -1355,7 +1349,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       // Dead-end: no edge matches, sentinel_end should still become ready
-      const { readyNodes: ready } = edgeManager.processOutgoingEdges(conditionNode, {
+      const ready = edgeManager.processOutgoingEdges(conditionNode, {
         selectedOption: null,
       })
       expect(ready).toContain(sentinelEndId)
@@ -1410,20 +1404,20 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       // Path: condition1(if) → condition2(else) → nodeC → sentinel_end
-      const { readyNodes: ready1 } = edgeManager.processOutgoingEdges(condition1Node, {
+      const ready1 = edgeManager.processOutgoingEdges(condition1Node, {
         selectedOption: 'if',
       })
       expect(ready1).toContain(condition2Id)
 
-      const { readyNodes: ready2 } = edgeManager.processOutgoingEdges(condition2Node, {
+      const ready2 = edgeManager.processOutgoingEdges(condition2Node, {
         selectedOption: 'else',
       })
       expect(ready2).toContain(nodeCId)
 
-      const { readyNodes: ready3 } = edgeManager.processOutgoingEdges(nodeCNode, {})
+      const ready3 = edgeManager.processOutgoingEdges(nodeCNode, {})
       expect(ready3).toContain(sentinelEndId)
 
-      const { readyNodes: ready4 } = edgeManager.processOutgoingEdges(sentinelEndNode, {
+      const ready4 = edgeManager.processOutgoingEdges(sentinelEndNode, {
         selectedRoute: 'loop_continue',
       })
       expect(ready4).toContain(sentinelStartId)
@@ -1468,19 +1462,19 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       // Test else path through diamond
-      const { readyNodes: ready1 } = edgeManager.processOutgoingEdges(conditionNode, {
+      const ready1 = edgeManager.processOutgoingEdges(conditionNode, {
         selectedOption: 'else',
       })
       expect(ready1).toContain(nodeBId)
       expect(ready1).not.toContain(nodeAId)
 
-      const { readyNodes: ready2 } = edgeManager.processOutgoingEdges(nodeBNode, {})
+      const ready2 = edgeManager.processOutgoingEdges(nodeBNode, {})
       expect(ready2).toContain(mergeId)
 
-      const { readyNodes: ready3 } = edgeManager.processOutgoingEdges(mergeNode, {})
+      const ready3 = edgeManager.processOutgoingEdges(mergeNode, {})
       expect(ready3).toContain(sentinelEndId)
 
-      const { readyNodes: ready4 } = edgeManager.processOutgoingEdges(sentinelEndNode, {
+      const ready4 = edgeManager.processOutgoingEdges(sentinelEndNode, {
         selectedRoute: 'loop_continue',
       })
       expect(ready4).toContain(sentinelStartId)
@@ -1531,16 +1525,16 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       // Select else - triggers deep cascade deactivation of if path
-      const { readyNodes: ready1 } = edgeManager.processOutgoingEdges(conditionNode, {
+      const ready1 = edgeManager.processOutgoingEdges(conditionNode, {
         selectedOption: 'else',
       })
       expect(ready1).toContain(nodeDId)
 
-      const { readyNodes: ready2 } = edgeManager.processOutgoingEdges(nodeDNode, {})
+      const ready2 = edgeManager.processOutgoingEdges(nodeDNode, {})
       expect(ready2).toContain(sentinelEndId)
 
       // loop_continue should still work despite deep cascade
-      const { readyNodes: ready3 } = edgeManager.processOutgoingEdges(sentinelEndNode, {
+      const ready3 = edgeManager.processOutgoingEdges(sentinelEndNode, {
         selectedRoute: 'loop_continue',
       })
       expect(ready3).toContain(sentinelStartId)
@@ -1590,7 +1584,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       // Test middle branch (elseif2)
-      const { readyNodes: ready1 } = edgeManager.processOutgoingEdges(conditionNode, {
+      const ready1 = edgeManager.processOutgoingEdges(conditionNode, {
         selectedOption: 'elseif2',
       })
       expect(ready1).toContain(nodeCId)
@@ -1598,10 +1592,10 @@ describe('EdgeManager', () => {
       expect(ready1).not.toContain(nodeBId)
       expect(ready1).not.toContain(nodeDId)
 
-      const { readyNodes: ready2 } = edgeManager.processOutgoingEdges(nodeCNode, {})
+      const ready2 = edgeManager.processOutgoingEdges(nodeCNode, {})
       expect(ready2).toContain(sentinelEndId)
 
-      const { readyNodes: ready3 } = edgeManager.processOutgoingEdges(sentinelEndNode, {
+      const ready3 = edgeManager.processOutgoingEdges(sentinelEndNode, {
         selectedRoute: 'loop_continue',
       })
       expect(ready3).toContain(sentinelStartId)
@@ -1645,7 +1639,7 @@ describe('EdgeManager', () => {
       edgeManager.processOutgoingEdges(conditionNode, { selectedOption: 'else' })
       edgeManager.processOutgoingEdges(nodeBNode, {})
 
-      const { readyNodes: ready } = edgeManager.processOutgoingEdges(sentinelEndNode, {
+      const ready = edgeManager.processOutgoingEdges(sentinelEndNode, {
         selectedRoute: 'loop_continue',
       })
       expect(ready).toContain(sentinelStartId)
@@ -1712,7 +1706,7 @@ describe('EdgeManager', () => {
 
       // Condition takes "else" but there's no else edge
       // selectedOption: null means no condition branch matches
-      const { readyNodes: ready } = edgeManager.processOutgoingEdges(conditionNode, {
+      const ready = edgeManager.processOutgoingEdges(conditionNode, {
         selectedOption: null,
         conditionResult: false,
         selectedPath: null,
@@ -1774,7 +1768,7 @@ describe('EdgeManager', () => {
       func3Node.incomingEdges.clear()
 
       // Condition takes else (dead end)
-      const { readyNodes: ready } = edgeManager.processOutgoingEdges(conditionNode, {
+      const ready = edgeManager.processOutgoingEdges(conditionNode, {
         selectedOption: null,
       })
 
@@ -1833,7 +1827,7 @@ describe('EdgeManager', () => {
       condition1Node.incomingEdges.clear()
 
       // condition1 takes "if" - condition2 becomes ready
-      const { readyNodes: ready1 } = edgeManager.processOutgoingEdges(condition1Node, {
+      const ready1 = edgeManager.processOutgoingEdges(condition1Node, {
         selectedOption: 'if',
       })
       expect(ready1).toContain(condition2Id)
@@ -1841,7 +1835,7 @@ describe('EdgeManager', () => {
       condition2Node.incomingEdges.clear()
 
       // condition2 takes "else" (dead end)
-      const { readyNodes: ready2 } = edgeManager.processOutgoingEdges(condition2Node, {
+      const ready2 = edgeManager.processOutgoingEdges(condition2Node, {
         selectedOption: null,
       })
 
@@ -1896,7 +1890,7 @@ describe('EdgeManager', () => {
       conditionNode.incomingEdges.clear()
 
       // Condition hits dead-end (else branch with no edge)
-      const { readyNodes: ready } = edgeManager.processOutgoingEdges(conditionNode, {
+      const ready = edgeManager.processOutgoingEdges(conditionNode, {
         selectedOption: null,
       })
 
@@ -1952,16 +1946,16 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       // Select else path
-      const { readyNodes: ready1 } = edgeManager.processOutgoingEdges(conditionNode, {
+      const ready1 = edgeManager.processOutgoingEdges(conditionNode, {
         selectedOption: 'else',
       })
       expect(ready1).toContain(nodeBId)
       expect(ready1).not.toContain(nodeAId)
 
-      const { readyNodes: ready2 } = edgeManager.processOutgoingEdges(nodeBNode, {})
+      const ready2 = edgeManager.processOutgoingEdges(nodeBNode, {})
       expect(ready2).toContain(parallelEndId)
 
-      const { readyNodes: ready3 } = edgeManager.processOutgoingEdges(parallelEndNode, {
+      const ready3 = edgeManager.processOutgoingEdges(parallelEndNode, {
         selectedRoute: 'parallel_exit',
       })
       expect(ready3).toContain(afterParallelId)
@@ -2000,7 +1994,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       // When selectedOption is null, the cascade deactivation makes parallel_end ready
-      const { readyNodes: ready } = edgeManager.processOutgoingEdges(conditionNode, {
+      const ready = edgeManager.processOutgoingEdges(conditionNode, {
         selectedOption: null,
       })
       expect(ready).toContain(parallelEndId)
@@ -2073,13 +2067,13 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       // Branch 1: condition1 selects else
-      const { readyNodes: ready1 } = edgeManager.processOutgoingEdges(condition1Node, {
+      const ready1 = edgeManager.processOutgoingEdges(condition1Node, {
         selectedOption: 'else',
       })
       expect(ready1).toContain(nodeBId)
 
       // Branch 2: condition2 selects if
-      const { readyNodes: ready2 } = edgeManager.processOutgoingEdges(condition2Node, {
+      const ready2 = edgeManager.processOutgoingEdges(condition2Node, {
         selectedOption: 'if',
       })
       expect(ready2).toContain(nodeCId)
@@ -2089,7 +2083,7 @@ describe('EdgeManager', () => {
       edgeManager.processOutgoingEdges(nodeCNode, {})
 
       // parallel_exit should work
-      const { readyNodes: ready3 } = edgeManager.processOutgoingEdges(parallelEndNode, {
+      const ready3 = edgeManager.processOutgoingEdges(parallelEndNode, {
         selectedRoute: 'parallel_exit',
       })
       expect(ready3).toContain('after')
@@ -2140,7 +2134,7 @@ describe('EdgeManager', () => {
       edgeManager.processOutgoingEdges(nodeBNode, {})
       edgeManager.processOutgoingEdges(mergeNode, {})
 
-      const { readyNodes: ready } = edgeManager.processOutgoingEdges(parallelEndNode, {
+      const ready = edgeManager.processOutgoingEdges(parallelEndNode, {
         selectedRoute: 'parallel_exit',
       })
       expect(ready).toContain(afterId)
@@ -2193,7 +2187,7 @@ describe('EdgeManager', () => {
       edgeManager.processOutgoingEdges(conditionNode, { selectedOption: 'else' })
       edgeManager.processOutgoingEdges(nodeDNode, {})
 
-      const { readyNodes: ready } = edgeManager.processOutgoingEdges(parallelEndNode, {
+      const ready = edgeManager.processOutgoingEdges(parallelEndNode, {
         selectedRoute: 'parallel_exit',
       })
       expect(ready).toContain(afterId)
@@ -2238,16 +2232,16 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       // nodeA errors
-      const { readyNodes: ready1 } = edgeManager.processOutgoingEdges(nodeANode, {
+      const ready1 = edgeManager.processOutgoingEdges(nodeANode, {
         error: 'Something failed',
       })
       expect(ready1).toContain(errorNodeId)
       expect(ready1).not.toContain(successNodeId)
 
-      const { readyNodes: ready2 } = edgeManager.processOutgoingEdges(errorNode, {})
+      const ready2 = edgeManager.processOutgoingEdges(errorNode, {})
       expect(ready2).toContain(parallelEndId)
 
-      const { readyNodes: ready3 } = edgeManager.processOutgoingEdges(parallelEndNode, {
+      const ready3 = edgeManager.processOutgoingEdges(parallelEndNode, {
         selectedRoute: 'parallel_exit',
       })
       expect(ready3).toContain(afterId)
@@ -2313,7 +2307,7 @@ describe('EdgeManager', () => {
       edgeManager.processOutgoingEdges(nodeBNode, {})
 
       // loop_continue should work - loopStartNode should be ready (no other incoming edges)
-      const { readyNodes: ready1 } = edgeManager.processOutgoingEdges(loopEndNode, {
+      const ready1 = edgeManager.processOutgoingEdges(loopEndNode, {
         selectedRoute: 'loop_continue',
       })
       expect(ready1).toContain(loopStartId)
@@ -2329,12 +2323,12 @@ describe('EdgeManager', () => {
       edgeManager.processOutgoingEdges(conditionNode, { selectedOption: 'if' })
       edgeManager.processOutgoingEdges(nodeANode, {})
 
-      const { readyNodes: ready2 } = edgeManager.processOutgoingEdges(loopEndNode, {
+      const ready2 = edgeManager.processOutgoingEdges(loopEndNode, {
         selectedRoute: 'loop_exit',
       })
       expect(ready2).toContain(parallelEndId)
 
-      const { readyNodes: ready3 } = edgeManager.processOutgoingEdges(parallelEndNode, {
+      const ready3 = edgeManager.processOutgoingEdges(parallelEndNode, {
         selectedRoute: 'parallel_exit',
       })
       expect(ready3).toContain(afterId)
@@ -2399,13 +2393,13 @@ describe('EdgeManager', () => {
       edgeManager.processOutgoingEdges(nodeBNode, {})
 
       // parallel_exit should work
-      const { readyNodes: ready1 } = edgeManager.processOutgoingEdges(parallelEndNode, {
+      const ready1 = edgeManager.processOutgoingEdges(parallelEndNode, {
         selectedRoute: 'parallel_exit',
       })
       expect(ready1).toContain(loopEndId)
 
       // loop_continue should work
-      const { readyNodes: ready2 } = edgeManager.processOutgoingEdges(loopEndNode, {
+      const ready2 = edgeManager.processOutgoingEdges(loopEndNode, {
         selectedRoute: 'loop_continue',
       })
       expect(ready2).toContain(loopStartId)
@@ -2428,7 +2422,7 @@ describe('EdgeManager', () => {
       const dag = createMockDAG(nodes)
       const edgeManager = new EdgeManager(dag)
 
-      const { readyNodes } = edgeManager.processOutgoingEdges(sourceNode, {})
+      const readyNodes = edgeManager.processOutgoingEdges(sourceNode, {})
 
       expect(readyNodes).toContain(targetId)
     })
@@ -2455,7 +2449,7 @@ describe('EdgeManager', () => {
       const dag = createMockDAG(nodes)
       const edgeManager = new EdgeManager(dag)
 
-      const { readyNodes: successReady } = edgeManager.processOutgoingEdges(sourceNode, {
+      const successReady = edgeManager.processOutgoingEdges(sourceNode, {
         result: 'ok',
       })
       expect(successReady).toContain(targetId)
@@ -2516,7 +2510,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       // Condition selects "else" branch, deactivating the "if" branch (which contains the loop)
-      const { readyNodes } = edgeManager.processOutgoingEdges(conditionNode, {
+      const readyNodes = edgeManager.processOutgoingEdges(conditionNode, {
         selectedOption: 'else',
       })
 
@@ -2585,7 +2579,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       // Condition selects "else" branch
-      const { readyNodes } = edgeManager.processOutgoingEdges(conditionNode, {
+      const readyNodes = edgeManager.processOutgoingEdges(conditionNode, {
         selectedOption: 'else',
       })
 
@@ -2659,7 +2653,7 @@ describe('EdgeManager', () => {
       const dag = createMockDAG(nodes)
       const edgeManager = new EdgeManager(dag)
 
-      const { readyNodes } = edgeManager.processOutgoingEdges(conditionNode, {
+      const readyNodes = edgeManager.processOutgoingEdges(conditionNode, {
         selectedOption: 'else',
       })
 
@@ -2727,7 +2721,7 @@ describe('EdgeManager', () => {
 
       // Condition selected else, but else has no outgoing edge.
       // selectedOption is set (routing decision was made).
-      const { readyNodes } = edgeManager.processOutgoingEdges(conditionNode, {
+      const readyNodes = edgeManager.processOutgoingEdges(conditionNode, {
         selectedOption: 'else-id',
       })
 
@@ -2782,7 +2776,7 @@ describe('EdgeManager', () => {
       const dag = createMockDAG(nodes)
       const edgeManager = new EdgeManager(dag)
 
-      const { readyNodes } = edgeManager.processOutgoingEdges(conditionNode, {
+      const readyNodes = edgeManager.processOutgoingEdges(conditionNode, {
         selectedOption: 'else-id',
       })
 
@@ -2831,7 +2825,7 @@ describe('EdgeManager', () => {
       conditionNode.incomingEdges.clear()
 
       // selectedOption: null → no routing decision, true dead-end
-      const { readyNodes } = edgeManager.processOutgoingEdges(conditionNode, {
+      const readyNodes = edgeManager.processOutgoingEdges(conditionNode, {
         selectedOption: null,
       })
 
@@ -2876,7 +2870,7 @@ describe('EdgeManager', () => {
       const edgeManager = new EdgeManager(dag)
 
       // Simulate sentinel_end completing with loop_exit (loop is done)
-      const { readyNodes } = edgeManager.processOutgoingEdges(sentinelEndNode, {
+      const readyNodes = edgeManager.processOutgoingEdges(sentinelEndNode, {
         selectedRoute: 'loop_exit',
       })
 

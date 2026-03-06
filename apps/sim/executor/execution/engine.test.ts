@@ -84,13 +84,7 @@ interface MockEdgeManager extends EdgeManager {
 function createMockEdgeManager(
   processOutgoingEdgesImpl?: (node: DAGNode) => string[]
 ): MockEdgeManager {
-  const mockFn = vi
-    .fn()
-    .mockImplementation(
-      processOutgoingEdgesImpl
-        ? (node: DAGNode) => ({ readyNodes: processOutgoingEdgesImpl(node), activatedEdges: [] })
-        : () => ({ readyNodes: [], activatedEdges: [] })
-    )
+  const mockFn = vi.fn().mockImplementation(processOutgoingEdgesImpl || (() => []))
   return {
     processOutgoingEdges: mockFn,
     isNodeReady: vi.fn().mockReturnValue(true),
