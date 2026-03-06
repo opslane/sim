@@ -44,7 +44,7 @@ interface AvailableKey {
 /**
  * HostedKeyRateLimiter provides:
  * 1. Per-billing-actor rate limiting (enforced - blocks actors who exceed their limit)
- * 2. Least-loaded key selection (distributes requests evenly across keys)
+ * 2. Round-robin key selection (distributes requests evenly across keys)
  * 3. Post-execution dimension usage tracking for custom rate limits
  *
  * The billing actor is typically a workspace ID, meaning rate limits are shared
@@ -52,8 +52,8 @@ interface AvailableKey {
  */
 export class HostedKeyRateLimiter {
   private storage: RateLimitStorageAdapter
-  /** In-memory request counters per key: "provider:keyIndex" -> count */
-  private keyRequestCounts = new Map<string, number>()
+  /** Round-robin counter per provider for even key distribution */
+  private roundRobinCounters = new Map<string, number>()
 
   constructor(storage?: RateLimitStorageAdapter) {
     this.storage = storage ?? createStorageAdapter()
@@ -176,11 +176,11 @@ export class HostedKeyRateLimiter {
   }
 
   /**
-   * Acquire the best available key.
+   * Acquire an available key via round-robin selection.
    *
    * For both modes:
    *   1. Per-billing-actor request rate limiting (enforced): blocks actors who exceed their request limit
-   *   2. Least-loaded key selection: picks the key with fewest in-flight requests
+   *   2. Round-robin key selection: cycles through available keys for even distribution
    *
    * For `custom` mode additionally:
    *   3. Pre-checks dimension budgets: blocks if any dimension is already depleted
@@ -229,31 +229,21 @@ export class HostedKeyRateLimiter {
       }
     }
 
-    let leastLoaded = availableKeys[0]
-    let minCount = this.getKeyCount(provider, leastLoaded.keyIndex)
-
-    for (let i = 1; i < availableKeys.length; i++) {
-      const count = this.getKeyCount(provider, availableKeys[i].keyIndex)
-      if (count < minCount) {
-        minCount = count
-        leastLoaded = availableKeys[i]
-      }
-    }
-
-    this.incrementKeyCount(provider, leastLoaded.keyIndex)
+    const counter = this.roundRobinCounters.get(provider) ?? 0
+    const selected = availableKeys[counter % availableKeys.length]
+    this.roundRobinCounters.set(provider, counter + 1)
 
     logger.debug(`Selected hosted key for ${provider}`, {
       provider,
-      keyIndex: leastLoaded.keyIndex,
-      envVarName: leastLoaded.envVarName,
-      requestCount: minCount + 1,
+      keyIndex: selected.keyIndex,
+      envVarName: selected.envVarName,
     })
 
     return {
       success: true,
-      key: leastLoaded.key,
-      keyIndex: leastLoaded.keyIndex,
-      envVarName: leastLoaded.envVarName,
+      key: selected.key,
+      keyIndex: selected.keyIndex,
+      envVarName: selected.envVarName,
     }
   }
 
@@ -336,15 +326,6 @@ export class HostedKeyRateLimiter {
     }
 
     return { dimensions: results }
-  }
-
-  private getKeyCount(provider: string, keyIndex: number): number {
-    return this.keyRequestCounts.get(`${provider}:${keyIndex}`) ?? 0
-  }
-
-  private incrementKeyCount(provider: string, keyIndex: number): void {
-    const key = `${provider}:${keyIndex}`
-    this.keyRequestCounts.set(key, (this.keyRequestCounts.get(key) ?? 0) + 1)
   }
 }
 

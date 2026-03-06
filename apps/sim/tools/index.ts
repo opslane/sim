@@ -44,7 +44,7 @@ interface HostedKeyInjectionResult {
 
 /**
  * Inject hosted API key if tool supports it and user didn't provide one.
- * Checks BYOK workspace keys first, then uses the HostedKeyRateLimiter for least-loaded key selection.
+ * Checks BYOK workspace keys first, then uses the HostedKeyRateLimiter for round-robin key selection.
  * Returns whether a hosted (billable) key was injected and which env var it came from.
  */
 async function injectHostedKeyIfNeeded(
