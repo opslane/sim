@@ -98,7 +98,7 @@ export const searchTool: ToolConfig<ExaSearchParams, ExaSearchResponse> = {
       getCost: (params, output) => {
         // Use __costDollars from Exa API response (internal field, stripped from final output)
         const costDollars = output.__costDollars as { total?: number } | undefined
-        if (costDollars?.total) {
+        if (costDollars?.total != null) {
           return { cost: costDollars.total, metadata: { costDollars } }
         }
 

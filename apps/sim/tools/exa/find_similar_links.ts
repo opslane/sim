@@ -88,7 +88,7 @@ export const findSimilarLinksTool: ToolConfig<
       getCost: (_params, output) => {
         // Use __costDollars from Exa API response (internal field, stripped from final output)
         const costDollars = output.__costDollars as { total?: number } | undefined
-        if (costDollars?.total) {
+        if (costDollars?.total != null) {
           return { cost: costDollars.total, metadata: { costDollars } }
         }
         // Fallback: $5/1000 (1-25 results) or $25/1000 (26-100 results)

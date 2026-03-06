@@ -73,7 +73,7 @@ export const getContentsTool: ToolConfig<ExaGetContentsParams, ExaGetContentsRes
       getCost: (_params, output) => {
         // Use __costDollars from Exa API response (internal field, stripped from final output)
         const costDollars = output.__costDollars as { total?: number } | undefined
-        if (costDollars?.total) {
+        if (costDollars?.total != null) {
           return { cost: costDollars.total, metadata: { costDollars } }
         }
         // Fallback: $1/1000 pages
