@@ -167,7 +167,6 @@ export interface ExaResearchResponse extends ToolResponse {
       author?: string
       score: number
     }[]
-    costDollars?: ExaCostDollars
   }
 }
 
