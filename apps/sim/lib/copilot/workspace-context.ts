@@ -1,5 +1,14 @@
 import { db } from '@sim/db'
-import { copilotChats, knowledgeBase, mcpServers, userTableDefinitions, userTableRows, workflow, workspace, workflowSchedule } from '@sim/db/schema'
+import {
+  copilotChats,
+  knowledgeBase,
+  mcpServers,
+  userTableDefinitions,
+  userTableRows,
+  workflow,
+  workspace,
+  workflowSchedule,
+} from '@sim/db/schema'
 import { createLogger } from '@sim/logger'
 import { and, count, desc, eq, isNull } from 'drizzle-orm'
 import { getAccessibleOAuthCredentials } from '@/lib/credentials/environment'
@@ -164,99 +173,111 @@ export async function generateWorkspaceContext(
   userId: string
 ): Promise<string> {
   try {
-    const [wsRow, members, workflows, kbs, tables, files, credentials, recentTasks, customTools, mcpServerRows, skillRows, jobRows] =
-      await Promise.all([
-        db
-          .select({ id: workspace.id, name: workspace.name, ownerId: workspace.ownerId })
-          .from(workspace)
-          .where(eq(workspace.id, workspaceId))
-          .limit(1)
-          .then((rows) => rows[0] ?? null),
+    const [
+      wsRow,
+      members,
+      workflows,
+      kbs,
+      tables,
+      files,
+      credentials,
+      recentTasks,
+      customTools,
+      mcpServerRows,
+      skillRows,
+      jobRows,
+    ] = await Promise.all([
+      db
+        .select({ id: workspace.id, name: workspace.name, ownerId: workspace.ownerId })
+        .from(workspace)
+        .where(eq(workspace.id, workspaceId))
+        .limit(1)
+        .then((rows) => rows[0] ?? null),
 
-        getUsersWithPermissions(workspaceId),
+      getUsersWithPermissions(workspaceId),
 
-        db
-          .select({
-            id: workflow.id,
-            name: workflow.name,
-            description: workflow.description,
-            isDeployed: workflow.isDeployed,
-            lastRunAt: workflow.lastRunAt,
-          })
-          .from(workflow)
-          .where(eq(workflow.workspaceId, workspaceId)),
+      db
+        .select({
+          id: workflow.id,
+          name: workflow.name,
+          description: workflow.description,
+          isDeployed: workflow.isDeployed,
+          lastRunAt: workflow.lastRunAt,
+        })
+        .from(workflow)
+        .where(eq(workflow.workspaceId, workspaceId)),
 
-        db
-          .select({
-            id: knowledgeBase.id,
-            name: knowledgeBase.name,
-            description: knowledgeBase.description,
-          })
-          .from(knowledgeBase)
-          .where(and(eq(knowledgeBase.workspaceId, workspaceId), isNull(knowledgeBase.deletedAt))),
+      db
+        .select({
+          id: knowledgeBase.id,
+          name: knowledgeBase.name,
+          description: knowledgeBase.description,
+        })
+        .from(knowledgeBase)
+        .where(and(eq(knowledgeBase.workspaceId, workspaceId), isNull(knowledgeBase.deletedAt))),
 
-        db
-          .select({
-            id: userTableDefinitions.id,
-            name: userTableDefinitions.name,
-            description: userTableDefinitions.description,
-          })
-          .from(userTableDefinitions)
-          .where(eq(userTableDefinitions.workspaceId, workspaceId)),
+      db
+        .select({
+          id: userTableDefinitions.id,
+          name: userTableDefinitions.name,
+          description: userTableDefinitions.description,
+        })
+        .from(userTableDefinitions)
+        .where(eq(userTableDefinitions.workspaceId, workspaceId)),
 
-        listWorkspaceFiles(workspaceId),
+      listWorkspaceFiles(workspaceId),
 
-        getAccessibleOAuthCredentials(workspaceId, userId),
+      getAccessibleOAuthCredentials(workspaceId, userId),
 
-        db
-          .select({
-            id: copilotChats.id,
-            title: copilotChats.title,
-            updatedAt: copilotChats.updatedAt,
-          })
-          .from(copilotChats)
-          .where(
-            and(
-              eq(copilotChats.workspaceId, workspaceId),
-              eq(copilotChats.userId, userId),
-              eq(copilotChats.type, 'mothership')
-            )
+      db
+        .select({
+          id: copilotChats.id,
+          title: copilotChats.title,
+          updatedAt: copilotChats.updatedAt,
+        })
+        .from(copilotChats)
+        .where(
+          and(
+            eq(copilotChats.workspaceId, workspaceId),
+            eq(copilotChats.userId, userId),
+            eq(copilotChats.type, 'mothership')
           )
-          .orderBy(desc(copilotChats.updatedAt))
-          .limit(5),
+        )
+        .orderBy(desc(copilotChats.updatedAt))
+        .limit(5),
 
-        listCustomTools({ userId, workspaceId }),
+      listCustomTools({ userId, workspaceId }),
 
-        db
-          .select({
-            id: mcpServers.id,
-            name: mcpServers.name,
-            url: mcpServers.url,
-            enabled: mcpServers.enabled,
-          })
-          .from(mcpServers)
-          .where(and(eq(mcpServers.workspaceId, workspaceId), isNull(mcpServers.deletedAt))),
+      db
+        .select({
+          id: mcpServers.id,
+          name: mcpServers.name,
+          url: mcpServers.url,
+          enabled: mcpServers.enabled,
+        })
+        .from(mcpServers)
+        .where(and(eq(mcpServers.workspaceId, workspaceId), isNull(mcpServers.deletedAt))),
 
-        listSkills({ workspaceId }),
+      listSkills({ workspaceId }),
 
-        db
-          .select({
-            id: workflowSchedule.id,
-            jobTitle: workflowSchedule.jobTitle,
-            prompt: workflowSchedule.prompt,
-            cronExpression: workflowSchedule.cronExpression,
-            status: workflowSchedule.status,
-            lifecycle: workflowSchedule.lifecycle,
-            sourceTaskName: workflowSchedule.sourceTaskName,
-          })
-          .from(workflowSchedule)
-          .where(
-            and(
-              eq(workflowSchedule.sourceWorkspaceId, workspaceId),
-              eq(workflowSchedule.sourceType, 'job')
-            )
-          ),
-      ])
+      db
+        .select({
+          id: workflowSchedule.id,
+          jobTitle: workflowSchedule.jobTitle,
+          prompt: workflowSchedule.prompt,
+          cronExpression: workflowSchedule.cronExpression,
+          status: workflowSchedule.status,
+          lifecycle: workflowSchedule.lifecycle,
+          sourceTaskName: workflowSchedule.sourceTaskName,
+        })
+        .from(workflowSchedule)
+        .where(
+          and(
+            eq(workflowSchedule.sourceWorkspaceId, workspaceId),
+            eq(workflowSchedule.sourceType, 'job')
+          )
+        ),
+    ])
 
     const rowCounts =
       tables.length > 0

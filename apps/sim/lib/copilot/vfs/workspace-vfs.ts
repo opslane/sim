@@ -15,12 +15,7 @@ import {
 import { createLogger } from '@sim/logger'
 import { and, desc, eq, isNull } from 'drizzle-orm'
 import { listApiKeys } from '@/lib/api-key/service'
-import type {
-  DirEntry,
-  GrepMatch,
-  GrepOptions,
-  ReadResult,
-} from '@/lib/copilot/vfs/operations'
+import type { DirEntry, GrepMatch, GrepOptions, ReadResult } from '@/lib/copilot/vfs/operations'
 import * as ops from '@/lib/copilot/vfs/operations'
 import type { DeploymentData } from '@/lib/copilot/vfs/serializers'
 import {
@@ -43,7 +38,7 @@ import {
   serializeTaskSession,
   serializeWorkflowMeta,
 } from '@/lib/copilot/vfs/serializers'
-import { type WorkspaceMdData, buildWorkspaceMd } from '@/lib/copilot/workspace-context'
+import { buildWorkspaceMd, type WorkspaceMdData } from '@/lib/copilot/workspace-context'
 import {
   getAccessibleEnvCredentials,
   getAccessibleOAuthCredentials,
@@ -58,14 +53,11 @@ import {
 import { isImageFileType } from '@/lib/uploads/utils/file-utils'
 import { hasWorkflowChanged } from '@/lib/workflows/comparison'
 import { listCustomTools } from '@/lib/workflows/custom-tools/operations'
-import { listSkills } from '@/lib/workflows/skills/operations'
 import { loadWorkflowFromNormalizedTables } from '@/lib/workflows/persistence/utils'
 import { sanitizeForCopilot } from '@/lib/workflows/sanitization/json-sanitizer'
+import { listSkills } from '@/lib/workflows/skills/operations'
 import { listWorkflows } from '@/lib/workflows/utils'
-import {
-  getWorkspaceWithOwner,
-  getUsersWithPermissions,
-} from '@/lib/workspaces/permissions/utils'
+import { getUsersWithPermissions, getWorkspaceWithOwner } from '@/lib/workspaces/permissions/utils'
 import { getAllBlocks } from '@/blocks/registry'
 import { tools as toolRegistry } from '@/tools/registry'
 import { getLatestVersionTools, stripVersionSuffix } from '@/tools/utils'
@@ -225,7 +217,7 @@ function getStaticComponentFiles(): Map<string, string> {
  */
 export class WorkspaceVFS {
   private files: Map<string, string> = new Map()
-  private _workspaceId: string = ''
+  private _workspaceId = ''
 
   get workspaceId(): string {
     return this._workspaceId
@@ -571,9 +563,7 @@ export class WorkspaceVFS {
    * Materialize tables using the shared listTables function.
    * Returns a summary for WORKSPACE.md generation.
    */
-  private async materializeTables(
-    workspaceId: string
-  ): Promise<WorkspaceMdData['tables']> {
+  private async materializeTables(workspaceId: string): Promise<WorkspaceMdData['tables']> {
     try {
       const tables = await listTables(workspaceId)
 
@@ -613,9 +603,7 @@ export class WorkspaceVFS {
    * Materialize workspace files (already uses listWorkspaceFiles).
    * Returns a summary for WORKSPACE.md generation.
    */
-  private async materializeFiles(
-    workspaceId: string
-  ): Promise<WorkspaceMdData['files']> {
+  private async materializeFiles(workspaceId: string): Promise<WorkspaceMdData['files']> {
     try {
       const files = await listWorkspaceFiles(workspaceId)
 
