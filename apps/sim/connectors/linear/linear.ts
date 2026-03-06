@@ -193,7 +193,7 @@ export const linearConnector: ConnectorConfig = {
   oauth: {
     required: true,
     provider: 'linear',
-    requiredScopes: ['read'],
+    requiredScopes: [],
   },
 
   configFields: [
