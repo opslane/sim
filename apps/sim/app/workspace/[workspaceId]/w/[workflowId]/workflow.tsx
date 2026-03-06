@@ -3770,175 +3770,178 @@ const WorkflowContent = React.memo(() => {
   ])
 
   return (
-    <div className='flex h-full w-full flex-col overflow-hidden'>
-      <div className='relative h-full w-full flex-1'>
-        {!isWorkflowReady && (
-          <div className='absolute inset-0 z-[5] flex items-center justify-center bg-[var(--bg)]'>
-            <div
-              className='h-[18px] w-[18px] animate-spin rounded-full'
-              style={{
-                background:
-                  'conic-gradient(from 0deg, hsl(var(--muted-foreground)) 0deg 120deg, transparent 120deg 180deg, hsl(var(--muted-foreground)) 180deg 300deg, transparent 300deg 360deg)',
-                mask: 'radial-gradient(farthest-side, transparent calc(100% - 1.5px), black calc(100% - 1.5px))',
-                WebkitMask:
-                  'radial-gradient(farthest-side, transparent calc(100% - 1.5px), black calc(100% - 1.5px))',
-              }}
-            />
-          </div>
-        )}
+    <div className='flex h-full w-full overflow-hidden'>
+      <div className='flex min-w-0 flex-1 flex-col'>
+        <div className='relative flex-1 overflow-hidden'>
+          {!isWorkflowReady && (
+            <div className='absolute inset-0 z-[5] flex items-center justify-center bg-[var(--bg)]'>
+              <div
+                className='h-[18px] w-[18px] animate-spin rounded-full'
+                style={{
+                  background:
+                    'conic-gradient(from 0deg, hsl(var(--muted-foreground)) 0deg 120deg, transparent 120deg 180deg, hsl(var(--muted-foreground)) 180deg 300deg, transparent 300deg 360deg)',
+                  mask: 'radial-gradient(farthest-side, transparent calc(100% - 1.5px), black calc(100% - 1.5px))',
+                  WebkitMask:
+                    'radial-gradient(farthest-side, transparent calc(100% - 1.5px), black calc(100% - 1.5px))',
+                }}
+              />
+            </div>
+          )}
 
-        {isWorkflowReady && (
-          <>
-            {showTrainingModal && <TrainingModal />}
+          {isWorkflowReady && (
+            <>
+              {showTrainingModal && <TrainingModal />}
 
-            <ReactFlow
-              nodes={displayNodes}
-              edges={edgesWithSelection}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={effectivePermissions.canEdit ? onConnect : undefined}
-              onConnectStart={effectivePermissions.canEdit ? onConnectStart : undefined}
-              onConnectEnd={effectivePermissions.canEdit ? onConnectEnd : undefined}
-              nodeTypes={nodeTypes}
-              edgeTypes={edgeTypes}
-              onMouseDown={handleCanvasMouseDown}
-              onDrop={effectivePermissions.canEdit ? onDrop : undefined}
-              onDragOver={effectivePermissions.canEdit ? onDragOver : undefined}
-              onInit={(instance) => {
-                requestAnimationFrame(() => {
-                  instance.fitView(reactFlowFitViewOptions)
-                  setIsCanvasReady(true)
-                })
-              }}
-              fitViewOptions={reactFlowFitViewOptions}
-              minZoom={0.1}
-              maxZoom={1.3}
-              panOnScroll
-              defaultEdgeOptions={defaultEdgeOptions}
-              proOptions={reactFlowProOptions}
-              connectionLineStyle={connectionLineStyle}
-              connectionLineType={ConnectionLineType.SmoothStep}
-              onPaneClick={onPaneClick}
-              onEdgeClick={onEdgeClick}
-              onNodeClick={handleNodeClick}
-              onPaneContextMenu={handlePaneContextMenu}
-              onNodeContextMenu={handleNodeContextMenu}
-              onSelectionContextMenu={handleSelectionContextMenu}
-              onPointerMove={handleCanvasPointerMove}
-              onPointerLeave={handleCanvasPointerLeave}
-              elementsSelectable={true}
-              selectionOnDrag={selectionProps.selectionOnDrag}
-              selectionMode={SelectionMode.Partial}
-              panOnDrag={selectionProps.panOnDrag}
-              selectionKeyCode={selectionProps.selectionKeyCode}
-              multiSelectionKeyCode={['Meta', 'Control', 'Shift']}
-              nodesConnectable={effectivePermissions.canEdit}
-              nodesDraggable={effectivePermissions.canEdit}
-              draggable={false}
-              noWheelClassName='allow-scroll'
-              edgesFocusable={true}
-              edgesUpdatable={effectivePermissions.canEdit}
-              className={`workflow-container h-full bg-[var(--bg)] transition-opacity duration-150 ${reactFlowStyles} ${isCanvasReady ? 'opacity-100' : 'opacity-0'} ${isHandMode ? 'canvas-mode-hand' : 'canvas-mode-cursor'}`}
-              onNodeDrag={effectivePermissions.canEdit ? onNodeDrag : undefined}
-              onNodeDragStop={effectivePermissions.canEdit ? onNodeDragStop : undefined}
-              onSelectionDragStart={effectivePermissions.canEdit ? onSelectionDragStart : undefined}
-              onSelectionDrag={effectivePermissions.canEdit ? onSelectionDrag : undefined}
-              onSelectionDragStop={effectivePermissions.canEdit ? onSelectionDragStop : undefined}
-              onNodeDragStart={effectivePermissions.canEdit ? onNodeDragStart : undefined}
-              snapToGrid={snapToGrid}
-              snapGrid={snapGrid}
-              elevateEdgesOnSelect={true}
-              onlyRenderVisibleElements={false}
-              deleteKeyCode={null}
-              elevateNodesOnSelect={false}
-              autoPanOnConnect={effectivePermissions.canEdit}
-              autoPanOnNodeDrag={effectivePermissions.canEdit}
-            />
+              <ReactFlow
+                nodes={displayNodes}
+                edges={edgesWithSelection}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={effectivePermissions.canEdit ? onConnect : undefined}
+                onConnectStart={effectivePermissions.canEdit ? onConnectStart : undefined}
+                onConnectEnd={effectivePermissions.canEdit ? onConnectEnd : undefined}
+                nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
+                onMouseDown={handleCanvasMouseDown}
+                onDrop={effectivePermissions.canEdit ? onDrop : undefined}
+                onDragOver={effectivePermissions.canEdit ? onDragOver : undefined}
+                onInit={(instance) => {
+                  requestAnimationFrame(() => {
+                    instance.fitView(reactFlowFitViewOptions)
+                    setIsCanvasReady(true)
+                  })
+                }}
+                fitViewOptions={reactFlowFitViewOptions}
+                minZoom={0.1}
+                maxZoom={1.3}
+                panOnScroll
+                defaultEdgeOptions={defaultEdgeOptions}
+                proOptions={reactFlowProOptions}
+                connectionLineStyle={connectionLineStyle}
+                connectionLineType={ConnectionLineType.SmoothStep}
+                onPaneClick={onPaneClick}
+                onEdgeClick={onEdgeClick}
+                onNodeClick={handleNodeClick}
+                onPaneContextMenu={handlePaneContextMenu}
+                onNodeContextMenu={handleNodeContextMenu}
+                onSelectionContextMenu={handleSelectionContextMenu}
+                onPointerMove={handleCanvasPointerMove}
+                onPointerLeave={handleCanvasPointerLeave}
+                elementsSelectable={true}
+                selectionOnDrag={selectionProps.selectionOnDrag}
+                selectionMode={SelectionMode.Partial}
+                panOnDrag={selectionProps.panOnDrag}
+                selectionKeyCode={selectionProps.selectionKeyCode}
+                multiSelectionKeyCode={['Meta', 'Control', 'Shift']}
+                nodesConnectable={effectivePermissions.canEdit}
+                nodesDraggable={effectivePermissions.canEdit}
+                draggable={false}
+                noWheelClassName='allow-scroll'
+                edgesFocusable={true}
+                edgesUpdatable={effectivePermissions.canEdit}
+                className={`workflow-container h-full bg-[var(--bg)] transition-opacity duration-150 ${reactFlowStyles} ${isCanvasReady ? 'opacity-100' : 'opacity-0'} ${isHandMode ? 'canvas-mode-hand' : 'canvas-mode-cursor'}`}
+                onNodeDrag={effectivePermissions.canEdit ? onNodeDrag : undefined}
+                onNodeDragStop={effectivePermissions.canEdit ? onNodeDragStop : undefined}
+                onSelectionDragStart={
+                  effectivePermissions.canEdit ? onSelectionDragStart : undefined
+                }
+                onSelectionDrag={effectivePermissions.canEdit ? onSelectionDrag : undefined}
+                onSelectionDragStop={effectivePermissions.canEdit ? onSelectionDragStop : undefined}
+                onNodeDragStart={effectivePermissions.canEdit ? onNodeDragStart : undefined}
+                snapToGrid={snapToGrid}
+                snapGrid={snapGrid}
+                elevateEdgesOnSelect={true}
+                onlyRenderVisibleElements={false}
+                deleteKeyCode={null}
+                elevateNodesOnSelect={false}
+                autoPanOnConnect={effectivePermissions.canEdit}
+                autoPanOnNodeDrag={effectivePermissions.canEdit}
+              />
 
-            <Cursors />
+              <Cursors />
 
-            <WorkflowControls />
+              <WorkflowControls />
 
-            <Suspense fallback={null}>
-              <LazyChat />
-            </Suspense>
+              <Suspense fallback={null}>
+                <LazyChat />
+              </Suspense>
 
-            {/* Context Menus */}
-            <BlockMenu
-              isOpen={isBlockMenuOpen}
-              position={contextMenuPosition}
-              menuRef={contextMenuRef}
-              onClose={closeContextMenu}
-              selectedBlocks={contextMenuBlocks}
-              onCopy={handleContextCopy}
-              onPaste={handleContextPaste}
-              onDuplicate={handleContextDuplicate}
-              onDelete={handleContextDelete}
-              onToggleEnabled={handleContextToggleEnabled}
-              onToggleHandles={handleContextToggleHandles}
-              onRemoveFromSubflow={handleContextRemoveFromSubflow}
-              onOpenEditor={handleContextOpenEditor}
-              onRename={handleContextRename}
-              onRunFromBlock={handleContextRunFromBlock}
-              onRunUntilBlock={handleContextRunUntilBlock}
-              hasClipboard={hasClipboard()}
-              showRemoveFromSubflow={contextMenuBlocks.some(
-                (b) => b.parentId && (b.parentType === 'loop' || b.parentType === 'parallel')
-              )}
-              canRunFromBlock={runFromBlockState.canRun}
-              disableEdit={
-                !effectivePermissions.canEdit ||
-                contextMenuBlocks.some((b) => b.locked || b.isParentLocked)
-              }
-              userCanEdit={effectivePermissions.canEdit}
-              isExecuting={isExecuting}
-              isPositionalTrigger={
-                contextMenuBlocks.length === 1 &&
-                edges.filter((e) => e.target === contextMenuBlocks[0]?.id).length === 0
-              }
-              onToggleLocked={handleContextToggleLocked}
-              canAdmin={effectivePermissions.canAdmin}
-            />
+              <BlockMenu
+                isOpen={isBlockMenuOpen}
+                position={contextMenuPosition}
+                menuRef={contextMenuRef}
+                onClose={closeContextMenu}
+                selectedBlocks={contextMenuBlocks}
+                onCopy={handleContextCopy}
+                onPaste={handleContextPaste}
+                onDuplicate={handleContextDuplicate}
+                onDelete={handleContextDelete}
+                onToggleEnabled={handleContextToggleEnabled}
+                onToggleHandles={handleContextToggleHandles}
+                onRemoveFromSubflow={handleContextRemoveFromSubflow}
+                onOpenEditor={handleContextOpenEditor}
+                onRename={handleContextRename}
+                onRunFromBlock={handleContextRunFromBlock}
+                onRunUntilBlock={handleContextRunUntilBlock}
+                hasClipboard={hasClipboard()}
+                showRemoveFromSubflow={contextMenuBlocks.some(
+                  (b) => b.parentId && (b.parentType === 'loop' || b.parentType === 'parallel')
+                )}
+                canRunFromBlock={runFromBlockState.canRun}
+                disableEdit={
+                  !effectivePermissions.canEdit ||
+                  contextMenuBlocks.some((b) => b.locked || b.isParentLocked)
+                }
+                userCanEdit={effectivePermissions.canEdit}
+                isExecuting={isExecuting}
+                isPositionalTrigger={
+                  contextMenuBlocks.length === 1 &&
+                  edges.filter((e) => e.target === contextMenuBlocks[0]?.id).length === 0
+                }
+                onToggleLocked={handleContextToggleLocked}
+                canAdmin={effectivePermissions.canAdmin}
+              />
 
-            <CanvasMenu
-              isOpen={isPaneMenuOpen}
-              position={contextMenuPosition}
-              menuRef={contextMenuRef}
-              onClose={closeContextMenu}
-              onUndo={undo}
-              onRedo={redo}
-              onPaste={handleContextPaste}
-              onAddBlock={handleContextAddBlock}
-              onAutoLayout={handleAutoLayout}
-              onFitToView={() => fitViewToBounds({ padding: 0.1, duration: 300 })}
-              onOpenLogs={handleContextOpenLogs}
-              onToggleVariables={handleContextToggleVariables}
-              onToggleChat={handleContextToggleChat}
-              isVariablesOpen={isVariablesOpen}
-              isChatOpen={isChatOpen}
-              hasClipboard={hasClipboard()}
-              disableEdit={!effectivePermissions.canEdit}
-              canUndo={canUndo}
-              canRedo={canRedo}
-              hasLockedBlocks={hasLockedBlocks}
-              onToggleWorkflowLock={handleToggleWorkflowLock}
-              allBlocksLocked={allBlocksLocked}
-              canAdmin={effectivePermissions.canAdmin}
-              hasBlocks={hasBlocks}
-            />
-          </>
-        )}
+              <CanvasMenu
+                isOpen={isPaneMenuOpen}
+                position={contextMenuPosition}
+                menuRef={contextMenuRef}
+                onClose={closeContextMenu}
+                onUndo={undo}
+                onRedo={redo}
+                onPaste={handleContextPaste}
+                onAddBlock={handleContextAddBlock}
+                onAutoLayout={handleAutoLayout}
+                onFitToView={() => fitViewToBounds({ padding: 0.1, duration: 300 })}
+                onOpenLogs={handleContextOpenLogs}
+                onToggleVariables={handleContextToggleVariables}
+                onToggleChat={handleContextToggleChat}
+                isVariablesOpen={isVariablesOpen}
+                isChatOpen={isChatOpen}
+                hasClipboard={hasClipboard()}
+                disableEdit={!effectivePermissions.canEdit}
+                canUndo={canUndo}
+                canRedo={canRedo}
+                hasLockedBlocks={hasLockedBlocks}
+                onToggleWorkflowLock={handleToggleWorkflowLock}
+                allBlocksLocked={allBlocksLocked}
+                canAdmin={effectivePermissions.canAdmin}
+                hasBlocks={hasBlocks}
+              />
+            </>
+          )}
 
-        <Notifications />
+          <Notifications />
 
-        {isWorkflowReady && isWorkflowEmpty && effectivePermissions.canEdit && <CommandList />}
+          {isWorkflowReady && isWorkflowEmpty && effectivePermissions.canEdit && <CommandList />}
+        </div>
 
-        <Panel />
+        <DiffControls />
+
+        <Terminal />
       </div>
 
-      <DiffControls />
-
-      <Terminal />
+      <Panel />
 
       {oauthModal && (
         <Suspense fallback={null}>
