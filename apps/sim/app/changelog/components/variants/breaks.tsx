@@ -1,96 +1,33 @@
+'use client'
+
+import { useCallback, useRef, useState } from 'react'
 import { BookOpen, Github, Rss } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ChangelogBlocks } from '@/app/changelog/components/changelog-blocks'
-import { Breaks } from '@/app/changelog/components/variants/breaks'
-import { Scroll } from '@/app/changelog/components/variants/scroll'
+import type { ChangelogEntry } from '@/app/changelog/components/changelog-content'
+import { CommitHeatmap, type CommitHeatmapHandle } from '@/app/changelog/components/commit-heatmap'
 import ChangelogList from '@/app/changelog/components/timeline-list'
 
-export interface ChangelogEntry {
-  tag: string
-  title: string
-  content: string
-  date: string
-  url: string
-  contributors?: string[]
+interface BreaksProps {
+  entries: ChangelogEntry[]
 }
 
-export type ChangelogVariant = 'breaks' | 'scroll'
+export function Breaks({ entries }: BreaksProps) {
+  const [loadedEntries, setLoadedEntries] = useState<ChangelogEntry[]>(entries)
+  const [activeTag, setActiveTag] = useState<string | null>(entries[0]?.tag ?? null)
+  const heatmapRef = useRef<CommitHeatmapHandle>(null)
 
-const VARIANTS = {
-  breaks: Breaks,
-  scroll: Scroll,
-} as const
+  const handleActiveEntryChange = useCallback((tag: string | null) => {
+    setActiveTag(tag)
+  }, [])
 
-function extractMentions(body: string): string[] {
-  const matches = body.match(/@([A-Za-z0-9-]+)/g) ?? []
-  const uniq = Array.from(new Set(matches.map((m) => m.slice(1))))
-  return uniq
-}
+  const handleEntriesChange = useCallback((nextEntries: ChangelogEntry[]) => {
+    setLoadedEntries(nextEntries)
+  }, [])
 
-interface ChangelogContentProps {
-  variant?: ChangelogVariant
-}
-
-const RELEASES_PER_PAGE = 100
-const MAX_RELEASE_PAGES = 10
-
-interface GitHubRelease {
-  prerelease: boolean
-  tag_name: string
-  name: string | null
-  body: string | null
-  published_at: string
-  html_url: string
-}
-
-function mapReleasesToEntries(releases: GitHubRelease[]): ChangelogEntry[] {
-  return releases
-    .filter((release) => !release.prerelease)
-    .map((release) => ({
-      tag: release.tag_name,
-      title: release.name || release.tag_name,
-      content: String(release.body || ''),
-      date: release.published_at,
-      url: release.html_url,
-      contributors: extractMentions(String(release.body || '')),
-    }))
-}
-
-export default async function ChangelogContent({ variant }: ChangelogContentProps) {
-  let entries: ChangelogEntry[] = []
-
-  try {
-    const allReleases: GitHubRelease[] = []
-
-    for (let page = 1; page <= MAX_RELEASE_PAGES; page += 1) {
-      const res = await fetch(
-        `https://api.github.com/repos/simstudioai/sim/releases?per_page=${RELEASES_PER_PAGE}&page=${page}`,
-        {
-          headers: { Accept: 'application/vnd.github+json' },
-          next: { revalidate: 3600 },
-        }
-      )
-
-      if (!res.ok) break
-
-      const releases: GitHubRelease[] = await res.json()
-      if (!Array.isArray(releases) || releases.length === 0) break
-
-      allReleases.push(...releases)
-
-      if (releases.length < RELEASES_PER_PAGE) break
-    }
-
-    entries = mapReleasesToEntries(allReleases)
-  } catch (err) {
-    entries = []
-  }
-
-  if (variant) {
-    const Layout = VARIANTS[variant]
-    return <Layout entries={entries} />
-  }
+  const handleProgressChange = useCallback((p: number) => {
+    heatmapRef.current?.setProgress(p)
+  }, [])
 
   return (
     <div className='min-h-screen bg-[#1C1C1C]'>
@@ -118,9 +55,6 @@ export default async function ChangelogContent({ variant }: ChangelogContentProp
               className='h-auto w-full'
             />
           </div>
-
-          {/* Animated colored block decorations */}
-          <ChangelogBlocks />
 
           <div className='relative z-10 mx-auto h-full max-w-xl md:flex md:flex-col md:justify-center'>
             <h1 className='mt-6 font-season font-[430] text-4xl text-white tracking-[-0.02em] sm:text-5xl'>
@@ -156,13 +90,22 @@ export default async function ChangelogContent({ variant }: ChangelogContentProp
                 RSS Feed
               </Link>
             </div>
+
+            <CommitHeatmap ref={heatmapRef} entries={loadedEntries} />
           </div>
         </div>
 
         {/* Right timeline */}
-        <div className='relative px-4 py-10 sm:px-6 md:px-8 md:py-12'>
-          <div className='relative max-w-2xl'>
-            <ChangelogList initialEntries={entries} />
+        <div className='relative overflow-x-clip px-4 py-10 sm:px-6 md:px-8 md:py-12'>
+          <div className='relative mx-auto max-w-2xl'>
+            <ChangelogList
+              initialEntries={entries}
+              variant='timeline'
+              pageSize={10}
+              onEntriesChange={handleEntriesChange}
+              onActiveEntryChange={handleActiveEntryChange}
+              onProgressChange={handleProgressChange}
+            />
           </div>
         </div>
       </div>

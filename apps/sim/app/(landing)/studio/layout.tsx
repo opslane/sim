@@ -1,4 +1,7 @@
-import { Footer, Nav } from '@/app/(landing)/components'
+import Navbar from '@/app/(home)/components/navbar/navbar'
+import { Footer } from '@/app/(landing)/components'
+import { martianMono } from '@/app/_styles/fonts/martian-mono/martian-mono'
+import { season } from '@/app/_styles/fonts/season/season'
 
 export default function StudioLayout({ children }: { children: React.ReactNode }) {
   const orgJsonLd = {
@@ -23,7 +26,8 @@ export default function StudioLayout({ children }: { children: React.ReactNode }
   }
 
   return (
-    <div className='flex min-h-screen flex-col'>
+    <div className={`${season.variable} ${martianMono.variable} relative min-h-screen`}>
+      <div className='-z-50 pointer-events-none fixed inset-0 bg-[#1C1C1C]' />
       <script
         type='application/ld+json'
         dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
@@ -32,7 +36,7 @@ export default function StudioLayout({ children }: { children: React.ReactNode }
         type='application/ld+json'
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
       />
-      <Nav hideAuthButtons={false} variant='landing' />
+      <Navbar />
       <main className='relative flex-1'>{children}</main>
       <Footer fullWidth={true} />
     </div>

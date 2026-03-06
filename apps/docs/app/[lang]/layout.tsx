@@ -99,6 +99,19 @@ export default async function Layout({ children, params }: LayoutProps) {
       </head>
       <body className='flex min-h-screen flex-col font-sans'>
         <Script src='https://assets.onedollarstats.com/stonks.js' strategy='lazyOnload' />
+        {process.env.REACT_GRAB_ENABLED === 'TRUE' && (
+          <Script
+            src='https://unpkg.com/react-grab/dist/index.global.js'
+            crossOrigin='anonymous'
+            strategy='beforeInteractive'
+          />
+        )}
+        {process.env.REACT_GRAB_ENABLED === 'TRUE' && (
+          <Script
+            src='https://unpkg.com/@react-grab/cursor/dist/client.global.js'
+            strategy='lazyOnload'
+          />
+        )}
         <RootProvider i18n={provider(lang)}>
           <Navbar />
           <DocsLayout

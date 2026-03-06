@@ -4,7 +4,6 @@ import {
   Collaboration,
   Enterprise,
   Features,
-  Footer,
   Hero,
   Navbar,
   Pricing,
@@ -12,6 +11,7 @@ import {
   Templates,
   Testimonials,
 } from '@/app/(home)/components'
+import { Footer } from '@/app/(landing)/components'
 
 /**
  * Landing page root component.
@@ -47,7 +47,7 @@ export default async function Landing() {
         <Enterprise />
         <Testimonials />
       </main>
-      <Footer />
+      <Footer fullWidth={true} />
     </div>
   )
 }

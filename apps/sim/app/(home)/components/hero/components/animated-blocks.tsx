@@ -50,6 +50,12 @@ const containerVariants: Variants = {
   exit: { transition: { staggerChildren: EXIT_STAGGER } },
 }
 
+const containerVariantsReverseExit: Variants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: ENTER_STAGGER } },
+  exit: { transition: { staggerChildren: EXIT_STAGGER, staggerDirection: -1 } },
+}
+
 const blockVariants: Variants = {
   hidden: { opacity: 0, transition: { duration: 0 } },
   visible: (targetOpacity: number) => ({
@@ -76,12 +82,14 @@ function AnimatedBlocksSvg({
   viewBox,
   rects,
   animState = 'entering',
+  reverseExit = false,
 }: {
   width: number
   height: number
   viewBox: string
   rects: readonly BlockRect[]
   animState?: BlockAnimState
+  reverseExit?: boolean
 }) {
   return (
     <motion.svg
@@ -93,7 +101,7 @@ function AnimatedBlocksSvg({
       className='h-auto w-full'
       initial='hidden'
       animate={toAnimateValue(animState)}
-      variants={containerVariants}
+      variants={reverseExit ? containerVariantsReverseExit : containerVariants}
     >
       {rects.map((r, i) => (
         <motion.rect
@@ -516,10 +524,11 @@ export function useBlockCycle(): Record<BlockPosition, BlockAnimState> {
 
 interface AnimatedBlockProps {
   animState?: BlockAnimState
+  reverseExit?: boolean
 }
 
 /** Two-row horizontal strip at the top-right of the hero. */
-export function BlocksTopRightAnimated({ animState = 'entering' }: AnimatedBlockProps) {
+export function BlocksTopRightAnimated({ animState = 'entering', reverseExit }: AnimatedBlockProps) {
   return (
     <AnimatedBlocksSvg
       width={295}
@@ -527,12 +536,13 @@ export function BlocksTopRightAnimated({ animState = 'entering' }: AnimatedBlock
       viewBox='0 0 295 34'
       rects={TOP_RIGHT_RECTS}
       animState={animState}
+      reverseExit={reverseExit}
     />
   )
 }
 
 /** Two-row horizontal strip at the top-left of the hero. */
-export function BlocksTopLeftAnimated({ animState = 'entering' }: AnimatedBlockProps) {
+export function BlocksTopLeftAnimated({ animState = 'entering', reverseExit }: AnimatedBlockProps) {
   return (
     <AnimatedBlocksSvg
       width={295}
@@ -540,12 +550,13 @@ export function BlocksTopLeftAnimated({ animState = 'entering' }: AnimatedBlockP
       viewBox='0 0 295 34'
       rects={TOP_LEFT_RECTS}
       animState={animState}
+      reverseExit={reverseExit}
     />
   )
 }
 
 /** Two-column vertical strip on the left edge of the screenshot. */
-export function BlocksLeftAnimated({ animState = 'entering' }: AnimatedBlockProps) {
+export function BlocksLeftAnimated({ animState = 'entering', reverseExit }: AnimatedBlockProps) {
   return (
     <AnimatedBlocksSvg
       width={34}
@@ -553,12 +564,13 @@ export function BlocksLeftAnimated({ animState = 'entering' }: AnimatedBlockProp
       viewBox='0 0 34 226.021'
       rects={LEFT_RECTS}
       animState={animState}
+      reverseExit={reverseExit}
     />
   )
 }
 
 /** Two-column vertical strip on the right edge of the screenshot. */
-export function BlocksRightSideAnimated({ animState = 'entering' }: AnimatedBlockProps) {
+export function BlocksRightSideAnimated({ animState = 'entering', reverseExit }: AnimatedBlockProps) {
   return (
     <AnimatedBlocksSvg
       width={34}
@@ -566,12 +578,13 @@ export function BlocksRightSideAnimated({ animState = 'entering' }: AnimatedBloc
       viewBox='0 0 34 226.021'
       rects={RIGHT_SIDE_RECTS}
       animState={animState}
+      reverseExit={reverseExit}
     />
   )
 }
 
 /** Two-column vertical strip at the far-right edge of the screen. */
-export function BlocksRightAnimated({ animState = 'entering' }: AnimatedBlockProps) {
+export function BlocksRightAnimated({ animState = 'entering', reverseExit }: AnimatedBlockProps) {
   return (
     <AnimatedBlocksSvg
       width={34}
@@ -579,6 +592,7 @@ export function BlocksRightAnimated({ animState = 'entering' }: AnimatedBlockPro
       viewBox='0 0 34 204.769'
       rects={RIGHT_RECTS}
       animState={animState}
+      reverseExit={reverseExit}
     />
   )
 }
