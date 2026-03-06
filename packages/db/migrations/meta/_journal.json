@@ -1128,27 +1128,6 @@
       "when": 1772651559844,
       "tag": "0161_nostalgic_nightmare",
       "breakpoints": true
-    },
-    {
-      "idx": 162,
-      "version": "7",
-      "when": 1772738797142,
-      "tag": "0162_oval_master_mold",
-      "breakpoints": true
-    },
-    {
-      "idx": 163,
-      "version": "7",
-      "when": 1772741113932,
-      "tag": "0163_zippy_red_wolf",
-      "breakpoints": true
-    },
-    {
-      "idx": 164,
-      "version": "7",
-      "when": 1772743720966,
-      "tag": "0164_fantastic_toad_men",
-      "breakpoints": true
     }
   ]
 }

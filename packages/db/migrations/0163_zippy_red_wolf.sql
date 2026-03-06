@@ -1,1 +1,0 @@
-ALTER TABLE "workflow_schedule" ADD COLUMN "job_title" text;
