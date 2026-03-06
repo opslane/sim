@@ -13,6 +13,7 @@ import { buildContainerIterationContext } from '@/executor/utils/iteration-conte
 import { ParallelExpander } from '@/executor/utils/parallel-expansion'
 import {
   addSubflowErrorLog,
+  emitEmptySubflowEvents,
   extractBranchIndex,
   resolveArrayInput,
   validateMaxCount,
@@ -108,7 +109,7 @@ export class ParallelOrchestrator {
 
       this.state.setBlockOutput(parallelId, { results: [] })
 
-      this.emitEmptySubflowEvents(ctx, parallelId, 'parallel')
+      emitEmptySubflowEvents(ctx, parallelId, 'parallel', this.contextExtensions)
 
       logger.info('Parallel scope initialized with empty distribution, skipping body', {
         parallelId,
@@ -373,46 +374,5 @@ export class ParallelOrchestrator {
       }
     }
     return undefined
-  }
-
-  private emitEmptySubflowEvents(ctx: ExecutionContext, blockId: string, blockType: string): void {
-    const now = new Date().toISOString()
-    const executionOrder = getNextExecutionOrder(ctx)
-    const output = { results: [] }
-    const block = ctx.workflow?.blocks.find((b) => b.id === blockId)
-    const blockName = block?.metadata?.name ?? blockType
-    const iterationContext = buildContainerIterationContext(ctx, blockId)
-
-    ctx.blockLogs.push({
-      blockId,
-      blockName,
-      blockType,
-      startedAt: now,
-      endedAt: now,
-      durationMs: DEFAULTS.EXECUTION_TIME,
-      success: true,
-      output,
-      executionOrder,
-    })
-
-    if (this.contextExtensions?.onBlockStart) {
-      this.contextExtensions.onBlockStart(blockId, blockName, blockType, executionOrder)
-    }
-
-    if (this.contextExtensions?.onBlockComplete) {
-      this.contextExtensions.onBlockComplete(
-        blockId,
-        blockName,
-        blockType,
-        {
-          output,
-          executionTime: DEFAULTS.EXECUTION_TIME,
-          startedAt: now,
-          executionOrder,
-          endedAt: now,
-        },
-        iterationContext
-      )
-    }
   }
 }

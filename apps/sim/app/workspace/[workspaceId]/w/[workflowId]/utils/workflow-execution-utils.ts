@@ -56,6 +56,10 @@ function shouldActivateEdgeClient(
     case 'loop-end-source':
     case 'parallel-start-source':
     case 'parallel-end-source':
+    case 'loop_exit':
+    case 'loop_continue':
+    case 'loop_continue_alt':
+    case 'parallel_exit':
       return true
     default:
       return true

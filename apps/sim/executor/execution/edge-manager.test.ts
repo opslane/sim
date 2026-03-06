@@ -1649,7 +1649,7 @@ describe('EdgeManager', () => {
       // Scenario: Loop with Function 1 → Condition 1 → Function 2
       // Condition has "if" branch → Function 2
       // Condition has "else" branch → NO connection (dead end)
-      // When else is selected (selectedOption: null), the loop should continue
+      // When else is selected, the loop sentinel should still fire
       //
       // DAG structure:
       //   sentinel_start → func1 → condition → (if) → func2 → sentinel_end
@@ -1657,11 +1657,12 @@ describe('EdgeManager', () => {
       //   sentinel_end → (loop_continue) → sentinel_start
       //
       // When condition takes else with no edge:
-      // - selectedOption: null (no condition matches)
+      // - selectedOption is set (condition made a routing decision)
       // - The "if" edge gets deactivated
       // - func2 has no other active incoming edges, so edge to sentinel_end gets deactivated
-      // - sentinel_end has no active incoming edges and should become ready
+      // - sentinel_end is the enclosing loop's sentinel and should become ready
 
+      const loopId = 'loop-1'
       const sentinelStartId = 'sentinel-start'
       const sentinelEndId = 'sentinel-end'
       const func1Id = 'func1'
@@ -1669,14 +1670,21 @@ describe('EdgeManager', () => {
       const func2Id = 'func2'
 
       const sentinelStartNode = createMockNode(sentinelStartId, [{ target: func1Id }])
+      sentinelStartNode.metadata = { isSentinel: true, sentinelType: 'start', loopId }
+
       const func1Node = createMockNode(func1Id, [{ target: conditionId }], [sentinelStartId])
-      // Condition only has "if" branch, no "else" edge (dead end)
+      func1Node.metadata = { loopId, isLoopNode: true }
+
       const conditionNode = createMockNode(
         conditionId,
         [{ target: func2Id, sourceHandle: 'condition-if' }],
         [func1Id]
       )
+      conditionNode.metadata = { loopId, isLoopNode: true }
+
       const func2Node = createMockNode(func2Id, [{ target: sentinelEndId }], [conditionId])
+      func2Node.metadata = { loopId, isLoopNode: true }
+
       const sentinelEndNode = createMockNode(
         sentinelEndId,
         [
@@ -1685,6 +1693,8 @@ describe('EdgeManager', () => {
         ],
         [func2Id]
       )
+      sentinelEndNode.metadata = { isSentinel: true, sentinelType: 'end', loopId }
+
       const afterLoopNode = createMockNode('after-loop', [], [sentinelEndId])
 
       const nodes = new Map<string, DAGNode>([
@@ -1699,22 +1709,17 @@ describe('EdgeManager', () => {
       const dag = createMockDAG(nodes)
       const edgeManager = new EdgeManager(dag)
 
-      // Simulate execution: sentinel_start → func1 → condition
-      // Clear incoming edges as execution progresses (simulating normal flow)
       func1Node.incomingEdges.clear()
       conditionNode.incomingEdges.clear()
 
-      // Condition takes "else" but there's no else edge
-      // selectedOption: null means no condition branch matches
+      // Condition selects dead-end else (selectedOption is set — routing decision made)
+      // but it's inside the loop, so the enclosing sentinel should still fire
       const ready = edgeManager.processOutgoingEdges(conditionNode, {
-        selectedOption: null,
-        conditionResult: false,
+        selectedOption: 'else-id',
+        conditionResult: true,
         selectedPath: null,
       })
 
-      // The "if" edge to func2 should be deactivated
-      // func2 has no other incoming edges, so its edge to sentinel_end gets deactivated
-      // sentinel_end has no active incoming edges and should be ready
       expect(ready).toContain(sentinelEndId)
     })
 
