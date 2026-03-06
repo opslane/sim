@@ -155,6 +155,41 @@ describe('HostedKeyRateLimiter', () => {
       expect(r4.keyIndex).toBe(0) // Wraps back
     })
 
+    it('should rebalance key selection after releasing an in-flight key', async () => {
+      const allowedResult: ConsumeResult = {
+        allowed: true,
+        tokensRemaining: 9,
+        resetAt: new Date(Date.now() + 60000),
+      }
+      mockAdapter.consumeTokens.mockResolvedValue(allowedResult)
+
+      const r1 = await rateLimiter.acquireKey(
+        testProvider,
+        envKeyPrefix,
+        perRequestRateLimit,
+        'workspace-1'
+      )
+      const r2 = await rateLimiter.acquireKey(
+        testProvider,
+        envKeyPrefix,
+        perRequestRateLimit,
+        'workspace-2'
+      )
+
+      expect(r1.keyIndex).toBe(0)
+      expect(r2.keyIndex).toBe(1)
+
+      rateLimiter.releaseKey(testProvider, 0)
+
+      const r3 = await rateLimiter.acquireKey(
+        testProvider,
+        envKeyPrefix,
+        perRequestRateLimit,
+        'workspace-3'
+      )
+      expect(r3.keyIndex).toBe(0)
+    })
+
     it('should handle partial key availability', async () => {
       const allowedResult: ConsumeResult = {
         allowed: true,

@@ -26,6 +26,7 @@ const { mockIsHosted, mockEnv, mockGetBYOKKey, mockLogFixedUsage, mockRateLimite
       acquireKey: vi.fn(),
       preConsumeCapacity: vi.fn(),
       consumeCapacity: vi.fn(),
+      releaseKey: vi.fn(),
     },
   })
 )
@@ -1336,6 +1337,73 @@ describe('Hosted Key Injection', () => {
     // With isHosted=false, BYOK won't be called - this is expected behavior
     // The test documents the current behavior
     Object.assign(tools, originalTools)
+  })
+
+  it('should not overwrite user-provided API key in hosted mode', async () => {
+    mockIsHosted.value = true
+    const mockTool = {
+      id: 'test_user_key_hosted',
+      name: 'Test User Key Hosted',
+      description: 'A test tool with hosting config',
+      version: '1.0.0',
+      params: {
+        apiKey: { type: 'string', required: true, visibility: 'user-only' as const },
+      },
+      hosting: {
+        envKeyPrefix: 'TEST_API',
+        apiKeyParam: 'apiKey',
+        byokProviderId: 'exa',
+        pricing: {
+          type: 'per_request' as const,
+          cost: 0.005,
+        },
+        rateLimit: {
+          mode: 'per_request' as const,
+          requestsPerMinute: 100,
+        },
+      },
+      request: {
+        url: '/api/test/endpoint',
+        method: 'POST' as const,
+        headers: (params: any) => ({
+          'Content-Type': 'application/json',
+          'x-api-key': params.apiKey,
+        }),
+      },
+      transformResponse: vi.fn().mockResolvedValue({
+        success: true,
+        output: { result: 'success' },
+      }),
+    }
+
+    const originalTools = { ...tools }
+    ;(tools as any).test_user_key_hosted = mockTool
+
+    global.fetch = Object.assign(
+      vi.fn().mockImplementation(async () => ({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        json: () => Promise.resolve({ success: true }),
+      })),
+      { preconnect: vi.fn() }
+    ) as typeof fetch
+
+    const mockContext = createToolExecutionContext()
+    const result = await executeTool(
+      'test_user_key_hosted',
+      { apiKey: 'user-provided-key' },
+      false,
+      mockContext
+    )
+
+    expect(result.success).toBe(true)
+    expect(mockGetBYOKKey).not.toHaveBeenCalled()
+    expect(mockRateLimiterFns.acquireKey).not.toHaveBeenCalled()
+    expect(mockRateLimiterFns.releaseKey).not.toHaveBeenCalled()
+
+    Object.assign(tools, originalTools)
+    mockIsHosted.value = false
   })
 
   it('should use per_request pricing model correctly', async () => {

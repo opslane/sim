@@ -40,6 +40,8 @@ const logger = createLogger('Tools')
 interface HostedKeyInjectionResult {
   isUsingHostedKey: boolean
   envVarName?: string
+  provider?: string
+  keyIndex?: number
 }
 
 /**
@@ -57,6 +59,10 @@ async function injectHostedKeyIfNeeded(
   if (!isHosted) return { isUsingHostedKey: false }
 
   const { envKeyPrefix, apiKeyParam, byokProviderId, rateLimit } = tool.hosting
+  const existingApiKey = params[apiKeyParam]
+  if (existingApiKey !== undefined && existingApiKey !== null && existingApiKey !== '') {
+    return { isUsingHostedKey: false }
+  }
 
   // Check BYOK workspace key first
   if (byokProviderId && executionContext?.workspaceId) {
@@ -132,6 +138,8 @@ async function injectHostedKeyIfNeeded(
   return {
     isUsingHostedKey: true,
     envVarName: acquireResult.envVarName,
+    provider,
+    keyIndex: acquireResult.keyIndex,
   }
 }
 
@@ -547,6 +555,7 @@ export async function executeTool(
   const startTime = new Date()
   const startTimeISO = startTime.toISOString()
   const requestId = generateRequestId()
+  let hostedKeyInfo: HostedKeyInjectionResult = { isUsingHostedKey: false }
 
   try {
     let tool: ToolConfig | undefined
@@ -615,7 +624,7 @@ export async function executeTool(
     }
 
     // Inject hosted API key if tool supports it and user didn't provide one
-    const hostedKeyInfo = await injectHostedKeyIfNeeded(
+    hostedKeyInfo = await injectHostedKeyIfNeeded(
       tool,
       contextParams,
       executionContext,
@@ -929,6 +938,18 @@ export async function executeTool(
         endTime: endTimeISO,
         duration,
       },
+    }
+  } finally {
+    if (
+      hostedKeyInfo.isUsingHostedKey &&
+      hostedKeyInfo.provider &&
+      typeof hostedKeyInfo.keyIndex === 'number'
+    ) {
+      try {
+        getHostedKeyRateLimiter().releaseKey(hostedKeyInfo.provider, hostedKeyInfo.keyIndex)
+      } catch (error) {
+        logger.warn(`[${requestId}] Failed to release hosted key for ${toolId}:`, error)
+      }
     }
   }
 }

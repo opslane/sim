@@ -52,7 +52,7 @@ interface AvailableKey {
  */
 export class HostedKeyRateLimiter {
   private storage: RateLimitStorageAdapter
-  /** In-memory request counters per key: "provider:keyIndex" -> count */
+  /** In-memory in-flight request counters per key: "provider:keyIndex" -> count */
   private keyRequestCounts = new Map<string, number>()
 
   constructor(storage?: RateLimitStorageAdapter) {
@@ -345,6 +345,21 @@ export class HostedKeyRateLimiter {
   private incrementKeyCount(provider: string, keyIndex: number): void {
     const key = `${provider}:${keyIndex}`
     this.keyRequestCounts.set(key, (this.keyRequestCounts.get(key) ?? 0) + 1)
+  }
+
+  private decrementKeyCount(provider: string, keyIndex: number): void {
+    const key = `${provider}:${keyIndex}`
+    const current = this.keyRequestCounts.get(key)
+    if (!current) return
+    if (current <= 1) {
+      this.keyRequestCounts.delete(key)
+      return
+    }
+    this.keyRequestCounts.set(key, current - 1)
+  }
+
+  releaseKey(provider: string, keyIndex: number): void {
+    this.decrementKeyCount(provider, keyIndex)
   }
 }
 
