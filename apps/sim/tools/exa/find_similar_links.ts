@@ -86,8 +86,8 @@ export const findSimilarLinksTool: ToolConfig<
     pricing: {
       type: 'custom',
       getCost: (_params, output) => {
-        // Use _costDollars from Exa API response (internal field, stripped from final output)
-        const costDollars = output._costDollars as { total?: number } | undefined
+        // Use __costDollars from Exa API response (internal field, stripped from final output)
+        const costDollars = output.__costDollars as { total?: number } | undefined
         if (costDollars?.total) {
           return { cost: costDollars.total, metadata: { costDollars } }
         }
@@ -167,7 +167,7 @@ export const findSimilarLinksTool: ToolConfig<
           highlights: result.highlights,
           score: result.score || 0,
         })),
-        _costDollars: data.costDollars,
+        __costDollars: data.costDollars,
       },
     }
   },

@@ -71,8 +71,8 @@ export const getContentsTool: ToolConfig<ExaGetContentsParams, ExaGetContentsRes
     pricing: {
       type: 'custom',
       getCost: (_params, output) => {
-        // Use _costDollars from Exa API response (internal field, stripped from final output)
-        const costDollars = output._costDollars as { total?: number } | undefined
+        // Use __costDollars from Exa API response (internal field, stripped from final output)
+        const costDollars = output.__costDollars as { total?: number } | undefined
         if (costDollars?.total) {
           return { cost: costDollars.total, metadata: { costDollars } }
         }
@@ -158,7 +158,7 @@ export const getContentsTool: ToolConfig<ExaGetContentsParams, ExaGetContentsRes
           summary: result.summary || '',
           highlights: result.highlights,
         })),
-        _costDollars: data.costDollars,
+        __costDollars: data.costDollars,
       },
     }
   },

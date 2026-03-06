@@ -326,13 +326,15 @@ async function reportCustomDimensionUsage(
 }
 
 /**
- * Strips internal fields (keys starting with underscore) from output.
- * Used to hide internal data (e.g., _costDollars) from end users.
+ * Strips internal fields (keys starting with `__`) from tool output before
+ * returning to users. The double-underscore prefix is reserved for transient
+ * data (e.g. `__costDollars`) and will never collide with legitimate API
+ * fields like `_id`.
  */
 function stripInternalFields(output: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(output)) {
-    if (!key.startsWith('_')) {
+    if (!key.startsWith('__')) {
       result[key] = value
     }
   }
@@ -368,6 +370,7 @@ async function applyHostedKeyCostToResult(
       },
     }
   }
+
 }
 
 /**
@@ -785,7 +788,6 @@ export async function executeTool(
         )
       }
 
-      // Strip internal fields (keys starting with _) from output before returning
       const strippedOutput = stripInternalFields(finalResult.output || {})
 
       return {
@@ -841,7 +843,6 @@ export async function executeTool(
       )
     }
 
-    // Strip internal fields (keys starting with _) from output before returning
     const strippedOutput = stripInternalFields(finalResult.output || {})
 
     return {

@@ -96,8 +96,8 @@ export const searchTool: ToolConfig<ExaSearchParams, ExaSearchResponse> = {
     pricing: {
       type: 'custom',
       getCost: (params, output) => {
-        // Use _costDollars from Exa API response (internal field, stripped from final output)
-        const costDollars = output._costDollars as { total?: number } | undefined
+        // Use __costDollars from Exa API response (internal field, stripped from final output)
+        const costDollars = output.__costDollars as { total?: number } | undefined
         if (costDollars?.total) {
           return { cost: costDollars.total, metadata: { costDollars } }
         }
@@ -199,7 +199,7 @@ export const searchTool: ToolConfig<ExaSearchParams, ExaSearchResponse> = {
           highlights: result.highlights,
           score: result.score,
         })),
-        _costDollars: data.costDollars,
+        __costDollars: data.costDollars,
       },
     }
   },

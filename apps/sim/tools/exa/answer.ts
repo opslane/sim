@@ -37,8 +37,8 @@ export const answerTool: ToolConfig<ExaAnswerParams, ExaAnswerResponse> = {
     pricing: {
       type: 'custom',
       getCost: (_params, output) => {
-        // Use _costDollars from Exa API response (internal field, stripped from final output)
-        const costDollars = output._costDollars as { total?: number } | undefined
+        // Use __costDollars from Exa API response (internal field, stripped from final output)
+        const costDollars = output.__costDollars as { total?: number } | undefined
         if (costDollars?.total) {
           return { cost: costDollars.total, metadata: { costDollars } }
         }
@@ -86,7 +86,7 @@ export const answerTool: ToolConfig<ExaAnswerParams, ExaAnswerResponse> = {
             url: citation.url,
             text: citation.text || '',
           })) || [],
-        _costDollars: data.costDollars,
+        __costDollars: data.costDollars,
       },
     }
   },
