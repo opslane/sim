@@ -55,7 +55,7 @@ export interface ExaSearchResult {
 export interface ExaSearchResponse extends ToolResponse {
   output: {
     results: ExaSearchResult[]
-    costDollars?: ExaCostDollars
+    __costDollars?: ExaCostDollars
   }
 }
 
@@ -84,7 +84,7 @@ export interface ExaGetContentsResult {
 export interface ExaGetContentsResponse extends ToolResponse {
   output: {
     results: ExaGetContentsResult[]
-    costDollars?: ExaCostDollars
+    __costDollars?: ExaCostDollars
   }
 }
 
@@ -127,7 +127,7 @@ export interface ExaSimilarLink {
 export interface ExaFindSimilarLinksResponse extends ToolResponse {
   output: {
     similarLinks: ExaSimilarLink[]
-    costDollars?: ExaCostDollars
+    __costDollars?: ExaCostDollars
   }
 }
 
@@ -145,7 +145,7 @@ export interface ExaAnswerResponse extends ToolResponse {
       url: string
       text: string
     }[]
-    costDollars?: ExaCostDollars
+    __costDollars?: ExaCostDollars
   }
 }
 

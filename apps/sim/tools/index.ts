@@ -373,8 +373,8 @@ async function applyHostedKeyCostToResult(
     finalResult.output = {
       ...finalResult.output,
       cost: {
-        total: hostedKeyCost,
         ...metadata,
+        total: hostedKeyCost,
       },
     }
   }
