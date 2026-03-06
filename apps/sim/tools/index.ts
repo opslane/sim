@@ -340,6 +340,37 @@ function stripInternalFields(output: Record<string, unknown>): Record<string, un
 }
 
 /**
+ * Apply post-execution hosted-key cost tracking to a successful tool result.
+ * Reports custom dimension usage, calculates cost, and merges it into the output.
+ */
+async function applyHostedKeyCostToResult(
+  finalResult: ToolResponse,
+  tool: ToolConfig,
+  params: Record<string, unknown>,
+  executionContext: ExecutionContext | undefined,
+  requestId: string
+): Promise<void> {
+  await reportCustomDimensionUsage(tool, params, finalResult.output, executionContext, requestId)
+
+  const { cost: hostedKeyCost, metadata } = await processHostedKeyCost(
+    tool,
+    params,
+    finalResult.output,
+    executionContext,
+    requestId
+  )
+  if (hostedKeyCost > 0) {
+    finalResult.output = {
+      ...finalResult.output,
+      cost: {
+        total: hostedKeyCost,
+        ...metadata,
+      },
+    }
+  }
+}
+
+/**
  * Normalizes a tool ID by stripping resource ID suffix (UUID/tableId).
  * Workflow tools: 'workflow_executor_<uuid>' -> 'workflow_executor'
  * Knowledge tools: 'knowledge_search_<uuid>' -> 'knowledge_search'
@@ -744,32 +775,14 @@ export async function executeTool(
       const endTimeISO = endTime.toISOString()
       const duration = endTime.getTime() - startTime.getTime()
 
-      // Post-execution: report custom dimension usage and calculate cost
       if (hostedKeyInfo.isUsingHostedKey && finalResult.success) {
-        await reportCustomDimensionUsage(
+        await applyHostedKeyCostToResult(
+          finalResult,
           tool,
           contextParams,
-          finalResult.output,
           executionContext,
           requestId
         )
-
-        const { cost: hostedKeyCost, metadata } = await processHostedKeyCost(
-          tool,
-          contextParams,
-          finalResult.output,
-          executionContext,
-          requestId
-        )
-        if (hostedKeyCost > 0) {
-          finalResult.output = {
-            ...finalResult.output,
-            cost: {
-              total: hostedKeyCost,
-              ...metadata,
-            },
-          }
-        }
       }
 
       // Strip internal fields (keys starting with _) from output before returning
@@ -818,32 +831,14 @@ export async function executeTool(
     const endTimeISO = endTime.toISOString()
     const duration = endTime.getTime() - startTime.getTime()
 
-    // Post-execution: report custom dimension usage and calculate cost
     if (hostedKeyInfo.isUsingHostedKey && finalResult.success) {
-      await reportCustomDimensionUsage(
+      await applyHostedKeyCostToResult(
+        finalResult,
         tool,
         contextParams,
-        finalResult.output,
         executionContext,
         requestId
       )
-
-      const { cost: hostedKeyCost, metadata } = await processHostedKeyCost(
-        tool,
-        contextParams,
-        finalResult.output,
-        executionContext,
-        requestId
-      )
-      if (hostedKeyCost > 0) {
-        finalResult.output = {
-          ...finalResult.output,
-          cost: {
-            total: hostedKeyCost,
-            ...metadata,
-          },
-        }
-      }
     }
 
     // Strip internal fields (keys starting with _) from output before returning
