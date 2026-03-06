@@ -80,7 +80,7 @@ export const findSimilarLinksTool: ToolConfig<
     },
   },
   hosting: {
-    envKeys: ['EXA_API_KEY_1', 'EXA_API_KEY_2', 'EXA_API_KEY_3'],
+    envKeyPrefix: 'EXA_API_KEY',
     apiKeyParam: 'apiKey',
     byokProviderId: 'exa',
     pricing: {

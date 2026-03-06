@@ -31,7 +31,7 @@ export const answerTool: ToolConfig<ExaAnswerParams, ExaAnswerResponse> = {
     },
   },
   hosting: {
-    envKeys: ['EXA_API_KEY_1', 'EXA_API_KEY_2', 'EXA_API_KEY_3'],
+    envKeyPrefix: 'EXA_API_KEY',
     apiKeyParam: 'apiKey',
     byokProviderId: 'exa',
     pricing: {
@@ -49,7 +49,7 @@ export const answerTool: ToolConfig<ExaAnswerParams, ExaAnswerResponse> = {
     },
     rateLimit: {
       mode: 'per_request',
-      requestsPerMinute: 10,
+      requestsPerMinute: 5,
     },
   },
 

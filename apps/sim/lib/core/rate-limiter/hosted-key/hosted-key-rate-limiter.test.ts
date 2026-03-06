@@ -24,7 +24,7 @@ const createMockAdapter = (): MockAdapter => ({
 
 describe('HostedKeyRateLimiter', () => {
   const testProvider = 'exa'
-  const envKeys = ['EXA_API_KEY_1', 'EXA_API_KEY_2', 'EXA_API_KEY_3']
+  const envKeyPrefix = 'EXA_API_KEY'
   let mockAdapter: MockAdapter
   let rateLimiter: HostedKeyRateLimiter
   let originalEnv: NodeJS.ProcessEnv
@@ -40,6 +40,7 @@ describe('HostedKeyRateLimiter', () => {
     rateLimiter = new HostedKeyRateLimiter(mockAdapter as RateLimitStorageAdapter)
 
     originalEnv = { ...process.env }
+    process.env.EXA_API_KEY_COUNT = '3'
     process.env.EXA_API_KEY_1 = 'test-key-1'
     process.env.EXA_API_KEY_2 = 'test-key-2'
     process.env.EXA_API_KEY_3 = 'test-key-3'
@@ -51,11 +52,12 @@ describe('HostedKeyRateLimiter', () => {
 
   describe('acquireKey', () => {
     it('should return error when no keys are configured', async () => {
+      delete process.env.EXA_API_KEY_COUNT
       delete process.env.EXA_API_KEY_1
       delete process.env.EXA_API_KEY_2
       delete process.env.EXA_API_KEY_3
 
-      const result = await rateLimiter.acquireKey(testProvider, envKeys, perRequestRateLimit)
+      const result = await rateLimiter.acquireKey(testProvider, envKeyPrefix, perRequestRateLimit)
 
       expect(result.success).toBe(false)
       expect(result.error).toContain('No hosted keys configured')
@@ -71,7 +73,7 @@ describe('HostedKeyRateLimiter', () => {
 
       const result = await rateLimiter.acquireKey(
         testProvider,
-        envKeys,
+        envKeyPrefix,
         perRequestRateLimit,
         'workspace-123'
       )
@@ -92,7 +94,7 @@ describe('HostedKeyRateLimiter', () => {
 
       const result = await rateLimiter.acquireKey(
         testProvider,
-        envKeys,
+        envKeyPrefix,
         perRequestRateLimit,
         'workspace-123'
       )
@@ -112,25 +114,25 @@ describe('HostedKeyRateLimiter', () => {
 
       const r1 = await rateLimiter.acquireKey(
         testProvider,
-        envKeys,
+        envKeyPrefix,
         perRequestRateLimit,
         'workspace-1'
       )
       const r2 = await rateLimiter.acquireKey(
         testProvider,
-        envKeys,
+        envKeyPrefix,
         perRequestRateLimit,
         'workspace-2'
       )
       const r3 = await rateLimiter.acquireKey(
         testProvider,
-        envKeys,
+        envKeyPrefix,
         perRequestRateLimit,
         'workspace-3'
       )
       const r4 = await rateLimiter.acquireKey(
         testProvider,
-        envKeys,
+        envKeyPrefix,
         perRequestRateLimit,
         'workspace-4'
       )
@@ -142,7 +144,7 @@ describe('HostedKeyRateLimiter', () => {
     })
 
     it('should work without billingActorId (no rate limiting)', async () => {
-      const result = await rateLimiter.acquireKey(testProvider, envKeys, perRequestRateLimit)
+      const result = await rateLimiter.acquireKey(testProvider, envKeyPrefix, perRequestRateLimit)
 
       expect(result.success).toBe(true)
       expect(result.key).toBe('test-key-1')
@@ -152,13 +154,13 @@ describe('HostedKeyRateLimiter', () => {
     it('should handle partial key availability', async () => {
       delete process.env.EXA_API_KEY_2
 
-      const result = await rateLimiter.acquireKey(testProvider, envKeys, perRequestRateLimit)
+      const result = await rateLimiter.acquireKey(testProvider, envKeyPrefix, perRequestRateLimit)
 
       expect(result.success).toBe(true)
       expect(result.key).toBe('test-key-1')
       expect(result.envVarName).toBe('EXA_API_KEY_1')
 
-      const r2 = await rateLimiter.acquireKey(testProvider, envKeys, perRequestRateLimit)
+      const r2 = await rateLimiter.acquireKey(testProvider, envKeyPrefix, perRequestRateLimit)
       expect(r2.keyIndex).toBe(2) // Skips missing key 1
       expect(r2.envVarName).toBe('EXA_API_KEY_3')
     })
@@ -187,7 +189,7 @@ describe('HostedKeyRateLimiter', () => {
 
       const result = await rateLimiter.acquireKey(
         testProvider,
-        envKeys,
+        envKeyPrefix,
         customRateLimit,
         'workspace-1'
       )
@@ -215,7 +217,7 @@ describe('HostedKeyRateLimiter', () => {
 
       const result = await rateLimiter.acquireKey(
         testProvider,
-        envKeys,
+        envKeyPrefix,
         customRateLimit,
         'workspace-1'
       )
@@ -244,7 +246,7 @@ describe('HostedKeyRateLimiter', () => {
 
       const result = await rateLimiter.acquireKey(
         testProvider,
-        envKeys,
+        envKeyPrefix,
         customRateLimit,
         'workspace-1'
       )
@@ -255,7 +257,7 @@ describe('HostedKeyRateLimiter', () => {
     })
 
     it('should skip dimension pre-check without billingActorId', async () => {
-      const result = await rateLimiter.acquireKey(testProvider, envKeys, customRateLimit)
+      const result = await rateLimiter.acquireKey(testProvider, envKeyPrefix, customRateLimit)
 
       expect(result.success).toBe(true)
       expect(mockAdapter.consumeTokens).not.toHaveBeenCalled()
@@ -305,7 +307,7 @@ describe('HostedKeyRateLimiter', () => {
 
       const result = await rateLimiter.acquireKey(
         testProvider,
-        envKeys,
+        envKeyPrefix,
         multiDimensionConfig,
         'workspace-1'
       )

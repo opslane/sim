@@ -56,7 +56,7 @@ async function injectHostedKeyIfNeeded(
   if (!tool.hosting) return { isUsingHostedKey: false }
   if (!isHosted) return { isUsingHostedKey: false }
 
-  const { envKeys, apiKeyParam, byokProviderId, rateLimit } = tool.hosting
+  const { envKeyPrefix, apiKeyParam, byokProviderId, rateLimit } = tool.hosting
 
   // Check BYOK workspace key first
   if (byokProviderId && executionContext?.workspaceId) {
@@ -80,7 +80,7 @@ async function injectHostedKeyIfNeeded(
   const provider = byokProviderId || tool.id
   const billingActorId = executionContext?.workspaceId
 
-  const acquireResult = await rateLimiter.acquireKey(provider, envKeys, rateLimit, billingActorId)
+  const acquireResult = await rateLimiter.acquireKey(provider, envKeyPrefix, rateLimit, billingActorId)
 
   if (!acquireResult.success && acquireResult.billingActorRateLimited) {
     logger.warn(`[${requestId}] Billing actor ${billingActorId} rate limited for ${tool.id}`, {

@@ -90,7 +90,7 @@ export const searchTool: ToolConfig<ExaSearchParams, ExaSearchResponse> = {
     },
   },
   hosting: {
-    envKeys: ['EXA_API_KEY_1', 'EXA_API_KEY_2', 'EXA_API_KEY_3'],
+    envKeyPrefix: 'EXA_API_KEY',
     apiKeyParam: 'apiKey',
     byokProviderId: 'exa',
     pricing: {
@@ -115,7 +115,7 @@ export const searchTool: ToolConfig<ExaSearchParams, ExaSearchResponse> = {
     },
     rateLimit: {
       mode: 'per_request',
-      requestsPerMinute: 2,
+      requestsPerMinute: 5,
     },
   },
 

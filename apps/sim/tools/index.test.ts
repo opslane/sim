@@ -1288,7 +1288,7 @@ describe('Hosted Key Injection', () => {
         apiKey: { type: 'string', required: true },
       },
       hosting: {
-        envKeys: ['TEST_API_KEY'],
+        envKeyPrefix: 'TEST_API',
         apiKeyParam: 'apiKey',
         byokProviderId: 'exa',
         pricing: {
@@ -1348,7 +1348,7 @@ describe('Hosted Key Injection', () => {
         apiKey: { type: 'string', required: true },
       },
       hosting: {
-        envKeys: ['TEST_API_KEY'],
+        envKeyPrefix: 'TEST_API',
         apiKeyParam: 'apiKey',
         byokProviderId: 'exa',
         pricing: {
@@ -1391,7 +1391,7 @@ describe('Hosted Key Injection', () => {
         apiKey: { type: 'string', required: true },
       },
       hosting: {
-        envKeys: ['TEST_API_KEY'],
+        envKeyPrefix: 'TEST_API',
         apiKeyParam: 'apiKey',
         byokProviderId: 'exa',
         pricing: {
@@ -1438,7 +1438,7 @@ describe('Hosted Key Injection', () => {
         apiKey: { type: 'string', required: true },
       },
       hosting: {
-        envKeys: ['TEST_API_KEY'],
+        envKeyPrefix: 'TEST_API',
         apiKeyParam: 'apiKey',
         byokProviderId: 'exa',
         pricing: {
@@ -1508,7 +1508,7 @@ describe('Rate Limiting and Retry Logic', () => {
         apiKey: { type: 'string', required: false },
       },
       hosting: {
-        envKeys: ['TEST_HOSTED_KEY'],
+        envKeyPrefix: 'TEST_HOSTED_KEY',
         apiKeyParam: 'apiKey',
         pricing: {
           type: 'per_request' as const,
@@ -1578,7 +1578,7 @@ describe('Rate Limiting and Retry Logic', () => {
         apiKey: { type: 'string', required: false },
       },
       hosting: {
-        envKeys: ['TEST_HOSTED_KEY'],
+        envKeyPrefix: 'TEST_HOSTED_KEY',
         apiKeyParam: 'apiKey',
         pricing: {
           type: 'per_request' as const,
@@ -1636,7 +1636,7 @@ describe('Rate Limiting and Retry Logic', () => {
         apiKey: { type: 'string', required: false },
       },
       hosting: {
-        envKeys: ['TEST_HOSTED_KEY'],
+        envKeyPrefix: 'TEST_HOSTED_KEY',
         apiKeyParam: 'apiKey',
         pricing: {
           type: 'per_request' as const,
@@ -1725,7 +1725,7 @@ describe('Cost Field Handling', () => {
         apiKey: { type: 'string', required: false },
       },
       hosting: {
-        envKeys: ['TEST_HOSTED_KEY'],
+        envKeyPrefix: 'TEST_HOSTED_KEY',
         apiKeyParam: 'apiKey',
         pricing: {
           type: 'per_request' as const,
@@ -1796,7 +1796,7 @@ describe('Cost Field Handling', () => {
         apiKey: { type: 'string', required: true },
       },
       hosting: {
-        envKeys: ['TEST_HOSTED_KEY'],
+        envKeyPrefix: 'TEST_HOSTED_KEY',
         apiKeyParam: 'apiKey',
         pricing: {
           type: 'per_request' as const,
@@ -1865,7 +1865,7 @@ describe('Cost Field Handling', () => {
         mode: { type: 'string', required: false },
       },
       hosting: {
-        envKeys: ['TEST_HOSTED_KEY'],
+        envKeyPrefix: 'TEST_HOSTED_KEY',
         apiKeyParam: 'apiKey',
         pricing: {
           type: 'custom' as const,

@@ -261,12 +261,36 @@ export interface CustomPricing<P = Record<string, unknown>> {
 export type ToolHostingPricing<P = Record<string, unknown>> = PerRequestPricing | CustomPricing<P>
 
 /**
- * Configuration for hosted API key support
- * When configured, the tool can use Sim's hosted API keys if user doesn't provide their own
+ * Configuration for hosted API key support.
+ * When configured, the tool can use Sim's hosted API keys if user doesn't provide their own.
+ *
+ * ### Hosted key env var convention
+ *
+ * Keys follow a numbered naming convention driven by a count env var:
+ *
+ * 1. Set `{envKeyPrefix}_COUNT` to the number of keys available.
+ * 2. Provide each key as `{envKeyPrefix}_1`, `{envKeyPrefix}_2`, ..., `{envKeyPrefix}_N`.
+ *
+ * **Example** — for `envKeyPrefix: 'EXA_API_KEY'` with 5 keys:
+ * ```
+ * EXA_API_KEY_COUNT=5
+ * EXA_API_KEY_1=sk-...
+ * EXA_API_KEY_2=sk-...
+ * EXA_API_KEY_3=sk-...
+ * EXA_API_KEY_4=sk-...
+ * EXA_API_KEY_5=sk-...
+ * ```
+ *
+ * Adding more keys only requires updating the count and adding the new env var —
+ * no code changes needed.
  */
 export interface ToolHostingConfig<P = Record<string, unknown>> {
-  /** Environment variable names to check for hosted keys (supports rotation with multiple keys) */
-  envKeys: string[]
+  /**
+   * Env var name prefix for hosted keys.
+   * At runtime, `{envKeyPrefix}_COUNT` is read to determine how many keys exist,
+   * then `{envKeyPrefix}_1` through `{envKeyPrefix}_N` are resolved.
+   */
+  envKeyPrefix: string
   /** The parameter name that receives the API key */
   apiKeyParam: string
   /** BYOK provider ID for workspace key lookup */

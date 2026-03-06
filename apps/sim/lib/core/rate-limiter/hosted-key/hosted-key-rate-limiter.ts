@@ -16,6 +16,19 @@ import {
 
 const logger = createLogger('HostedKeyRateLimiter')
 
+/**
+ * Resolves env var names for a numbered key prefix using a `{PREFIX}_COUNT` env var.
+ * E.g. with `EXA_API_KEY_COUNT=5`, returns `['EXA_API_KEY_1', ..., 'EXA_API_KEY_5']`.
+ */
+function resolveEnvKeys(prefix: string): string[] {
+  const count = parseInt(process.env[`${prefix}_COUNT`] || '0', 10)
+  const names: string[] = []
+  for (let i = 1; i <= count; i++) {
+    names.push(`${prefix}_${i}`)
+  }
+  return names
+}
+
 /** Dimension name for per-billing-actor request rate limiting */
 const ACTOR_REQUESTS_DIMENSION = 'actor_requests'
 
@@ -172,11 +185,12 @@ export class HostedKeyRateLimiter {
    * For `custom` mode additionally:
    *   3. Pre-checks dimension budgets: blocks if any dimension is already depleted
    *
+   * @param envKeyPrefix - Env var prefix (e.g. 'EXA_API_KEY'). Keys resolved via `{prefix}_COUNT`.
    * @param billingActorId - The billing actor (typically workspace ID) to rate limit against
    */
   async acquireKey(
     provider: string,
-    envKeys: string[],
+    envKeyPrefix: string,
     config: HostedKeyRateLimitConfig,
     billingActorId?: string
   ): Promise<AcquireKeyResult> {
@@ -204,6 +218,7 @@ export class HostedKeyRateLimiter {
       }
     }
 
+    const envKeys = resolveEnvKeys(envKeyPrefix)
     const availableKeys = this.getAvailableKeys(envKeys)
 
     if (availableKeys.length === 0) {
