@@ -14,7 +14,7 @@ export const scheduleKeys = {
 
 export interface ScheduleData {
   id: string
-  status: 'active' | 'disabled'
+  status: 'active' | 'disabled' | 'completed'
   cronExpression: string | null
   nextRunAt: string | null
   lastRanAt: string | null
@@ -37,7 +37,7 @@ export interface WorkspaceScheduleData extends ScheduleData {
 
 export interface ScheduleInfo {
   id: string
-  status: 'active' | 'disabled'
+  status: 'active' | 'disabled' | 'completed'
   scheduleTiming: string
   nextRunAt: string | null
   lastRanAt: string | null

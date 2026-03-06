@@ -1,7 +1,6 @@
 import { db } from '@sim/db'
 import {
   a2aAgent,
-  account,
   chat as chatTable,
   copilotChats,
   document,
@@ -45,7 +44,10 @@ import {
   serializeWorkflowMeta,
 } from '@/lib/copilot/vfs/serializers'
 import { type WorkspaceMdData, buildWorkspaceMd } from '@/lib/copilot/workspace-context'
-import { getAccessibleEnvCredentials } from '@/lib/credentials/environment'
+import {
+  getAccessibleEnvCredentials,
+  getAccessibleOAuthCredentials,
+} from '@/lib/credentials/environment'
 import { getPersonalAndWorkspaceEnv } from '@/lib/environment/utils'
 import { getKnowledgeBases } from '@/lib/knowledge/service'
 import { listTables } from '@/lib/table/service'
@@ -1017,25 +1019,27 @@ export class WorkspaceVFS {
     userId: string
   ): Promise<WorkspaceMdData['credentials']> {
     try {
-      const [envCredentials, apiKeyRows, envData, oauthAccounts] = await Promise.all([
+      const [envCredentials, oauthCredentials, apiKeyRows, envData] = await Promise.all([
         getAccessibleEnvCredentials(workspaceId, userId),
+        getAccessibleOAuthCredentials(workspaceId, userId),
         listApiKeys(workspaceId),
         getPersonalAndWorkspaceEnv(userId, workspaceId),
-        db
-          .select({ providerId: account.providerId })
-          .from(account)
-          .where(eq(account.userId, userId)),
       ])
 
       this.files.set(
         'environment/credentials.json',
-        serializeCredentials(
-          envCredentials.map((c) => ({
+        serializeCredentials([
+          ...envCredentials.map((c) => ({
             providerId: c.envKey,
             scope: c.type === 'env_workspace' ? 'workspace' : 'personal',
             createdAt: c.updatedAt,
-          }))
-        )
+          })),
+          ...oauthCredentials.map((c) => ({
+            providerId: c.providerId,
+            scope: null,
+            createdAt: c.updatedAt,
+          })),
+        ])
       )
 
       this.files.set('environment/api-keys.json', serializeApiKeys(apiKeyRows))
@@ -1048,7 +1052,7 @@ export class WorkspaceVFS {
       )
 
       const envKeys = envCredentials.map((c) => c.envKey)
-      const oauthProviders = oauthAccounts.map((a) => a.providerId)
+      const oauthProviders = oauthCredentials.map((c) => c.providerId)
       const allProviders = [...new Set([...oauthProviders, ...envKeys])]
       return allProviders.map((key) => ({ providerId: key }))
     } catch (err) {

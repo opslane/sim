@@ -138,6 +138,7 @@ export function SchedulesView() {
     const ws: WorkspaceScheduleData[] = []
     const j: WorkspaceScheduleData[] = []
     for (const item of allItems) {
+      if (item.status === 'completed') continue
       if (item.sourceType === 'job') j.push(item)
       else ws.push(item)
     }

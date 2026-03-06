@@ -1,7 +1,8 @@
 import { db } from '@sim/db'
-import { account, copilotChats, knowledgeBase, mcpServers, userTableDefinitions, userTableRows, workflow, workspace, workflowSchedule } from '@sim/db/schema'
+import { copilotChats, knowledgeBase, mcpServers, userTableDefinitions, userTableRows, workflow, workspace, workflowSchedule } from '@sim/db/schema'
 import { createLogger } from '@sim/logger'
 import { and, count, desc, eq, isNull } from 'drizzle-orm'
+import { getAccessibleOAuthCredentials } from '@/lib/credentials/environment'
 import { listWorkspaceFiles } from '@/lib/uploads/contexts/workspace'
 import { listCustomTools } from '@/lib/workflows/custom-tools/operations'
 import { listSkills } from '@/lib/workflows/skills/operations'
@@ -205,13 +206,7 @@ export async function generateWorkspaceContext(
 
         listWorkspaceFiles(workspaceId),
 
-        db
-          .select({
-            providerId: account.providerId,
-            scope: account.scope,
-          })
-          .from(account)
-          .where(eq(account.userId, userId)),
+        getAccessibleOAuthCredentials(workspaceId, userId),
 
         db
           .select({
