@@ -3,12 +3,8 @@ import { copilotChats, workflowSchedule } from '@sim/db/schema'
 import { createLogger } from '@sim/logger'
 import { and, eq } from 'drizzle-orm'
 import { v4 as uuidv4 } from 'uuid'
-import type { ToolCallResult } from '@/lib/copilot/orchestrator/types'
-import type { ExecutionContext } from '@/lib/copilot/orchestrator/types'
-import {
-  parseCronToHumanReadable,
-  validateCronExpression,
-} from '@/lib/workflows/schedules/utils'
+import type { ExecutionContext, ToolCallResult } from '@/lib/copilot/orchestrator/types'
+import { parseCronToHumanReadable, validateCronExpression } from '@/lib/workflows/schedules/utils'
 
 const logger = createLogger('JobTools')
 
@@ -98,7 +94,7 @@ export async function executeCreateJob(
     }
 
     const parsed = new Date(timeStr)
-    if (isNaN(parsed.getTime())) {
+    if (Number.isNaN(parsed.getTime())) {
       return { success: false, error: `Invalid time value: ${time}` }
     }
 
@@ -384,10 +380,7 @@ export async function executeManageJob(
           updates.maxRuns = args.maxRuns
         }
 
-        await db
-          .update(workflowSchedule)
-          .set(updates)
-          .where(eq(workflowSchedule.id, args.jobId))
+        await db.update(workflowSchedule).set(updates).where(eq(workflowSchedule.id, args.jobId))
 
         logger.info('Job updated', { jobId: args.jobId, fields: Object.keys(updates) })
 
@@ -429,9 +422,7 @@ export async function executeManageJob(
           return { success: false, error: `Job not found: ${args.jobId}` }
         }
 
-        await db
-          .delete(workflowSchedule)
-          .where(eq(workflowSchedule.id, args.jobId))
+        await db.delete(workflowSchedule).where(eq(workflowSchedule.id, args.jobId))
 
         logger.info('Job deleted', { jobId: args.jobId })
 
@@ -473,9 +464,7 @@ export async function executeCompleteJob(
         sourceWorkspaceId: workflowSchedule.sourceWorkspaceId,
       })
       .from(workflowSchedule)
-      .where(
-        and(eq(workflowSchedule.id, jobId), eq(workflowSchedule.sourceType, 'job'))
-      )
+      .where(and(eq(workflowSchedule.id, jobId), eq(workflowSchedule.sourceType, 'job')))
       .limit(1)
 
     if (!job) {

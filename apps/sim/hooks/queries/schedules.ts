@@ -204,7 +204,13 @@ export function useDisableSchedule() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ scheduleId, workspaceId }: { scheduleId: string; workspaceId: string }) => {
+    mutationFn: async ({
+      scheduleId,
+      workspaceId,
+    }: {
+      scheduleId: string
+      workspaceId: string
+    }) => {
       const response = await fetch(`/api/schedules/${scheduleId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -234,7 +240,13 @@ export function useDeleteSchedule() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ scheduleId, workspaceId }: { scheduleId: string; workspaceId: string }) => {
+    mutationFn: async ({
+      scheduleId,
+      workspaceId,
+    }: {
+      scheduleId: string
+      workspaceId: string
+    }) => {
       const response = await fetch(`/api/schedules/${scheduleId}`, {
         method: 'DELETE',
       })

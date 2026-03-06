@@ -4,12 +4,12 @@ import { createLogger } from '@sim/logger'
 import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { verifyWorkspaceMembership } from '@/app/api/workflows/utils'
 import { AuditAction, AuditResourceType, recordAudit } from '@/lib/audit/log'
 import { getSession } from '@/lib/auth'
 import { generateRequestId } from '@/lib/core/utils/request'
 import { validateCronExpression } from '@/lib/workflows/schedules/utils'
 import { authorizeWorkflowByWorkspacePermission } from '@/lib/workflows/utils'
+import { verifyWorkspaceMembership } from '@/app/api/workflows/utils'
 
 const logger = createLogger('ScheduleAPI')
 
@@ -34,10 +34,7 @@ async function fetchAndAuthorize(
   scheduleId: string,
   userId: string,
   action: 'read' | 'write'
-): Promise<
-  | { schedule: ScheduleRow; workspaceId: string | null }
-  | NextResponse
-> {
+): Promise<{ schedule: ScheduleRow; workspaceId: string | null } | NextResponse> {
   const [schedule] = await db
     .select({
       id: workflowSchedule.id,

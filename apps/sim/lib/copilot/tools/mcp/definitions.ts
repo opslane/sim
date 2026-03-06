@@ -413,8 +413,7 @@ export const DIRECT_TOOL_DEFS: DirectToolDef[] = [
         },
         maxRuns: {
           type: 'number',
-          description:
-            'Maximum number of executions before the job auto-completes. Safety limit.',
+          description: 'Maximum number of executions before the job auto-completes. Safety limit.',
         },
       },
       required: ['title', 'prompt'],

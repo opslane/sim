@@ -384,9 +384,7 @@ export async function getAccessibleOAuthCredentials(
         eq(credentialMember.status, 'active')
       )
     )
-    .where(
-      and(eq(credential.workspaceId, workspaceId), eq(credential.type, 'oauth'))
-    )
+    .where(and(eq(credential.workspaceId, workspaceId), eq(credential.type, 'oauth')))
 
   return rows
     .filter((row): row is AccessibleOAuthCredential => Boolean(row.providerId))

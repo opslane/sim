@@ -71,7 +71,9 @@ export async function GET(request: NextRequest) {
       })
 
     const totalCount = dueSchedules.length + dueJobs.length
-    logger.info(`[${requestId}] Processing ${totalCount} due items (${dueSchedules.length} schedules, ${dueJobs.length} jobs)`)
+    logger.info(
+      `[${requestId}] Processing ${totalCount} due items (${dueSchedules.length} schedules, ${dueJobs.length} jobs)`
+    )
 
     const jobQueue = await getJobQueue()
 

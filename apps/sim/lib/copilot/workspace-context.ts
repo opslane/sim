@@ -6,8 +6,8 @@ import {
   userTableDefinitions,
   userTableRows,
   workflow,
-  workspace,
   workflowSchedule,
+  workspace,
 } from '@sim/db/schema'
 import { createLogger } from '@sim/logger'
 import { and, count, desc, eq, isNull } from 'drizzle-orm'
@@ -145,7 +145,7 @@ export function buildWorkspaceMd(data: WorkspaceMdData): string {
       if (j.lifecycle !== 'persistent') line += ` [${j.lifecycle}]`
       if (j.cronExpression) line += `, cron: ${j.cronExpression}`
       if (j.sourceTaskName) line += `, task: ${j.sourceTaskName}`
-      const promptPreview = j.prompt.length > 80 ? j.prompt.slice(0, 77) + '...' : j.prompt
+      const promptPreview = j.prompt.length > 80 ? `${j.prompt.slice(0, 77)}...` : j.prompt
       line += `\n  ${promptPreview}`
       return line
     })

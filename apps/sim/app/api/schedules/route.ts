@@ -3,10 +3,10 @@ import { workflow, workflowDeploymentVersion, workflowSchedule } from '@sim/db/s
 import { createLogger } from '@sim/logger'
 import { and, eq, isNull, or } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
-import { verifyWorkspaceMembership } from '@/app/api/workflows/utils'
 import { getSession } from '@/lib/auth'
 import { generateRequestId } from '@/lib/core/utils/request'
 import { authorizeWorkflowByWorkspacePermission } from '@/lib/workflows/utils'
+import { verifyWorkspaceMembership } from '@/app/api/workflows/utils'
 
 const logger = createLogger('ScheduledAPI')
 
@@ -113,11 +113,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-async function handleWorkspaceSchedules(
-  requestId: string,
-  userId: string,
-  workspaceId: string
-) {
+async function handleWorkspaceSchedules(requestId: string, userId: string, workspaceId: string) {
   const hasPermission = await verifyWorkspaceMembership(userId, workspaceId)
   if (!hasPermission) {
     return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
@@ -145,16 +141,10 @@ async function handleWorkspaceSchedules(
         and(
           eq(workflow.workspaceId, workspaceId),
           eq(workflowSchedule.triggerType, 'schedule'),
-          or(
-            eq(workflowSchedule.sourceType, 'workflow'),
-            isNull(workflowSchedule.sourceType)
-          ),
+          or(eq(workflowSchedule.sourceType, 'workflow'), isNull(workflowSchedule.sourceType)),
           or(
             eq(workflowSchedule.deploymentVersionId, workflowDeploymentVersion.id),
-            and(
-              isNull(workflowDeploymentVersion.id),
-              isNull(workflowSchedule.deploymentVersionId)
-            )
+            and(isNull(workflowDeploymentVersion.id), isNull(workflowSchedule.deploymentVersionId))
           )
         )
       ),

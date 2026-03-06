@@ -192,9 +192,7 @@ export async function sendStreamingMessage(
 
     const userTimezone =
       requestBody.userTimezone ||
-      (typeof Intl !== 'undefined'
-        ? Intl.DateTimeFormat().resolvedOptions().timeZone
-        : undefined)
+      (typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined)
 
     const response = await fetch(COPILOT_CHAT_API_PATH, {
       method: 'POST',

@@ -621,15 +621,19 @@ function buildJobPrompt(jobRecord: {
   }
 
   if (jobRecord.sourceChatId) {
-    parts.push('Read the task\'s session.md in the VFS for conversation context.')
+    parts.push("Read the task's session.md in the VFS for conversation context.")
   }
 
   if (jobRecord.lifecycle === 'until_complete') {
     parts.push('')
     parts.push('COMPLETION PROTOCOL:')
     parts.push('This is a poll-until-done job. After executing the task above:')
-    parts.push(`- If the success condition is met, take the required action, then call complete_job(jobId: "${jobRecord.id}") to stop the job.`)
-    parts.push('- If the success condition is NOT met, do nothing extra. The job will run again on schedule.')
+    parts.push(
+      `- If the success condition is met, take the required action, then call complete_job(jobId: "${jobRecord.id}") to stop the job.`
+    )
+    parts.push(
+      '- If the success condition is NOT met, do nothing extra. The job will run again on schedule.'
+    )
   }
 
   parts.push('--- END JOB EXECUTION ---')
@@ -657,7 +661,9 @@ export async function executeJobInline(payload: JobExecutionPayload) {
   }
 
   if (jobRecord.status === 'completed') {
-    logger.info(`[${requestId}] Job already completed, skipping`, { scheduleId: payload.scheduleId })
+    logger.info(`[${requestId}] Job already completed, skipping`, {
+      scheduleId: payload.scheduleId,
+    })
     return
   }
 
