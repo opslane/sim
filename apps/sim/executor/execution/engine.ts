@@ -415,15 +415,7 @@ export class ExecutionEngine {
       }
     }
 
-    const { readyNodes, activatedEdges } = this.edgeManager.processOutgoingEdges(
-      node,
-      output,
-      false
-    )
-
-    if (activatedEdges.length > 0) {
-      this.context.activatedEdges.set(nodeId, activatedEdges)
-    }
+    const { readyNodes } = this.edgeManager.processOutgoingEdges(node, output, false)
 
     logger.info('Processing outgoing edges', {
       nodeId,
@@ -436,7 +428,6 @@ export class ExecutionEngine {
       output,
       readyNodesCount: readyNodes.length,
       readyNodes,
-      activatedEdgeCount: activatedEdges.length,
     })
 
     this.addMultipleToQueue(readyNodes)

@@ -57,7 +57,6 @@ function createMockContext(overrides: Partial<ExecutionContext> = {}): Execution
     parallelExecutions: new Map(),
     completedLoops: new Set(),
     activeExecutionPath: new Set(),
-    activatedEdges: new Map(),
     metadata: {
       executionId: 'test-execution',
       startTime: new Date().toISOString(),

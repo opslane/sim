@@ -80,7 +80,6 @@ describe('RouterBlockHandler', () => {
       completedLoops: new Set(),
       executedBlocks: new Set(),
       activeExecutionPath: new Set(),
-      activatedEdges: new Map(),
       workflow: mockWorkflow as SerializedWorkflow,
     }
 
@@ -371,7 +370,6 @@ describe('RouterBlockHandler V2', () => {
       completedLoops: new Set(),
       executedBlocks: new Set(),
       activeExecutionPath: new Set(),
-      activatedEdges: new Map(),
       workflow: mockWorkflow as SerializedWorkflow,
     }
 

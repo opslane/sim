@@ -87,7 +87,6 @@ export function serializePauseSnapshot(
     parallelExecutions: serializeParallelExecutions(context.parallelExecutions),
     parallelBlockMapping: mapFromEntries(context.parallelBlockMapping),
     activeExecutionPath: Array.from(context.activeExecutionPath),
-    activatedEdges: context.activatedEdges ? Object.fromEntries(context.activatedEdges) : undefined,
     pendingQueue: triggerBlockIds,
     dagIncomingEdges,
   }

@@ -62,7 +62,6 @@ describe('WorkflowBlockHandler', () => {
       loopExecutions: new Map(),
       executedBlocks: new Set(),
       activeExecutionPath: new Set(),
-      activatedEdges: new Map(),
       completedLoops: new Set(),
       workflow: {
         version: '1.0',

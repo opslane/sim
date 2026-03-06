@@ -49,7 +49,6 @@ export interface SerializableExecutionState {
   parallelExecutions?: Record<string, any>
   parallelBlockMapping?: Record<string, any>
   activeExecutionPath: string[]
-  activatedEdges?: Record<string, Array<{ source: string; target: string; sourceHandle?: string }>>
   pendingQueue?: string[]
   remainingEdges?: Edge[]
   dagIncomingEdges?: Record<string, string[]>

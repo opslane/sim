@@ -145,7 +145,7 @@ interface PreviewWorkflowProps {
   /** Cursor style to show when hovering the canvas */
   cursorStyle?: 'default' | 'pointer' | 'grab'
   /** Map of executed block IDs to their status for highlighting the execution path */
-  executedBlocks?: Record<string, { status: string }>
+  executedBlocks?: Record<string, { status: string; output?: unknown }>
   /** Currently selected block ID for highlighting */
   selectedBlockId?: string | null
   /** Skips expensive subblock computations for thumbnails/template previews */
@@ -274,9 +274,9 @@ export function PreviewWorkflow({
 
   /** Maps base block IDs to execution data, handling parallel iteration variants (blockId₍n₎). */
   const blockExecutionMap = useMemo(() => {
-    if (!executedBlocks) return new Map<string, { status: string }>()
+    if (!executedBlocks) return new Map<string, { status: string; output?: unknown }>()
 
-    const map = new Map<string, { status: string }>()
+    const map = new Map<string, { status: string; output?: unknown }>()
     for (const [key, value] of Object.entries(executedBlocks)) {
       // Extract base ID (remove iteration suffix like ₍0₎)
       const baseId = key.includes('₍') ? key.split('₍')[0] : key
