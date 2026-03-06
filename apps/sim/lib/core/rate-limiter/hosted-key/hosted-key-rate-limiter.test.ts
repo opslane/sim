@@ -1,12 +1,12 @@
 import { loggerMock } from '@sim/testing'
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest'
-import { HostedKeyRateLimiter } from './hosted-key-rate-limiter'
-import type { CustomRateLimit, PerRequestRateLimit } from './types'
 import type {
   ConsumeResult,
   RateLimitStorageAdapter,
   TokenStatus,
 } from '@/lib/core/rate-limiter/storage'
+import { HostedKeyRateLimiter } from './hosted-key-rate-limiter'
+import type { CustomRateLimit, PerRequestRateLimit } from './types'
 
 vi.mock('@sim/logger', () => loggerMock)
 
@@ -52,12 +52,24 @@ describe('HostedKeyRateLimiter', () => {
 
   describe('acquireKey', () => {
     it('should return error when no keys are configured', async () => {
-      delete process.env.EXA_API_KEY_COUNT
-      delete process.env.EXA_API_KEY_1
-      delete process.env.EXA_API_KEY_2
-      delete process.env.EXA_API_KEY_3
+      const allowedResult: ConsumeResult = {
+        allowed: true,
+        tokensRemaining: 9,
+        resetAt: new Date(Date.now() + 60000),
+      }
+      mockAdapter.consumeTokens.mockResolvedValue(allowedResult)
 
-      const result = await rateLimiter.acquireKey(testProvider, envKeyPrefix, perRequestRateLimit)
+      process.env.EXA_API_KEY_COUNT = undefined
+      process.env.EXA_API_KEY_1 = undefined
+      process.env.EXA_API_KEY_2 = undefined
+      process.env.EXA_API_KEY_3 = undefined
+
+      const result = await rateLimiter.acquireKey(
+        testProvider,
+        envKeyPrefix,
+        perRequestRateLimit,
+        'workspace-1'
+      )
 
       expect(result.success).toBe(false)
       expect(result.error).toContain('No hosted keys configured')
@@ -143,24 +155,33 @@ describe('HostedKeyRateLimiter', () => {
       expect(r4.keyIndex).toBe(0) // Wraps back
     })
 
-    it('should work without billingActorId (no rate limiting)', async () => {
-      const result = await rateLimiter.acquireKey(testProvider, envKeyPrefix, perRequestRateLimit)
-
-      expect(result.success).toBe(true)
-      expect(result.key).toBe('test-key-1')
-      expect(mockAdapter.consumeTokens).not.toHaveBeenCalled()
-    })
-
     it('should handle partial key availability', async () => {
-      delete process.env.EXA_API_KEY_2
+      const allowedResult: ConsumeResult = {
+        allowed: true,
+        tokensRemaining: 9,
+        resetAt: new Date(Date.now() + 60000),
+      }
+      mockAdapter.consumeTokens.mockResolvedValue(allowedResult)
 
-      const result = await rateLimiter.acquireKey(testProvider, envKeyPrefix, perRequestRateLimit)
+      process.env.EXA_API_KEY_2 = undefined
+
+      const result = await rateLimiter.acquireKey(
+        testProvider,
+        envKeyPrefix,
+        perRequestRateLimit,
+        'workspace-1'
+      )
 
       expect(result.success).toBe(true)
       expect(result.key).toBe('test-key-1')
       expect(result.envVarName).toBe('EXA_API_KEY_1')
 
-      const r2 = await rateLimiter.acquireKey(testProvider, envKeyPrefix, perRequestRateLimit)
+      const r2 = await rateLimiter.acquireKey(
+        testProvider,
+        envKeyPrefix,
+        perRequestRateLimit,
+        'workspace-2'
+      )
       expect(r2.keyIndex).toBe(2) // Skips missing key 1
       expect(r2.envVarName).toBe('EXA_API_KEY_3')
     })
@@ -254,14 +275,6 @@ describe('HostedKeyRateLimiter', () => {
       expect(result.success).toBe(false)
       expect(result.billingActorRateLimited).toBe(true)
       expect(result.error).toContain('tokens')
-    })
-
-    it('should skip dimension pre-check without billingActorId', async () => {
-      const result = await rateLimiter.acquireKey(testProvider, envKeyPrefix, customRateLimit)
-
-      expect(result.success).toBe(true)
-      expect(mockAdapter.consumeTokens).not.toHaveBeenCalled()
-      expect(mockAdapter.getTokenStatus).not.toHaveBeenCalled()
     })
 
     it('should pre-check all dimensions and block on first depleted one', async () => {

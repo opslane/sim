@@ -5,13 +5,13 @@ import {
   type TokenBucketConfig,
 } from '@/lib/core/rate-limiter/storage'
 import {
-  DEFAULT_BURST_MULTIPLIER,
-  DEFAULT_WINDOW_MS,
-  toTokenBucketConfig,
   type AcquireKeyResult,
   type CustomRateLimit,
+  DEFAULT_BURST_MULTIPLIER,
+  DEFAULT_WINDOW_MS,
   type HostedKeyRateLimitConfig,
   type ReportUsageResult,
+  toTokenBucketConfig,
 } from './types'
 
 const logger = createLogger('HostedKeyRateLimiter')
@@ -21,7 +21,7 @@ const logger = createLogger('HostedKeyRateLimiter')
  * E.g. with `EXA_API_KEY_COUNT=5`, returns `['EXA_API_KEY_1', ..., 'EXA_API_KEY_5']`.
  */
 function resolveEnvKeys(prefix: string): string[] {
-  const count = parseInt(process.env[`${prefix}_COUNT`] || '0', 10)
+  const count = Number.parseInt(process.env[`${prefix}_COUNT`] || '0', 10)
   const names: string[] = []
   for (let i = 1; i <= count; i++) {
     names.push(`${prefix}_${i}`)
@@ -192,9 +192,9 @@ export class HostedKeyRateLimiter {
     provider: string,
     envKeyPrefix: string,
     config: HostedKeyRateLimitConfig,
-    billingActorId?: string
+    billingActorId: string
   ): Promise<AcquireKeyResult> {
-    if (billingActorId && config.requestsPerMinute) {
+    if (config.requestsPerMinute) {
       const rateLimitResult = await this.checkActorRateLimit(provider, billingActorId, config)
       if (rateLimitResult) {
         return {
@@ -206,7 +206,7 @@ export class HostedKeyRateLimiter {
       }
     }
 
-    if (billingActorId && config.mode === 'custom' && config.dimensions.length > 0) {
+    if (config.mode === 'custom' && config.dimensions.length > 0) {
       const dimensionResult = await this.preCheckDimensions(provider, billingActorId, config)
       if (dimensionResult) {
         return {

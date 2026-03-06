@@ -109,7 +109,7 @@ export function useEditorSubblockLayout(
       // Check required feature if specified - declarative feature gating
       if (!isSubBlockFeatureEnabled(block)) return false
 
-      // Hide tool API key fields when hosted key is available
+      // Hide tool API key fields when hosted
       if (isSubBlockHiddenByHostedKey(block)) return false
 
       // Special handling for trigger-config type (legacy trigger configuration UI)

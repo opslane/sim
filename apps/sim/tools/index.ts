@@ -80,7 +80,17 @@ async function injectHostedKeyIfNeeded(
   const provider = byokProviderId || tool.id
   const billingActorId = executionContext?.workspaceId
 
-  const acquireResult = await rateLimiter.acquireKey(provider, envKeyPrefix, rateLimit, billingActorId)
+  if (!billingActorId) {
+    logger.error(`[${requestId}] No workspace ID available for hosted key rate limiting`)
+    return { isUsingHostedKey: false }
+  }
+
+  const acquireResult = await rateLimiter.acquireKey(
+    provider,
+    envKeyPrefix,
+    rateLimit,
+    billingActorId
+  )
 
   if (!acquireResult.success && acquireResult.billingActorRateLimited) {
     logger.warn(`[${requestId}] Billing actor ${billingActorId} rate limited for ${tool.id}`, {
@@ -304,10 +314,10 @@ async function reportCustomDimensionUsage(
 
     for (const dim of result.dimensions) {
       if (!dim.allowed) {
-        logger.warn(
-          `[${requestId}] Dimension ${dim.name} overdrawn after ${tool.id} execution`,
-          { consumed: dim.consumed, tokensRemaining: dim.tokensRemaining }
-        )
+        logger.warn(`[${requestId}] Dimension ${dim.name} overdrawn after ${tool.id} execution`, {
+          consumed: dim.consumed,
+          tokensRemaining: dim.tokensRemaining,
+        })
       }
     }
   } catch (error) {
@@ -736,7 +746,13 @@ export async function executeTool(
 
       // Post-execution: report custom dimension usage and calculate cost
       if (hostedKeyInfo.isUsingHostedKey && finalResult.success) {
-        await reportCustomDimensionUsage(tool, contextParams, finalResult.output, executionContext, requestId)
+        await reportCustomDimensionUsage(
+          tool,
+          contextParams,
+          finalResult.output,
+          executionContext,
+          requestId
+        )
 
         const { cost: hostedKeyCost, metadata } = await processHostedKeyCost(
           tool,
@@ -804,7 +820,13 @@ export async function executeTool(
 
     // Post-execution: report custom dimension usage and calculate cost
     if (hostedKeyInfo.isUsingHostedKey && finalResult.success) {
-      await reportCustomDimensionUsage(tool, contextParams, finalResult.output, executionContext, requestId)
+      await reportCustomDimensionUsage(
+        tool,
+        contextParams,
+        finalResult.output,
+        executionContext,
+        requestId
+      )
 
       const { cost: hostedKeyCost, metadata } = await processHostedKeyCost(
         tool,
