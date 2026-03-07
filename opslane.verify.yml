@@ -1,7 +1,7 @@
 codebase:
-  packageManager: npm
+  packageManager: bun
 
 app:
-  installCommand: COREPACK_ENABLE_STRICT=0 npm install --legacy-peer-deps
-  testCommand: npx vitest run
+  installCommand: bun install
+  testCommand: bun run test
   command: none
