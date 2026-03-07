@@ -1564,7 +1564,7 @@ export interface JiraSearchUsersResponse extends ToolResponse {
     users: Array<{
       accountId: string
       accountType?: string | null
-      active: boolean
+      active?: boolean | null
       displayName: string
       emailAddress?: string | null
       avatarUrl?: string | null
