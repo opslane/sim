@@ -513,7 +513,7 @@ export async function executeResponsesProviderRequest(
         })
 
         let resultContent: Record<string, unknown>
-        if (result.success) {
+        if (result.success && result.output) {
           toolResults.push(result.output)
           resultContent = result.output as Record<string, unknown>
         } else {

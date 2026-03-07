@@ -314,7 +314,7 @@ export const cerebrasProvider: ProviderConfig = {
               duration: duration,
             })
             let resultContent: any
-            if (result.success) {
+            if (result.success && result.output) {
               toolResults.push(result.output)
               resultContent = result.output
             } else {

@@ -326,7 +326,7 @@ export const deepseekProvider: ProviderConfig = {
             })
 
             let resultContent: any
-            if (result.success) {
+            if (result.success && result.output) {
               toolResults.push(result.output)
               resultContent = result.output
             } else {
