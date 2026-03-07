@@ -1,6 +1,7 @@
 codebase:
-  packageManager: bun
+  packageManager: pnpm
 
 app:
-  installCommand: npx -y bun install --no-save
-  testCommand: npx vitest run
+  installCommand: pnpm install --no-frozen-lockfile
+  testCommand: pnpm run test
+  command: none
