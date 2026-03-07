@@ -2,5 +2,5 @@ codebase:
   packageManager: bun
 
 app:
-  installCommand: sudo npm install -g bun && bun install
-  testCommand: bun run test
+  installCommand: npx -y bun install --no-save
+  testCommand: npx vitest run
