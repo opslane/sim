@@ -2,5 +2,5 @@ codebase:
   packageManager: bun
 
 app:
-  installCommand: npm install -g bun && bun install
+  installCommand: sudo npm install -g bun && bun install
   testCommand: bun run test
