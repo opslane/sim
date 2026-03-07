@@ -1,7 +1,7 @@
 codebase:
-  packageManager: pnpm
+  packageManager: npm
 
 app:
-  installCommand: pnpm install --no-frozen-lockfile
-  testCommand: pnpm run test
+  installCommand: COREPACK_ENABLE_STRICT=0 npm install --legacy-peer-deps
+  testCommand: npx vitest run
   command: none
