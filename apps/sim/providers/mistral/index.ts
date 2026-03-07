@@ -367,8 +367,8 @@ export const mistralProvider: ProviderConfig = {
           })
 
           let resultContent: any
-if (result.success && result.output) {
-              toolResults.push(result.output)
+          if (result.success && result.output) {
+            toolResults.push(result.output)
             resultContent = result.output
           } else {
             resultContent = {
