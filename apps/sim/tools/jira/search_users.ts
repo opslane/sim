@@ -1,23 +1,7 @@
 import type { JiraSearchUsersParams, JiraSearchUsersResponse } from '@/tools/jira/types'
 import { TIMESTAMP_OUTPUT, USER_OUTPUT_PROPERTIES } from '@/tools/jira/types'
-import { getJiraCloudId } from '@/tools/jira/utils'
+import { getJiraCloudId, transformUser } from '@/tools/jira/utils'
 import type { ToolConfig } from '@/tools/types'
-
-/**
- * Transforms a raw Jira user API object into typed output.
- */
-function transformUserOutput(user: any) {
-  return {
-    accountId: user.accountId ?? '',
-    accountType: user.accountType ?? null,
-    active: user.active ?? false,
-    displayName: user.displayName ?? '',
-    emailAddress: user.emailAddress ?? null,
-    avatarUrl: user.avatarUrls?.['48x48'] ?? null,
-    timeZone: user.timeZone ?? null,
-    self: user.self ?? null,
-  }
-}
 
 export const jiraSearchUsersTool: ToolConfig<JiraSearchUsersParams, JiraSearchUsersResponse> = {
   id: 'jira_search_users',
@@ -144,7 +128,10 @@ export const jiraSearchUsersTool: ToolConfig<JiraSearchUsersParams, JiraSearchUs
       success: true,
       output: {
         ts: new Date().toISOString(),
-        users: users.map(transformUserOutput),
+        users: users.map((user: any) => ({
+          ...transformUser(user),
+          self: user.self ?? null,
+        })),
         total: users.length,
       },
     }
