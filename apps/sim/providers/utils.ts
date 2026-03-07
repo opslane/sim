@@ -654,11 +654,12 @@ export function calculateCost(
  * Sums the `cost.total` from each tool result returned during a provider tool loop.
  * Tool results may carry a `cost` object injected by `applyHostedKeyCostToResult`.
  */
-export function sumToolCosts(toolResults?: any[]): number {
+export function sumToolCosts(toolResults?: Record<string, unknown>[]): number {
   if (!toolResults?.length) return 0
   let total = 0
   for (const tr of toolResults) {
-    if (tr?.cost?.total) total += tr.cost.total
+    const cost = tr?.cost as Record<string, unknown> | undefined
+    if (cost?.total && typeof cost.total === 'number') total += cost.total
   }
   return total
 }

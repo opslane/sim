@@ -406,7 +406,7 @@ export async function executeResponsesProviderRequest(
     }
 
     const toolCalls = []
-    const toolResults: any[] = []
+    const toolResults: Record<string, unknown>[] = []
     let iterationCount = 0
     let modelTime = firstResponseTime
     let toolsTime = 0

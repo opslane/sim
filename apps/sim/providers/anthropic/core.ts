@@ -491,7 +491,7 @@ export async function executeAnthropicProviderRequest(
       }
 
       const toolCalls = []
-      const toolResults: any[] = []
+      const toolResults: Record<string, unknown>[] = []
       const currentMessages = [...messages]
       let iterationCount = 0
       let hasUsedForcedTool = false
@@ -610,7 +610,7 @@ export async function executeAnthropicProviderRequest(
             })
 
             let resultContent: unknown
-            if (result.success) {
+            if (result.success && result.output) {
               toolResults.push(result.output)
               resultContent = result.output
             } else {
@@ -905,7 +905,7 @@ export async function executeAnthropicProviderRequest(
     }
 
     const toolCalls = []
-    const toolResults: any[] = []
+    const toolResults: Record<string, unknown>[] = []
     const currentMessages = [...messages]
     let iterationCount = 0
     let hasUsedForcedTool = false
@@ -1026,7 +1026,7 @@ export async function executeAnthropicProviderRequest(
           })
 
           let resultContent: unknown
-          if (result.success) {
+          if (result.success && result.output) {
             toolResults.push(result.output)
             resultContent = result.output
           } else {

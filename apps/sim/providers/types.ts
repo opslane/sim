@@ -79,7 +79,7 @@ export interface ProviderResponse {
     total?: number
   }
   toolCalls?: FunctionCallResponse[]
-  toolResults?: any[]
+  toolResults?: Record<string, unknown>[]
   timing?: {
     startTime: string
     endTime: string
