@@ -129,7 +129,7 @@ export const jiraSearchUsersTool: ToolConfig<JiraSearchUsersParams, JiraSearchUs
       output: {
         ts: new Date().toISOString(),
         users: users.map((user: any) => ({
-          ...transformUser(user),
+          ...(transformUser(user) ?? { accountId: '', displayName: '' }),
           self: user.self ?? null,
         })),
         total: users.length,
