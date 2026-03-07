@@ -1,8 +1,5 @@
-import { createLogger } from '@sim/logger'
 import type { ExaGetContentsParams, ExaGetContentsResponse } from '@/tools/exa/types'
 import type { ToolConfig } from '@/tools/types'
-
-const logger = createLogger('ExaGetContentsTool')
 
 export const getContentsTool: ToolConfig<ExaGetContentsParams, ExaGetContentsResponse> = {
   id: 'exa_get_contents',
@@ -71,15 +68,11 @@ export const getContentsTool: ToolConfig<ExaGetContentsParams, ExaGetContentsRes
     pricing: {
       type: 'custom',
       getCost: (_params, output) => {
-        // Use __costDollars from Exa API response (internal field, stripped from final output)
         const costDollars = output.__costDollars as { total?: number } | undefined
-        if (costDollars?.total != null) {
-          return { cost: costDollars.total, metadata: { costDollars } }
+        if (costDollars?.total == null) {
+          throw new Error('Exa get_contents response missing costDollars field')
         }
-        // Fallback: $1/1000 pages
-        logger.warn('Exa get_contents response missing costDollars, using fallback pricing')
-        const results = output.results as unknown[] | undefined
-        return (results?.length || 0) * 0.001
+        return { cost: costDollars.total, metadata: { costDollars } }
       },
     },
     rateLimit: {

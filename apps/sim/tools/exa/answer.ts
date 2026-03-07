@@ -1,8 +1,5 @@
-import { createLogger } from '@sim/logger'
 import type { ExaAnswerParams, ExaAnswerResponse } from '@/tools/exa/types'
 import type { ToolConfig } from '@/tools/types'
-
-const logger = createLogger('ExaAnswerTool')
 
 export const answerTool: ToolConfig<ExaAnswerParams, ExaAnswerResponse> = {
   id: 'exa_answer',
@@ -37,14 +34,11 @@ export const answerTool: ToolConfig<ExaAnswerParams, ExaAnswerResponse> = {
     pricing: {
       type: 'custom',
       getCost: (_params, output) => {
-        // Use __costDollars from Exa API response (internal field, stripped from final output)
         const costDollars = output.__costDollars as { total?: number } | undefined
-        if (costDollars?.total != null) {
-          return { cost: costDollars.total, metadata: { costDollars } }
+        if (costDollars?.total == null) {
+          throw new Error('Exa answer response missing costDollars field')
         }
-        // Fallback: $5/1000 requests
-        logger.warn('Exa answer response missing costDollars, using fallback pricing')
-        return 0.005
+        return { cost: costDollars.total, metadata: { costDollars } }
       },
     },
     rateLimit: {

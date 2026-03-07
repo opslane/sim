@@ -1,8 +1,5 @@
-import { createLogger } from '@sim/logger'
 import type { ExaSearchParams, ExaSearchResponse } from '@/tools/exa/types'
 import type { ToolConfig } from '@/tools/types'
-
-const logger = createLogger('ExaSearchTool')
 
 export const searchTool: ToolConfig<ExaSearchParams, ExaSearchResponse> = {
   id: 'exa_search',
@@ -95,22 +92,12 @@ export const searchTool: ToolConfig<ExaSearchParams, ExaSearchResponse> = {
     byokProviderId: 'exa',
     pricing: {
       type: 'custom',
-      getCost: (params, output) => {
-        // Use __costDollars from Exa API response (internal field, stripped from final output)
+      getCost: (_params, output) => {
         const costDollars = output.__costDollars as { total?: number } | undefined
-        if (costDollars?.total != null) {
-          return { cost: costDollars.total, metadata: { costDollars } }
+        if (costDollars?.total == null) {
+          throw new Error('Exa search response missing costDollars field')
         }
-
-        // Fallback: estimate based on search type and result count
-        logger.warn('Exa search response missing costDollars, using fallback pricing')
-        const isDeepSearch = params.type === 'neural'
-        if (isDeepSearch) {
-          return 0.015
-        }
-        const results = output.results as unknown[] | undefined
-        const resultCount = results?.length || 0
-        return resultCount <= 25 ? 0.005 : 0.025
+        return { cost: costDollars.total, metadata: { costDollars } }
       },
     },
     rateLimit: {
