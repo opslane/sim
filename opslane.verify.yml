@@ -2,4 +2,6 @@ codebase:
   packageManager: bun
 
 app:
+  preStartScript: npm install -g bun
+  installCommand: bun install
   testCommand: bun run test
