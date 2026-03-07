@@ -122,7 +122,7 @@ export const jiraSearchUsersTool: ToolConfig<JiraSearchUsersParams, JiraSearchUs
       data = await response.json()
     }
 
-    const users = Array.isArray(data) ? data : []
+    const users = Array.isArray(data) ? data.filter(Boolean) : []
 
     return {
       success: true,
