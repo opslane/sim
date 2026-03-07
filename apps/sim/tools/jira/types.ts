@@ -1572,6 +1572,8 @@ export interface JiraSearchUsersResponse extends ToolResponse {
       self?: string | null
     }>
     total: number
+    startAt: number
+    maxResults: number
   }
 }
 

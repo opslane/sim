@@ -133,6 +133,8 @@ export const jiraSearchUsersTool: ToolConfig<JiraSearchUsersParams, JiraSearchUs
           self: user.self ?? null,
         })),
         total: users.length,
+        startAt: params?.startAt ?? 0,
+        maxResults: params?.maxResults ?? 50,
       },
     }
   },
@@ -154,6 +156,11 @@ export const jiraSearchUsersTool: ToolConfig<JiraSearchUsersParams, JiraSearchUs
         },
       },
     },
-    total: { type: 'number', description: 'Total number of users returned' },
+    total: {
+      type: 'number',
+      description: 'Number of users returned in this page (may be less than total matches)',
+    },
+    startAt: { type: 'number', description: 'Pagination start index' },
+    maxResults: { type: 'number', description: 'Maximum results per page' },
   },
 }
