@@ -22,6 +22,7 @@ export type UsageLogSource = 'workflow' | 'wand' | 'copilot' | 'mcp_copilot'
 export interface ModelUsageMetadata {
   inputTokens: number
   outputTokens: number
+  toolCost?: number
 }
 
 /**
@@ -44,6 +45,7 @@ export interface LogModelUsageParams {
   inputTokens: number
   outputTokens: number
   cost: number
+  toolCost?: number
   workspaceId?: string
   workflowId?: string
   executionId?: string
@@ -76,6 +78,7 @@ export async function logModelUsage(params: LogModelUsageParams): Promise<void> 
     const metadata: ModelUsageMetadata = {
       inputTokens: params.inputTokens,
       outputTokens: params.outputTokens,
+      ...(params.toolCost != null && params.toolCost > 0 && { toolCost: params.toolCost }),
     }
 
     await db.insert(usageLog).values({
@@ -157,6 +160,7 @@ export interface LogWorkflowUsageBatchParams {
     {
       total: number
       tokens: { input: number; output: number }
+      toolCost?: number
     }
   >
 }
@@ -209,6 +213,8 @@ export async function logWorkflowUsageBatch(params: LogWorkflowUsageBatchParams)
           metadata: {
             inputTokens: modelData.tokens.input,
             outputTokens: modelData.tokens.output,
+            ...(modelData.toolCost != null &&
+              modelData.toolCost > 0 && { toolCost: modelData.toolCost }),
           },
           cost: modelData.total.toString(),
           workspaceId: params.workspaceId ?? null,

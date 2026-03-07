@@ -650,6 +650,19 @@ export function calculateCost(
   }
 }
 
+/**
+ * Sums the `cost.total` from each tool result returned during a provider tool loop.
+ * Tool results may carry a `cost` object injected by `applyHostedKeyCostToResult`.
+ */
+export function sumToolCosts(toolResults?: any[]): number {
+  if (!toolResults?.length) return 0
+  let total = 0
+  for (const tr of toolResults) {
+    if (tr?.cost?.total) total += tr.cost.total
+  }
+  return total
+}
+
 export function getModelPricing(modelId: string): any {
   const embeddingPricing = getEmbeddingModelPricing(modelId)
   if (embeddingPricing) {

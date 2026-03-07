@@ -93,6 +93,7 @@ export interface ProviderResponse {
   cost?: {
     input: number
     output: number
+    toolCost?: number
     total: number
     pricing: ModelPricing
   }

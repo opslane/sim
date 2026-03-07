@@ -58,13 +58,16 @@ async function injectHostedKeyIfNeeded(
 
   const { envKeyPrefix, apiKeyParam, byokProviderId, rateLimit } = tool.hosting
 
+  // Derive workspace/user/workflow IDs from executionContext or params._context
+  const ctx = params._context as Record<string, unknown> | undefined
+  const workspaceId = executionContext?.workspaceId || (ctx?.workspaceId as string | undefined)
+  const userId = executionContext?.userId || (ctx?.userId as string | undefined)
+  const workflowId = executionContext?.workflowId || (ctx?.workflowId as string | undefined)
+
   // Check BYOK workspace key first
-  if (byokProviderId && executionContext?.workspaceId) {
+  if (byokProviderId && workspaceId) {
     try {
-      const byokResult = await getBYOKKey(
-        executionContext.workspaceId,
-        byokProviderId as BYOKProviderId
-      )
+      const byokResult = await getBYOKKey(workspaceId, byokProviderId as BYOKProviderId)
       if (byokResult) {
         params[apiKeyParam] = byokResult.apiKey
         logger.info(`[${requestId}] Using BYOK key for ${tool.id}`)
@@ -78,7 +81,7 @@ async function injectHostedKeyIfNeeded(
 
   const rateLimiter = getHostedKeyRateLimiter()
   const provider = byokProviderId || tool.id
-  const billingActorId = executionContext?.workspaceId
+  const billingActorId = workspaceId
 
   if (!billingActorId) {
     logger.error(`[${requestId}] No workspace ID available for hosted key rate limiting`)
@@ -103,9 +106,9 @@ async function injectHostedKeyIfNeeded(
       reason: 'billing_actor_limit',
       provider,
       retryAfterMs: acquireResult.retryAfterMs ?? 0,
-      userId: executionContext?.userId,
-      workspaceId: executionContext?.workspaceId,
-      workflowId: executionContext?.workflowId,
+      userId,
+      workspaceId,
+      workflowId,
     })
 
     const error = new Error(acquireResult.error || `Rate limit exceeded for ${tool.id}`)
@@ -267,26 +270,31 @@ async function processHostedKeyCost(
 
   if (cost <= 0) return { cost: 0 }
 
+  const ctx = params._context as Record<string, unknown> | undefined
+  const userId = executionContext?.userId || (ctx?.userId as string | undefined)
+  const wsId = executionContext?.workspaceId || (ctx?.workspaceId as string | undefined)
+  const wfId = executionContext?.workflowId || (ctx?.workflowId as string | undefined)
+
+  if (!userId) return { cost, metadata }
+
   // Log to usageLog table for audit trail
-  if (executionContext?.userId) {
-    try {
-      await logFixedUsage({
-        userId: executionContext.userId,
-        source: 'workflow',
-        description: `tool:${tool.id}`,
-        cost,
-        workspaceId: executionContext.workspaceId,
-        workflowId: executionContext.workflowId,
-        executionId: executionContext.executionId,
-        metadata,
-      })
-      logger.debug(
-        `[${requestId}] Logged hosted key cost for ${tool.id}: $${cost}`,
-        metadata ? { metadata } : {}
-      )
-    } catch (error) {
-      logger.error(`[${requestId}] Failed to log hosted key usage for ${tool.id}:`, error)
-    }
+  try {
+    await logFixedUsage({
+      userId,
+      source: 'workflow',
+      description: `tool:${tool.id}`,
+      cost,
+      workspaceId: wsId,
+      workflowId: wfId,
+      executionId: executionContext?.executionId,
+      metadata,
+    })
+    logger.debug(
+      `[${requestId}] Logged hosted key cost for ${tool.id}: $${cost}`,
+      metadata ? { metadata } : {}
+    )
+  } catch (error) {
+    logger.error(`[${requestId}] Failed to log hosted key usage for ${tool.id}:`, error)
   }
 
   return { cost, metadata }
@@ -305,7 +313,8 @@ async function reportCustomDimensionUsage(
   requestId: string
 ): Promise<void> {
   if (tool.hosting?.rateLimit.mode !== 'custom') return
-  const billingActorId = executionContext?.workspaceId
+  const ctx = params._context as Record<string, unknown> | undefined
+  const billingActorId = executionContext?.workspaceId || (ctx?.workspaceId as string | undefined)
   if (!billingActorId) return
 
   const rateLimiter = getHostedKeyRateLimiter()
