@@ -28,7 +28,7 @@ apps/sim/blocks/registry.ts         # Block registry entry for this service
 apps/sim/components/icons.tsx        # Icon definition
 apps/sim/lib/auth/auth.ts           # OAuth config — should use getCanonicalScopesForProvider()
 apps/sim/lib/oauth/oauth.ts         # OAuth provider config — single source of truth for scopes
-apps/sim/lib/oauth/scope-descriptions.ts  # Human-readable scope descriptions for modal UI
+apps/sim/lib/oauth/utils.ts               # Scope utilities, SCOPE_DESCRIPTIONS for modal UI
 ```
 
 ## Step 2: Pull API Documentation
@@ -206,7 +206,7 @@ Scopes are centralized — the single source of truth is `OAUTH_PROVIDERS` in `l
 - [ ] `auth.ts` uses `getCanonicalScopesForProvider(providerId)` — NOT a hardcoded array
 - [ ] Block `requiredScopes` uses `getScopesForService(serviceId)` — NOT a hardcoded array
 - [ ] No hardcoded scope arrays in `auth.ts` or block files (should all use utility functions)
-- [ ] Each scope has a human-readable description in `lib/oauth/scope-descriptions.ts`
+- [ ] Each scope has a human-readable description in `SCOPE_DESCRIPTIONS` within `lib/oauth/utils.ts`
 - [ ] No excess scopes that aren't needed by any tool
 
 ## Step 6: Validate Pagination Consistency
@@ -249,7 +249,7 @@ Group findings by severity:
 - Missing `?? null` on nullable response fields
 - Block condition array missing an operation that uses that field
 - Hardcoded scope arrays instead of using `getScopesForService()` / `getCanonicalScopesForProvider()`
-- Missing scope description in `lib/oauth/scope-descriptions.ts`
+- Missing scope description in `SCOPE_DESCRIPTIONS` within `lib/oauth/utils.ts`
 
 **Suggestion** (minor improvements):
 - Better description text
@@ -279,7 +279,7 @@ After fixing, confirm:
 - [ ] Validated tools.config mapping, tool selector, and type coercions
 - [ ] Validated block outputs match what tools return, with typed JSON where possible
 - [ ] Validated OAuth scopes use centralized utilities (getScopesForService, getCanonicalScopesForProvider) — no hardcoded arrays
-- [ ] Validated scope descriptions exist in `lib/oauth/scope-descriptions.ts` for all scopes
+- [ ] Validated scope descriptions exist in `SCOPE_DESCRIPTIONS` within `lib/oauth/utils.ts` for all scopes
 - [ ] Validated pagination consistency across tools and block
 - [ ] Validated error handling (error checks, meaningful messages)
 - [ ] Validated registry entries (tools and block, alphabetical, correct imports)

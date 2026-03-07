@@ -423,7 +423,7 @@ If creating V2 versions (API-aligned outputs):
 
 ### OAuth Scopes (if OAuth service)
 - [ ] Defined scopes in `lib/oauth/oauth.ts` under `OAUTH_PROVIDERS`
-- [ ] Added scope descriptions in `lib/oauth/scope-descriptions.ts`
+- [ ] Added scope descriptions in `SCOPE_DESCRIPTIONS` within `lib/oauth/utils.ts`
 - [ ] Used `getCanonicalScopesForProvider()` in `auth.ts` (never hardcode)
 - [ ] Used `getScopesForService()` in block `requiredScopes` (never hardcode)
 
@@ -730,7 +730,7 @@ Use `wandConfig` for fields that are hard to fill out manually:
 Scopes are maintained in a single source of truth and reused everywhere:
 
 1. **Define scopes** in `lib/oauth/oauth.ts` under `OAUTH_PROVIDERS[provider].services[service].scopes`
-2. **Add descriptions** in `lib/oauth/scope-descriptions.ts` for the OAuth modal UI
+2. **Add descriptions** in `SCOPE_DESCRIPTIONS` within `lib/oauth/utils.ts` for the OAuth modal UI
 3. **Reference in auth.ts** using `getCanonicalScopesForProvider(providerId)` from `@/lib/oauth/utils`
 4. **Reference in blocks** using `getScopesForService(serviceId)` from `@/lib/oauth/utils`
 
@@ -757,4 +757,4 @@ requiredScopes: getScopesForService('{service}'),
 9. **Optional fields use advanced mode** - Set `mode: 'advanced'` on rarely-used optional fields
 10. **Complex inputs need wandConfig** - Timestamps, JSON arrays, and other hard-to-type values should have `wandConfig` enabled
 11. **Never hardcode scopes** - Use `getScopesForService()` in blocks and `getCanonicalScopesForProvider()` in auth.ts
-12. **Always add scope descriptions** - New scopes must have entries in `lib/oauth/scope-descriptions.ts`
+12. **Always add scope descriptions** - New scopes must have entries in `SCOPE_DESCRIPTIONS` within `lib/oauth/utils.ts`

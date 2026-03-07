@@ -125,7 +125,7 @@ export const {ServiceName}Block: BlockConfig = {
 
 **Scopes:** Always use `getScopesForService(serviceId)` from `@/lib/oauth/utils` for `requiredScopes`. Never hardcode scope arrays — the single source of truth is `OAUTH_PROVIDERS` in `lib/oauth/oauth.ts`.
 
-**Scope descriptions:** When adding a new OAuth provider, also add human-readable descriptions for all scopes in `lib/oauth/scope-descriptions.ts`.
+**Scope descriptions:** When adding a new OAuth provider, also add human-readable descriptions for all scopes in `SCOPE_DESCRIPTIONS` within `lib/oauth/utils.ts`.
 
 ### Selectors (with dynamic options)
 ```typescript
@@ -801,7 +801,7 @@ All tool IDs referenced in `tools.access` and returned by `tools.config.tool` MU
 - [ ] DependsOn set for fields that need other values
 - [ ] Required fields marked correctly (boolean or condition)
 - [ ] OAuth inputs have correct `serviceId` and `requiredScopes: getScopesForService(serviceId)`
-- [ ] Scope descriptions added to `lib/oauth/scope-descriptions.ts` for any new scopes
+- [ ] Scope descriptions added to `SCOPE_DESCRIPTIONS` in `lib/oauth/utils.ts` for any new scopes
 - [ ] Tools.access lists all tool IDs (snake_case)
 - [ ] Tools.config.tool returns correct tool ID (snake_case)
 - [ ] Outputs match tool outputs

@@ -3,7 +3,9 @@ import type { OAuthProvider, OAuthServiceMetadata } from './types'
 import {
   getAllOAuthServices,
   getCanonicalScopesForProvider,
+  getMissingRequiredScopes,
   getProviderIdFromServiceId,
+  getScopesForService,
   getServiceByProviderAndId,
   getServiceConfigByProviderId,
   parseProvider,
@@ -595,5 +597,113 @@ describe('parseProvider', () => {
 
     expect(config.baseProvider).toBe('microsoft')
     expect(config.featureType).toBe('sharepoint')
+  })
+})
+
+describe('getScopesForService', () => {
+  it.concurrent('should return scopes for a valid serviceId', () => {
+    const scopes = getScopesForService('gmail')
+
+    expect(Array.isArray(scopes)).toBe(true)
+    expect(scopes.length).toBeGreaterThan(0)
+    expect(scopes).toContain('https://www.googleapis.com/auth/gmail.send')
+  })
+
+  it.concurrent('should return empty array for unknown serviceId', () => {
+    const scopes = getScopesForService('nonexistent-service')
+
+    expect(Array.isArray(scopes)).toBe(true)
+    expect(scopes.length).toBe(0)
+  })
+
+  it.concurrent('should return new array instance (not reference)', () => {
+    const scopes1 = getScopesForService('gmail')
+    const scopes2 = getScopesForService('gmail')
+
+    expect(scopes1).not.toBe(scopes2)
+    expect(scopes1).toEqual(scopes2)
+  })
+
+  it.concurrent('should work for Microsoft services', () => {
+    const scopes = getScopesForService('outlook')
+
+    expect(scopes.length).toBeGreaterThan(0)
+    expect(scopes).toContain('Mail.ReadWrite')
+  })
+
+  it.concurrent('should return empty array for empty string', () => {
+    const scopes = getScopesForService('')
+
+    expect(Array.isArray(scopes)).toBe(true)
+    expect(scopes.length).toBe(0)
+  })
+})
+
+describe('getMissingRequiredScopes', () => {
+  it.concurrent('should return empty array when all scopes are granted', () => {
+    const credential = { scopes: ['read', 'write'] }
+    const missing = getMissingRequiredScopes(credential, ['read', 'write'])
+
+    expect(missing).toEqual([])
+  })
+
+  it.concurrent('should return missing scopes', () => {
+    const credential = { scopes: ['read'] }
+    const missing = getMissingRequiredScopes(credential, ['read', 'write'])
+
+    expect(missing).toEqual(['write'])
+  })
+
+  it.concurrent('should return all required scopes when credential is undefined', () => {
+    const missing = getMissingRequiredScopes(undefined, ['read', 'write'])
+
+    expect(missing).toEqual(['read', 'write'])
+  })
+
+  it.concurrent('should return all required scopes when credential has undefined scopes', () => {
+    const missing = getMissingRequiredScopes({ scopes: undefined }, ['read', 'write'])
+
+    expect(missing).toEqual(['read', 'write'])
+  })
+
+  it.concurrent('should ignore offline_access in required scopes', () => {
+    const credential = { scopes: ['read'] }
+    const missing = getMissingRequiredScopes(credential, ['read', 'offline_access'])
+
+    expect(missing).toEqual([])
+  })
+
+  it.concurrent('should ignore refresh_token in required scopes', () => {
+    const credential = { scopes: ['read'] }
+    const missing = getMissingRequiredScopes(credential, ['read', 'refresh_token'])
+
+    expect(missing).toEqual([])
+  })
+
+  it.concurrent('should ignore offline.access in required scopes', () => {
+    const credential = { scopes: ['read'] }
+    const missing = getMissingRequiredScopes(credential, ['read', 'offline.access'])
+
+    expect(missing).toEqual([])
+  })
+
+  it.concurrent('should filter ignored scopes even when credential is undefined', () => {
+    const missing = getMissingRequiredScopes(undefined, ['read', 'offline_access', 'refresh_token'])
+
+    expect(missing).toEqual(['read'])
+  })
+
+  it.concurrent('should return empty array when requiredScopes is empty', () => {
+    const credential = { scopes: ['read'] }
+    const missing = getMissingRequiredScopes(credential, [])
+
+    expect(missing).toEqual([])
+  })
+
+  it.concurrent('should return empty array when requiredScopes defaults to empty', () => {
+    const credential = { scopes: ['read'] }
+    const missing = getMissingRequiredScopes(credential)
+
+    expect(missing).toEqual([])
   })
 })
