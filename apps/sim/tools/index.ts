@@ -277,24 +277,30 @@ async function processHostedKeyCost(
 
   if (!userId) return { cost, metadata }
 
-  // Log to usageLog table for audit trail
-  try {
-    await logFixedUsage({
-      userId,
-      source: 'workflow',
-      description: `tool:${tool.id}`,
-      cost,
-      workspaceId: wsId,
-      workflowId: wfId,
-      executionId: executionContext?.executionId,
-      metadata,
-    })
+  const skipLog = !!ctx?.skipFixedUsageLog
+  if (!skipLog) {
+    try {
+      await logFixedUsage({
+        userId,
+        source: 'workflow',
+        description: `tool:${tool.id}`,
+        cost,
+        workspaceId: wsId,
+        workflowId: wfId,
+        executionId: executionContext?.executionId,
+        metadata,
+      })
+      logger.debug(
+        `[${requestId}] Logged hosted key cost for ${tool.id}: $${cost}`,
+        metadata ? { metadata } : {}
+      )
+    } catch (error) {
+      logger.error(`[${requestId}] Failed to log hosted key usage for ${tool.id}:`, error)
+    }
+  } else {
     logger.debug(
-      `[${requestId}] Logged hosted key cost for ${tool.id}: $${cost}`,
-      metadata ? { metadata } : {}
+      `[${requestId}] Skipping fixed usage log for ${tool.id} (cost will be tracked via provider tool loop)`
     )
-  } catch (error) {
-    logger.error(`[${requestId}] Failed to log hosted key usage for ${tool.id}:`, error)
   }
 
   return { cost, metadata }

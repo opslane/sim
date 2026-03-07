@@ -1154,6 +1154,7 @@ export function prepareToolExecution(
               ? { isDeployedContext: request.isDeployedContext }
               : {}),
             ...(request.callChain ? { callChain: request.callChain } : {}),
+            skipFixedUsageLog: true,
           },
         }
       : {}),
