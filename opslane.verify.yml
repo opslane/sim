@@ -1,0 +1,7 @@
+codebase:
+  packageManager: bun
+
+app:
+  installCommand: bun install
+  testCommand: bun run test
+  command: none
