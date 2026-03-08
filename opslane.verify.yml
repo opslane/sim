@@ -1,0 +1,18 @@
+codebase:
+  packageManager: bun
+  exampleTest: |
+    async function main() {
+      console.log("__VERIFY_TESTS_STARTED__");
+      const { someFunction } = await import("../apps/sim/src/utils/some-util.js");
+      const result = someFunction("input");
+      if (result \!== "expected") throw new Error("Got " + result);
+      console.log("PASS: someFunction works correctly");
+    }
+    main().catch((e) => { console.error(e); process.exit(1); });
+
+app:
+  installCommand: export PATH="$HOME/.bun/bin:$PATH" && bun install
+  testCommand: bun run test --filter sim
+  command: cd apps/sim && bun run dev
+  healthPath: /
+  healthTimeoutMs: 90000
